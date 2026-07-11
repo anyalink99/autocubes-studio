@@ -1,0 +1,159 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>AMAVI - редизайн интернет-магазина · ТЗ</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Hanken+Grotesk:ital,wght@0,400;0,600;0,700;1,400&family=Spline+Sans+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --ink:#16120e;
+    --ink-soft:#5c544a;
+    --line:#e6e1da;
+    --accent:#8a5a2b;
+    --tint:#faf8f5;
+  }
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{
+    font-family:"Hanken Grotesk",system-ui,sans-serif;
+    color:var(--ink);
+    background:#fff;
+    font-size:15.5px;
+    line-height:1.7;
+    -webkit-font-smoothing:antialiased;
+  }
+  .doc{max-width:760px;margin:0 auto;padding:56px 40px 72px}
+
+  .doc-head{display:flex;justify-content:space-between;align-items:center;gap:24px;
+    padding-bottom:22px;border-bottom:1px solid var(--ink)}
+  .brand{display:flex;align-items:center;gap:11px}
+  .brand svg{width:28px;height:28px;color:var(--ink)}
+  .brand b{font-size:15px;letter-spacing:.14em;font-weight:700}
+  .doc-meta{font-family:"Spline Sans Mono",monospace;font-size:12px;color:var(--ink-soft)}
+
+  h1{font-size:30px;font-weight:700;letter-spacing:-.01em;line-height:1.2;margin:40px 0 18px}
+  h2{font-size:19px;font-weight:700;margin:44px 0 14px}
+  p{margin:0 0 14px}
+  p:last-child{margin-bottom:0}
+  ul,ol{margin:0 0 14px;padding-left:24px}
+  li{margin-bottom:6px}
+  b,strong{font-weight:700}
+  a{color:var(--accent);text-decoration:none;border-bottom:1px solid var(--line)}
+  a:hover{border-color:var(--accent)}
+
+  figure{margin:18px 0}
+  figure img{display:block;width:100%;border:1px solid var(--line)}
+  figcaption{font-family:"Spline Sans Mono",monospace;font-size:11.5px;color:var(--ink-soft);
+    margin-top:8px}
+
+  .doc-foot{margin-top:64px;padding-top:16px;border-top:1px solid var(--line);
+    font-family:"Spline Sans Mono",monospace;font-size:11.5px;color:var(--ink-soft);
+    display:flex;justify-content:space-between}
+
+  @media (max-width:600px){
+    .doc{padding:32px 20px 48px}
+    h1{font-size:24px}
+    .doc-head{flex-direction:column;align-items:flex-start;gap:10px}
+  }
+  @media print{
+    body{font-size:12.5px}
+    .doc{max-width:none;padding:0}
+    a{color:var(--ink);border:none}
+    h2{break-after:avoid}
+    @page{margin:18mm 16mm}
+  }
+</style>
+</head>
+<body>
+<div class="doc">
+
+  <header class="doc-head">
+    <div class="brand">
+      <svg viewBox="0 0 1040 1040" fill="none" xmlns="http://www.w3.org/2000/svg"><path fill-rule="evenodd" d="M 633 1040 L 257 1040 A 30 30 0 0 1 227 1010 L 227 257 A 30 30 0 0 1 257 227 L 666 227 A 30 30 0 0 0 696 197 L 696 153 A 30 30 0 0 0 666 123 L 153 123 A 30 30 0 0 0 123 153 L 123 783 A 30 30 0 0 1 93 813 L 30 813 A 30 30 0 0 1 0 783 L 0 30 A 30 30 0 0 1 30 0 L 783 0 A 30 30 0 0 1 813 30 L 813 783 A 30 30 0 0 1 783 813 L 374 813 A 30 30 0 0 0 344 843 L 344 887 A 30 30 0 0 0 374 917 L 887 917 A 30 30 0 0 0 917 887 L 917 257 A 30 30 0 0 1 947 227 L 1010 227 A 30 30 0 0 1 1040 257 L 1040 1010 A 30 30 0 0 1 1010 1040 Z M 519 349 L 660 349 A 30 30 0 0 1 690 379 L 690 661 A 30 30 0 0 1 660 691 L 379 691 A 30 30 0 0 1 349 661 L 349 379 A 30 30 0 0 1 379 349 Z" fill="currentColor"/></svg>
+      <b>autocubes</b>
+    </div>
+    <div class="doc-meta">техническое задание · 12.06.2026</div>
+  </header>
+
+  <h1>AMAVI - редизайн интернет-магазина</h1>
+
+  <p>Это "как мы поняли задачу" по итогам переписки 7-11 июня. Прочитай и скажи, где понято
+    не так, поправим до старта. Чего в документе нет, то в объем не входит и обсуждается
+    отдельно.</p>
+
+  <h2>Задача</h2>
+  <p>Переделываем текущий сайт <a href="https://amavichocolate.ru/">amavichocolate.ru</a>.
+    Сначала дизайн в Figma, после утверждения макетов - верстка и перенос на OpenCart.</p>
+  <p>Главное требование - скорость. В первую очередь доводим все, что покупатель видит до
+    оформления заказа: главную, каталог, карточку товара и корзину. Само оформление и экран
+    "заказ принят" делаем простыми, без изысков. Улучшать их будем после первых продаж,
+    как ты и сказал.</p>
+
+  <h2>Страницы</h2>
+  <p>Состав берем с текущего сайта: главная, каталог с подкатегориями (белый, молочный,
+    темный, горький, фруктовый и ягодный, с орехами, на кэробе), карточка товара, корзина,
+    оформление заказа, контакты и текстовые страницы - доставка, пользовательское соглашение,
+    политика безопасности. Текстовые страницы - это один дизайн: шаблон с заголовками и
+    текстом в общем стиле, рисуем его один раз. Плюс UI-кит в Figma (типографика, кнопки,
+    карточки, поля, состояния), чтобы все страницы собирались из одних деталей.</p>
+  <p>Шапку берем за основу из концепта Ани: логотип по центру, меню под ним.</p>
+  <figure>
+    <img src="data:image/jpeg;base64,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URHn1rDYlC2kDDmUgzrRSwUNuqEXdKbZct4Bbw1h3sO42ypgylR3NDNtv5217f8AFZEefX1M5a220srvE86GbaFfh/w14k681TvQKjwyrSpj4gQroOlTbeIEa92hw3iDp59aZ3WU96OelJS2beZNN3JF0gmm7U3Abj8mtPs/fupPjgZXBEzd5/8AaSe04Q3MExvrS1DN1DnXyihlqXm3J7yVfvQ0eHYnkVcVdiXLC2hVwqQF5eaNbjtHT3D4sWcGXPe86Fniynb6inGwVXqd0UOGBFNl1LyRl7Nz3/caRx8StbJ2+1MlReIyfhmb/Ok52b3Exlz3udPr7RQDYKRcYJ1pTbl9wWk3CToTrtTUZmhVdvJE0FAKyRwR+/uIi/J0ut+9JnMuzFXb228vLpTeepVhbVO45jeghGZmLWZJUdBPWmCQsCO1A+op8pzIyuHiMTrTQcCrQjVVpTr9/kJA2+fn/8QAKRAAAgMBAAICAQMEAwEAAAAAAREAUZEhMUFhgXEQcKEgscHwMGCAkP/aAAgBAQABPyH/AOFPnB35fH3OBD0PyEfTEIAI9BjNTjeKj6nYUwPYh9Q5jgdn2WJ4YpAQEeWvo6Gy/wAQZAvO+Y17vBHeTEMhkONFyz2OBwAfLRUqyPE2oCtvQv2TEn8IeDx6Hn+yEYQucf5ohA2Qqe7t1uBnMf748H67k58J9/R4lSDDuuHmOUzIFq6Igs+6SM23p/XTOIYQ/soX1ArxnkOPw9AIgIdehDhoot+TCnkR8oK9AxHCDGUq7Aj+E/icTrpmTz9wq/jCSPmIDxxgXRXvsQfUBP5PiesrHP5nF9X/AB/h+gJ58BJKeC+yzH8/+NSV47/Lx1Rv7HkJIW8h/J/dsBfxpM+n/ah/HPdpekEkAr5B7R7nngWPVQ7SAYeq51tZ4A+qKng9fvY1eRKORKORKORKORKORKORKORKORKORKORKORKORKORKORKORKORKORKORKORKORKORKORKORKORKORKORKORKORKORKORKORKORKORKORKORKORKORKORKORKORKORKORKORKORKORKORKORKORKORKORKORKORKORKORKORKORKORKORKORKORKORKORKORKORKORKORKORKORKORKORKORKORKORKORKORKORKORKORKORKORKORKORKORKORKORKORKORKORKORKORKORKORKORKORKORKORKORKORKORKORKORKORKORKORKORKORKORKORKORKORKORKORKORKORKORKORKORKORKORKORKORKORKORKORKORKORKORKORKORKORKORKORKORKORKORKORKORKORKORKORKORKORKORKORKORKORKORKORKORKORKORKORKORKORKORKORKORKOfvAAoyFZ8xnLwYsv6pCkIHgV8zyO9erK/APXtRJP80Fd63P3CUlofSh817nzoud88HyeONG+ix7R6kP38/wBH+y5p9eeTzQjpV3ePXmF9DuoAgeeVHvAuDD2a/h8g/UDxH1joPtU9wwv4x/mWXUu/JcrzCDQ6C+RAHioQRP7ZOA87yoPmY4S176CmmzAT+Ydj7r+SO/B/o7jkUR8un059o5b4gCSPAiA8mfnyvEAuFRvEXs1xKGhu8+CwLi/1Qk3J5ftIeH4hDHqHk8Eewv8AYPnuAAgB4A/5OTn/AE9A+REKEQoRChEKEQoRChEKEQoRChEKEQoRChEKEQoRChEKEQoRChEKEQoRChEKEQoRChEKEQoRChEKEQoRChEKEQoRChEKEQoRChEKEQoRChEKEQoRChEKEQoRChEKEQoRChEKEQoRChEKEQoRChEKEQoRChEKEQoRChEKEQoRChEKEQoRChEKEQoRChEKEQoRChEKEQoRChEKEQoRChEKEQoRChEKEQoRChEKEQoRChEKEQoRChEKEQoRChEKEQoRChEKEQoRChEKEQoRChEKEQoRChEKEQoRChEKEQoRChEKEQoRChEKEQoRChEKEQoRChEKEQoRChEKEQoRChEKEQoRChEKEQoRChEKEQoRChEKEQoRChEKEQoRChEKEQoRChEKEQoRChEKEQoRChEKEQoRChEKEQoRChEKEQofp//aAAwDAQACAAMAAAAQAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAADJGKDODAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAASvHDX5GAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA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" alt="Шапка из концепта Ани">
+  </figure>
+  <p>Каталог делаем по образцу <a href="https://greenmania.ru/katalog">greenmania.ru/katalog</a>:
+    плотная сетка, крупные фото, минимальные отступы между товарами.
+    У каждого товара цена и кнопка "Купить" прямо в каталоге, рядом кнопка "Купить на OZON".
+    Кнопку "Купить у партнера в вашем регионе" закладываем в макете на будущее, в верстку
+    первого этапа она не идет.</p>
+  <p>Карточка товара тоже по мотивам гринмании: миниатюры фото слева от основного (можно и
+    снизу, решим в макете), крупное главное фото, цена, количество, "Купить" и
+    "Купить на OZON". Внизу блок рекомендуемых товаров, до четырех в ряд на широких экранах.
+    На широких мониторах контент на всю ширину не тянем: договорились про отступы порядка
+    10% с каждой стороны.</p>
+  <p>По корзине ты еще смотришь референсы. Как определишься с форматом (выезжающая панель,
+    отдельная страница или и то и другое), зафиксируем и нарисуем. Базовый набор в любом
+    случае: состав заказа с фото, изменение количества, удаление, сумма, переход к оформлению
+    и счетчик на иконке корзины в шапке.</p>
+  <p>Оформление заказа - аккуратная форма в общем стиле, ничего специфического.
+    "Заказ принят" - простой экран благодарности. Модули вроде рекомендаций туда можно
+    добавить позже средствами OpenCart, это вне текущего объема.</p>
+
+  <h2>OpenCart</h2>
+  <p>Перенос на OpenCart входит в этап верстки, на выходе магазин работает на твоем движке.</p>
+  <p>В дизайне OpenCart нас не ограничивает: мы делаем свою тему с нуля, каждый шаблон
+    витрины пишем сами, движок только подставляет в них данные из админки (товары, цены,
+    корзину, заказы). Разметка получается один в один по макетам, без чужого HTML и
+    компонентов покупных тем.</p>
+  <p>Свое движок навязывает только в стандартном многошаговом оформлении заказа. Мы сейчас
+    разведываем модули, которые его заменяют: в русских сборках OpenCart это в первую очередь
+    Simple, есть и аналоги вроде Uni Quick Checkout и Custom Quick Checkout. Все они
+    превращают оформление в одну страницу с настраиваемыми полями, так что это решается
+    готовыми модулями. Какой ставить, выберем под твою версию движка, когда будет доступ
+    к админке.</p>
+  <p>По самой верстке: адаптив от мобильного (390) до больших десктопов (1440+), современные
+    браузеры, оптимизированные картинки, без тяжелых библиотек.</p>
+
+  <h2>Что нужно от тебя</h2>
+  <ul>
+    <li>Доступ к админке OpenCart (посмотреть версию, тему и модули).</li>
+    <li>Фотографии товаров.</li>
+  </ul>
+  <p>Ссылки на карточки OZON и финальные тексты понадобятся позже, ближе к верстке. На этапе
+    дизайна работаем с рыбой, финальные тексты подставим без переделки верстки.</p>
+
+  <h2>Порядок работы</h2>
+  <p>Согласуем это ТЗ, рисуем макеты в Figma, утверждаем, верстаем и собираем тему, проверяем
+    на тестовой копии магазина, запускаем. Правки в рамках утвержденного объема входят в
+    работу (предлагаю две итерации на этап), новые страницы и функции сверх списка обсуждаем
+    отдельно.</p>
+
+  <footer class="doc-foot">
+    <span>autocubes</span>
+    <span>AMAVI · 12.06.2026</span>
+  </footer>
+
+</div>
+</body>
+</html>

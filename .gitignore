@@ -1,0 +1,8 @@
+node_modules
+dist
+out
+shots
+.remotion
+*.log
+.DS_Store
+Thumbs.db

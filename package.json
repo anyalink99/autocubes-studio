@@ -1,0 +1,39 @@
+{
+  "name": "autocubes-studio",
+  "version": "0.2.0",
+  "private": true,
+  "scripts": {
+    "sfx:generate": "tsx tooling/scripts/generate-sfx.ts",
+    "audio:previews": "tsx tooling/scripts/build-audio-previews.ts",
+    "dev": "vite --config vite.config.ts --open /",
+    "studio": "vite --config vite.config.ts --open /",
+    "editor": "vite --config vite.config.ts --open /editor.html",
+    "build": "vite build --config vite.config.ts",
+    "editor:build": "vite build --config vite.config.ts",
+    "capture:editor": "tsx tooling/capture/run-editor-project.ts data/projects/flowline.editor.json",
+    "render:editor": "remotion render packages/video/index.ts EditorReel out/editor-reel.mp4 --codec=h264 --pixel-format=yuv420p",
+    "capture:flowline": "tsx tooling/capture/run.ts flowline",
+    "render:flowline": "remotion render packages/video/index.ts FlowlineReel out/flowline-reel.mp4 --codec=h264 --pixel-format=yuv420p",
+    "still:flowline": "remotion still packages/video/index.ts FlowlineReel out/flowline-preview.png --frame=150",
+    "make:flowline": "npm run capture:flowline && npm run render:flowline",
+    "remotion:studio": "remotion studio packages/video/index.ts",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@remotion/cli": "4.0.486",
+    "@vitejs/plugin-react": "^4.3.4",
+    "lucide-react": "^0.468.0",
+    "playwright": "1.45.3",
+    "react": "18.3.1",
+    "react-dom": "18.3.1",
+    "remotion": "4.0.486",
+    "tsx": "4.20.3",
+    "vite": "^6.0.11"
+  },
+  "devDependencies": {
+    "@types/node": "20.19.9",
+    "@types/react": "18.3.23",
+    "@types/react-dom": "18.3.7",
+    "typescript": "5.9.3"
+  }
+}

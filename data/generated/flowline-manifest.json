@@ -1,0 +1,209 @@
+{
+  "site": "flowline",
+  "title": "Flowline",
+  "url": "https://portfolio.autocubes.site/flowline",
+  "capturedAt": "2026-07-10T21:45:48.576Z",
+  "viewport": {
+    "width": 1080,
+    "height": 1920,
+    "deviceScaleFactor": 1
+  },
+  "video": "capture.webm",
+  "durationSeconds": 22,
+  "stills": [
+    {
+      "id": "01-hero",
+      "file": "stills/01-hero.png",
+      "at": 7.791,
+      "label": "Hero"
+    },
+    {
+      "id": "02-menu-open",
+      "file": "stills/02-menu-open.png",
+      "at": 10.493,
+      "label": "Menu open"
+    },
+    {
+      "id": "03-hero-hover",
+      "file": "stills/03-hero-hover.png",
+      "at": 14.661,
+      "label": "Hero hover"
+    },
+    {
+      "id": "04-section-a",
+      "file": "stills/04-section-a.png",
+      "at": 16.99,
+      "label": "Section A"
+    },
+    {
+      "id": "05-section-a-hover",
+      "file": "stills/05-section-a-hover.png",
+      "at": 19.821,
+      "label": "Section A hover"
+    },
+    {
+      "id": "06-section-b",
+      "file": "stills/06-section-b.png",
+      "at": 22.116,
+      "label": "Section B"
+    },
+    {
+      "id": "07-section-c",
+      "file": "stills/07-section-c.png",
+      "at": 24.346,
+      "label": "Section C"
+    },
+    {
+      "id": "09-real-click",
+      "file": "stills/09-real-click.png",
+      "at": 28.388,
+      "label": "Real carousel click"
+    },
+    {
+      "id": "10-final",
+      "file": "stills/10-final.png",
+      "at": 30.78,
+      "label": "Final"
+    }
+  ],
+  "actions": [
+    {
+      "id": "01-move",
+      "type": "move",
+      "label": "Menu button",
+      "at": 7.791,
+      "x": 858,
+      "y": 60,
+      "duration": 0.46
+    },
+    {
+      "id": "02-move",
+      "type": "move",
+      "label": "Open navigation",
+      "at": 8.734,
+      "x": 858,
+      "y": 60,
+      "duration": 0.18
+    },
+    {
+      "id": "03-click",
+      "type": "click",
+      "label": "Open navigation",
+      "at": 9.08,
+      "x": 858,
+      "y": 60
+    },
+    {
+      "id": "04-move",
+      "type": "move",
+      "label": "Close navigation",
+      "at": 10.493,
+      "x": 858,
+      "y": 60,
+      "duration": 0.3
+    },
+    {
+      "id": "05-click",
+      "type": "click",
+      "label": "Close navigation",
+      "at": 11.725,
+      "x": 858,
+      "y": 60
+    },
+    {
+      "id": "06-move",
+      "type": "move",
+      "label": "hero-interaction",
+      "at": 12.189,
+      "x": 430,
+      "y": 437,
+      "duration": 0.68
+    },
+    {
+      "id": "07-hover",
+      "type": "hover",
+      "label": "hero-interaction",
+      "at": 13.812,
+      "x": 430,
+      "y": 437,
+      "target": "a:has-text(\"Start tracking for free\")"
+    },
+    {
+      "id": "08-scroll",
+      "type": "scroll",
+      "label": "Scroll to 2295",
+      "at": 14.681,
+      "duration": 1.25
+    },
+    {
+      "id": "09-move",
+      "type": "move",
+      "label": "middle-interaction",
+      "at": 17.175,
+      "x": 420,
+      "y": 89,
+      "duration": 0.68
+    },
+    {
+      "id": "10-hover",
+      "type": "hover",
+      "label": "middle-interaction",
+      "at": 18.804,
+      "x": 420,
+      "y": 89,
+      "target": "a:has-text(\"Download for iPhone\"):visible"
+    },
+    {
+      "id": "11-scroll",
+      "type": "scroll",
+      "label": "Scroll to 4819",
+      "at": 19.821,
+      "duration": 1.25
+    },
+    {
+      "id": "12-scroll",
+      "type": "scroll",
+      "label": "Scroll to 7572",
+      "at": 22.116,
+      "duration": 1.35
+    },
+    {
+      "id": "13-scroll",
+      "type": "scroll",
+      "label": "Scroll to 9408",
+      "at": 24.346,
+      "duration": 1.35
+    },
+    {
+      "id": "14-move",
+      "type": "move",
+      "label": "Next testimonial",
+      "at": 26.231,
+      "x": 568,
+      "y": 1322,
+      "duration": 0.72
+    },
+    {
+      "id": "15-click",
+      "type": "click",
+      "label": "Next testimonial",
+      "at": 27.205,
+      "x": 568,
+      "y": 1322,
+      "target": "button[aria-label=\"Next\"]:visible"
+    },
+    {
+      "id": "16-scroll",
+      "type": "scroll",
+      "label": "Scroll to 10326",
+      "at": 28.388,
+      "duration": 1.2
+    }
+  ],
+  "notes": [
+    "hover:hero-interaction:a:has-text(\"Start tracking for free\")",
+    "page-height:13393",
+    "hover:middle-interaction:a:has-text(\"Download for iPhone\"):visible",
+    "click:Next testimonial:button[aria-label=\"Next\"]:visible"
+  ]
+}
