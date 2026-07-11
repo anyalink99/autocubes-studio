@@ -1,5 +1,5 @@
 {
-  "version": 1,
+  "version": 2,
   "id": "flowline",
   "title": "Flowline",
   "url": "https://portfolio.autocubes.site/flowline",
@@ -9,6 +9,8 @@
     "width": 1080,
     "height": 1920
   },
+  "guides": true,
+  "snap": true,
   "pageHeight": 13393,
   "previewVideo": "/captures/editor-flowline/capture.webm",
   "videoOffset": 3.082,
@@ -93,6 +95,7 @@
       "strength": 1
     }
   ],
+  "captions": [],
   "audio": [
     {
       "id": "audio-lift",

@@ -23,6 +23,7 @@ Rules:
 3. `tooling` is Node-only infrastructure. Browser code must not import it.
 4. `data/projects` is the editable source of truth. `data/generated` contains explicit snapshots for deterministic rendering.
 5. `public` contains assets required at runtime. Transient captures, build output, and renders belong in ignored directories.
+6. Instagram output dimensions and safe-area contracts live in `packages/core/media-presets.ts`; applications must not redefine them independently.
 
 ## Runtime surfaces
 
@@ -41,6 +42,12 @@ Documents are structured React state stored under `autocubes-documents-v1`. Expo
 ### Identity Lab
 
 Identity Lab remains standalone HTML by design: it can be opened or shared without bootstrapping a React application. Per-variant overrides are stored under `autocubes-identity-v3-edits`.
+
+Identity export runs in the browser. `html-to-image` rasterizes the active artboard at the selected output resolution; JSZip packages picked compositions without sending artwork to a remote service.
+
+## Quality gates
+
+`npm run qa:smoke` starts an isolated Vite instance and verifies Identity format switching, undo/redo, exact raster export, Motion format switching, safe zones, and the local projects API in Chromium. Run it with typecheck and build before changing production workflows.
 
 ## Persistence direction
 

@@ -45,6 +45,17 @@ export type AudioEvent = {
   enabled: boolean;
 };
 
+export type CaptionEvent = {
+  id: string;
+  label: string;
+  text: string;
+  at: number;
+  duration: number;
+  position: 'top' | 'center' | 'bottom';
+  style: 'clean' | 'boxed' | 'accent';
+  size: number;
+};
+
 export type EditorProject = {
   version: number;
   id: string;
@@ -53,17 +64,20 @@ export type EditorProject = {
   fps: number;
   duration: number;
   viewport: {width: number; height: number};
+  guides?: boolean;
+  snap?: boolean;
   pageHeight: number;
   previewVideo?: string;
   videoOffset?: number;
   frames: ScrollFrame[];
   pointer: PointerEvent[];
   transitions: TransitionEvent[];
+  captions: CaptionEvent[];
   audio: AudioEvent[];
 };
 
 export type Selection = {
-  track: 'frames' | 'pointer' | 'transitions' | 'audio' | 'project';
+  track: 'frames' | 'pointer' | 'transitions' | 'captions' | 'audio' | 'project';
   id?: string;
 };
 
@@ -78,6 +92,7 @@ export type JobState = {
   kind: 'capture' | 'render';
   status: 'running' | 'complete' | 'failed';
   log: string[];
+  outputUrl?: string;
 };
 
 export type ProjectSummary = Pick<EditorProject, 'id' | 'title' | 'url'>;

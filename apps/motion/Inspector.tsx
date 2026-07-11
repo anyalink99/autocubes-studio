@@ -1,6 +1,7 @@
 import React from 'react';
-import {Camera, Copy, MousePointer2, Trash2} from 'lucide-react';
+import {Camera, Check, Copy, MousePointer2, Trash2} from 'lucide-react';
 import {AssetLibrary, EditorProject, Selection} from '../../packages/core/editor-project';
+import {findMediaPreset, formatRatio, mediaPresets} from '../../packages/core/media-presets';
 
 type Props = {
   project: EditorProject;
@@ -12,6 +13,7 @@ type Props = {
   onDelete: () => void;
   onDuplicate: () => void;
   onCaptureFrame: () => void;
+  onDeleteProject: () => void;
 };
 
 const NumberField = ({label, value, min, max, step = 0.1, onChange}: {label: string; value: number; min?: number; max?: number; step?: number; onChange: (value: number) => void}) => (
@@ -28,6 +30,10 @@ const TextField = ({label, value, onChange, placeholder}: {label: string; value:
   </label>
 );
 
+const TextAreaField = ({label, value, onChange}: {label: string; value: string; onChange: (value: string) => void}) => (
+  <label className="field"><span>{label}</span><textarea value={value} rows={3} onChange={(event) => onChange(event.target.value)}/></label>
+);
+
 const SelectField = ({label, value, options, onChange}: {label: string; value: string; options: string[]; onChange: (value: string) => void}) => (
   <label className="field">
     <span>{label}</span>
@@ -37,12 +43,20 @@ const SelectField = ({label, value, options, onChange}: {label: string; value: s
   </label>
 );
 
-export const Inspector = ({project, selection, assets, capturingFrame, onChangeProject, onChangeItem, onDelete, onDuplicate, onCaptureFrame}: Props) => {
+export const Inspector = ({project, selection, assets, capturingFrame, onChangeProject, onChangeItem, onDelete, onDuplicate, onCaptureFrame, onDeleteProject}: Props) => {
   const frameItem = selection.track === 'frames' ? project.frames.find((candidate) => candidate.id === selection.id) : undefined;
   const pointerItem = selection.track === 'pointer' ? project.pointer.find((candidate) => candidate.id === selection.id) : undefined;
   const transitionItem = selection.track === 'transitions' ? project.transitions.find((candidate) => candidate.id === selection.id) : undefined;
+  const captionItem = selection.track === 'captions' ? project.captions.find((candidate) => candidate.id === selection.id) : undefined;
   const audioItem = selection.track === 'audio' ? project.audio.find((candidate) => candidate.id === selection.id) : undefined;
-  const item = selection.track === 'project' ? project : frameItem ?? pointerItem ?? transitionItem ?? audioItem;
+  const item = selection.track === 'project' ? project : frameItem ?? pointerItem ?? transitionItem ?? captionItem ?? audioItem;
+  const projectChecks = [
+    {label: 'Instagram canvas', ok: Boolean(findMediaPreset(project.viewport.width, project.viewport.height))},
+    {label: 'All frames captured', ok: project.frames.length > 0 && project.frames.every((frame) => Boolean(frame.thumbnail))},
+    {label: 'At least 30 FPS', ok: project.fps >= 30},
+    {label: 'Caption clips contain text', ok: project.captions.every((caption) => Boolean(caption.text.trim()))},
+    {label: 'Clips inside duration', ok: [...project.frames, ...project.pointer, ...project.transitions, ...project.captions, ...project.audio].every((entry) => entry.at + ('hold' in entry ? entry.duration + entry.hold : entry.duration) <= project.duration + .01)},
+  ];
 
   if (!item) {
     return <aside className="inspector"><div className="inspector-empty">Select an item</div></aside>;
@@ -68,6 +82,15 @@ export const Inspector = ({project, selection, assets, capturingFrame, onChangeP
       <div className="inspector-body">
         {selection.track === 'project' ? (
           <>
+            <section className="inspector-section">
+              <div className="section-label"><span>Instagram format</span><b>{findMediaPreset(project.viewport.width, project.viewport.height)?.shortLabel ?? formatRatio(project.viewport.width, project.viewport.height)}</b></div>
+              <div className="format-grid">
+                {mediaPresets.map((preset) => {
+                  const active = preset.width === project.viewport.width && preset.height === project.viewport.height;
+                  return <button key={preset.id} className={active ? 'active' : ''} onClick={() => patch({viewport: {width: preset.width, height: preset.height}, guides: true})}><span>{preset.shortLabel}</span><strong>{preset.label}</strong>{active ? <Check size={12}/> : null}</button>;
+                })}
+              </div>
+            </section>
             <TextField label="Title" value={project.title} onChange={(title) => patch({title})} />
             <TextField label="URL" value={project.url} onChange={(url) => patch({url})} />
             <div className="field-grid">
@@ -81,6 +104,13 @@ export const Inspector = ({project, selection, assets, capturingFrame, onChangeP
             <NumberField label="Page height" value={project.pageHeight} min={project.viewport.height} step={1} onChange={(pageHeight) => patch({pageHeight})} />
             <TextField label="Capture video" value={project.previewVideo ?? ''} onChange={(previewVideo) => patch({previewVideo})} />
             <NumberField label="Video offset" value={project.videoOffset ?? 0} min={0} onChange={(videoOffset) => patch({videoOffset})} />
+            <label className="toggle-field"><input type="checkbox" checked={project.guides !== false} onChange={(event) => patch({guides: event.target.checked})} /><span>Show Instagram safe zones</span></label>
+            <label className="toggle-field"><input type="checkbox" checked={project.snap !== false} onChange={(event) => patch({snap: event.target.checked})} /><span>Snap clips to 0.1 seconds</span></label>
+            <section className="output-checks">
+              <div className="section-label"><span>Preflight</span><b>{projectChecks.filter((check) => check.ok).length}/{projectChecks.length}</b></div>
+              {projectChecks.map((check) => <div className={check.ok ? 'ok' : 'pending'} key={check.label}><span>{check.ok ? '✓' : '–'}</span>{check.label}</div>)}
+            </section>
+            <button className="wide-button danger-button" onClick={onDeleteProject}><Trash2 size={15}/>Delete this project</button>
           </>
         ) : null}
 
@@ -136,6 +166,17 @@ export const Inspector = ({project, selection, assets, capturingFrame, onChangeP
             </div>
             <SelectField label="Type" value={transitionItem.kind} options={['cut', 'fade', 'blur', 'dipBlack', 'dipWhite']} onChange={(kind) => patch({kind})} />
             <label className="field range-field"><span>Strength <b>{Math.round(transitionItem.strength * 100)}%</b></span><input type="range" min={0} max={1} step={0.01} value={transitionItem.strength} onChange={(event) => patch({strength: Number(event.target.value)})} /></label>
+          </>
+        ) : null}
+
+        {captionItem ? (
+          <>
+            <TextField label="Label" value={captionItem.label} onChange={(label) => patch({label})}/>
+            <TextAreaField label="On-screen text" value={captionItem.text} onChange={(text) => patch({text})}/>
+            <div className="caption-tools"><span>{captionItem.text.length} characters</span><button onClick={() => patch({duration: Math.round(Math.max(1.5, captionItem.text.trim().split(/\s+/).filter(Boolean).length / 2.8) * 10) / 10})}>Fit reading time</button></div>
+            <div className="field-grid"><NumberField label="Start" value={captionItem.at} min={0} max={project.duration} onChange={(at) => patch({at})}/><NumberField label="Duration" value={captionItem.duration} min={0.2} onChange={(duration) => patch({duration})}/></div>
+            <div className="field-grid"><SelectField label="Position" value={captionItem.position} options={['top','center','bottom']} onChange={(position) => patch({position})}/><SelectField label="Style" value={captionItem.style} options={['clean','boxed','accent']} onChange={(style) => patch({style})}/></div>
+            <label className="field range-field"><span>Text size <b>{captionItem.size}px</b></span><input type="range" min={24} max={110} step={1} value={captionItem.size} onChange={(event) => patch({size:Number(event.target.value)})}/></label>
           </>
         ) : null}
 

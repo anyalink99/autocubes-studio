@@ -1,16 +1,27 @@
 import fs from 'node:fs/promises';
+import {createReadStream} from 'node:fs';
 import path from 'node:path';
 import {chromium} from 'playwright';
 import {Plugin} from 'vite';
 import {EditorProject, JobState} from '../../packages/core/editor-project';
-import {getJob, startJob} from './job-manager';
+import {getJob, getJobOutput, startJob} from './job-manager';
 import {capturesDirectory, editorFramesDirectory, workspacePath} from './paths';
-import {createProject, listProjects, saveProject} from './project-repository';
+import {createProject, deleteProject, listProjects, saveProject} from './project-repository';
+
+const readBuffer = async (request: NodeJS.ReadableStream, maxBytes = 5 * 1024 * 1024) => {
+  const chunks: Buffer[] = [];
+  let size = 0;
+  for await (const chunk of request) {
+    const buffer = Buffer.from(chunk);
+    size += buffer.length;
+    if (size > maxBytes) throw new Error(`Request exceeds ${Math.round(maxBytes / 1024 / 1024)} MB`);
+    chunks.push(buffer);
+  }
+  return Buffer.concat(chunks);
+};
 
 const readBody = async <T>(request: NodeJS.ReadableStream): Promise<T> => {
-  const chunks: Buffer[] = [];
-  for await (const chunk of request) chunks.push(Buffer.from(chunk));
-  return JSON.parse(Buffer.concat(chunks).toString('utf8')) as T;
+  return JSON.parse((await readBuffer(request)).toString('utf8')) as T;
 };
 
 const reply = (response: import('node:http').ServerResponse, status: number, body: unknown) => {
@@ -63,7 +74,10 @@ export const studioApi = (): Plugin => ({
           const projects = await listProjects();
           return reply(response, 200, projects.map(({id, title, url: projectUrl}) => ({id, title, url: projectUrl})));
         }
-        if (url.pathname === '/api/projects' && request.method === 'POST') return reply(response, 200, await createProject());
+        if (url.pathname === '/api/projects' && request.method === 'POST') {
+          const source = request.headers['content-type']?.includes('application/json') ? await readBody<EditorProject>(request) : undefined;
+          return reply(response, 200, await createProject(source));
+        }
         if (url.pathname === '/api/project' && request.method === 'GET') {
           const projects = await listProjects();
           const requested = url.searchParams.get('id');
@@ -73,6 +87,12 @@ export const studioApi = (): Plugin => ({
         if (url.pathname === '/api/project' && request.method === 'PUT') {
           const project = await readBody<EditorProject>(request);
           await saveProject(project);
+          return reply(response, 200, {ok: true});
+        }
+        if (url.pathname === '/api/project' && request.method === 'DELETE') {
+          const id = url.searchParams.get('id');
+          if (!id) throw new Error('Project id is required');
+          await deleteProject(id);
           return reply(response, 200, {ok: true});
         }
         if (url.pathname === '/api/assets' && request.method === 'GET') {
@@ -87,6 +107,24 @@ export const studioApi = (): Plugin => ({
             videos: captures.filter((file) => /\.(webm|mp4)$/i.test(file)),
           });
         }
+        if (url.pathname === '/api/assets' && request.method === 'PUT') {
+          const originalName = url.searchParams.get('name') ?? 'audio';
+          const extension = path.extname(originalName).toLowerCase();
+          if (!['.wav', '.mp3', '.m4a', '.aac'].includes(extension)) throw new Error('Use WAV, MP3, M4A, or AAC audio');
+          const safeName = path.basename(originalName, extension).replace(/[^a-z0-9-_]+/gi, '-').replace(/^-+|-+$/g, '') || 'audio';
+          const filename = `${Date.now()}-${safeName}${extension}`;
+          const directory = workspacePath('public/assets/music/imported');
+          await fs.mkdir(directory, {recursive: true});
+          await fs.writeFile(path.join(directory, filename), await readBuffer(request, 50 * 1024 * 1024));
+          return reply(response, 200, {path: `/assets/music/imported/${filename}`});
+        }
+        if (url.pathname === '/api/assets' && request.method === 'DELETE') {
+          const assetPath = url.searchParams.get('path') ?? '';
+          if (!assetPath.startsWith('/assets/music/imported/')) throw new Error('Only imported audio can be removed');
+          const filename = path.basename(assetPath);
+          await fs.unlink(path.join(workspacePath('public/assets/music/imported'), filename));
+          return reply(response, 200, {ok: true});
+        }
         if (url.pathname === '/api/frame' && request.method === 'POST') {
           const {project, frameId, scrollY} = await readBody<{project: EditorProject; frameId: string; scrollY: number}>(request);
           return reply(response, 200, await captureFrame(project, frameId, scrollY));
@@ -95,6 +133,18 @@ export const studioApi = (): Plugin => ({
           const {kind, projectId} = await readBody<{kind: JobState['kind']; projectId: string}>(request);
           if (kind !== 'capture' && kind !== 'render') throw new Error('Invalid job kind');
           return reply(response, 200, await startJob(kind, projectId));
+        }
+        if (url.pathname.match(/^\/api\/jobs\/[^/]+\/output$/) && request.method === 'GET') {
+          const id = url.pathname.split('/')[3];
+          const output = getJobOutput(id);
+          const job = getJob(id);
+          if (!output || job?.status !== 'complete') return reply(response, 404, {error: 'Render output is not ready'});
+          const info = await fs.stat(output);
+          response.statusCode = 200;
+          response.setHeader('content-type', 'video/mp4');
+          response.setHeader('content-disposition', `attachment; filename="${path.basename(output)}"`);
+          response.setHeader('content-length', info.size);
+          return createReadStream(output).pipe(response);
         }
         if (url.pathname.startsWith('/api/jobs/') && request.method === 'GET') {
           const job = getJob(url.pathname.split('/').pop() ?? '');

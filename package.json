@@ -1,6 +1,6 @@
 {
   "name": "autocubes-studio",
-  "version": "0.2.0",
+  "version": "0.3.0",
   "private": true,
   "scripts": {
     "sfx:generate": "tsx tooling/scripts/generate-sfx.ts",
@@ -17,18 +17,23 @@
     "still:flowline": "remotion still packages/video/index.ts FlowlineReel out/flowline-preview.png --frame=150",
     "make:flowline": "npm run capture:flowline && npm run render:flowline",
     "remotion:studio": "remotion studio packages/video/index.ts",
-    "typecheck": "tsc --noEmit"
+    "typecheck": "tsc --noEmit",
+    "qa:smoke": "tsx tooling/qa/studio-smoke.ts",
+    "video:check": "remotion compositions packages/video/index.ts",
+    "check": "npm run typecheck && npm run build && npm run qa:smoke && npm run video:check"
   },
   "dependencies": {
     "@remotion/cli": "4.0.486",
     "@vitejs/plugin-react": "^4.3.4",
+    "html-to-image": "^1.11.13",
+    "jszip": "^3.10.1",
     "lucide-react": "^0.468.0",
-    "playwright": "1.45.3",
+    "playwright": "^1.61.1",
     "react": "18.3.1",
     "react-dom": "18.3.1",
     "remotion": "4.0.486",
     "tsx": "4.20.3",
-    "vite": "^6.0.11"
+    "vite": "^6.4.3"
   },
   "devDependencies": {
     "@types/node": "20.19.9",

@@ -1,26 +1,32 @@
 import fs from 'node:fs/promises';
 import {spawn} from 'node:child_process';
+import path from 'node:path';
 import {JobState} from '../../packages/core/editor-project';
 import {generatedProjectFile, outputDirectory, projectFile, workspacePath} from './paths';
 
 const jobs = new Map<string, JobState>();
+const outputs = new Map<string, string>();
 
 export const getJob = (id: string) => jobs.get(id);
+export const getJobOutput = (id: string) => outputs.get(id);
 
 export const startJob = async (kind: JobState['kind'], projectId: string) => {
+  const sourceProjectPath = projectFile(projectId);
   const id = `${kind}-${Date.now()}`;
-  const job: JobState = {id, kind, status: 'running', log: []};
+  const job: JobState = {id, kind, status: 'running', log: [], outputUrl: kind === 'render' ? `/api/jobs/${id}/output` : undefined};
   jobs.set(id, job);
 
-  if (kind === 'render') await fs.copyFile(projectFile(projectId), generatedProjectFile);
+  if (kind === 'render') await fs.copyFile(sourceProjectPath, generatedProjectFile);
+  const outputPath = path.join(outputDirectory, `${projectId}-reel.mp4`);
+  if (kind === 'render') outputs.set(id, outputPath);
   const args = kind === 'capture'
-    ? [workspacePath('node_modules/tsx/dist/cli.mjs'), 'tooling/capture/run-editor-project.ts', projectFile(projectId)]
+    ? [workspacePath('node_modules/tsx/dist/cli.mjs'), 'tooling/capture/run-editor-project.ts', sourceProjectPath]
     : [
         workspacePath('node_modules/@remotion/cli/remotion-cli.js'),
         'render',
         'packages/video/index.ts',
         'EditorReel',
-        `${outputDirectory}/${projectId}-reel.mp4`,
+        outputPath,
         '--codec=h264',
         '--pixel-format=yuv420p',
       ];

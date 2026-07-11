@@ -48,6 +48,7 @@ export const EditorReel = () => {
   const frame = useCurrentFrame();
   const time = frame / project.fps;
   const cursor = cursorAt(time);
+  const caption = project.captions.find((item) => time >= item.at && time <= item.at + item.duration);
 
   return (
     <AbsoluteFill style={{background: '#000', overflow: 'hidden'}}>
@@ -70,6 +71,31 @@ export const EditorReel = () => {
       ) : null}
 
       <TransitionLayer time={time} />
+
+      {caption ? (
+        <div style={{
+          position: 'absolute',
+          left: '7%',
+          right: '7%',
+          top: caption.position === 'top' ? '12%' : caption.position === 'center' ? '50%' : undefined,
+          bottom: caption.position === 'bottom' ? '23%' : undefined,
+          transform: caption.position === 'center' ? 'translateY(-50%)' : undefined,
+          margin: 'auto',
+          width: caption.style === 'boxed' ? 'max-content' : undefined,
+          maxWidth: '86%',
+          padding: caption.style === 'boxed' ? `${caption.size * .22}px ${caption.size * .38}px` : undefined,
+          borderRadius: caption.style === 'boxed' ? caption.size * .16 : undefined,
+          color: caption.style === 'boxed' ? '#111' : caption.style === 'accent' ? '#ff7040' : '#fff',
+          background: caption.style === 'boxed' ? 'rgba(255,255,255,.94)' : undefined,
+          fontFamily: 'Arial, sans-serif',
+          fontSize: caption.size,
+          fontWeight: 750,
+          lineHeight: 1.08,
+          letterSpacing: '-0.025em',
+          textAlign: 'center',
+          textShadow: caption.style === 'boxed' ? undefined : '0 4px 24px rgba(0,0,0,.65)',
+        }}>{caption.text}</div>
+      ) : null}
 
       {project.audio.filter((item) => item.enabled && item.asset).map((item) => (
         <Sequence key={item.id} from={Math.round(item.at * project.fps)} durationInFrames={Math.max(1, Math.round(item.duration * project.fps))}>

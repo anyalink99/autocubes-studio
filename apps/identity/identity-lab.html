@@ -15,12 +15,14 @@
       --ink: #090909;
       --line: #292925;
       --muted: #8b8c85;
+      --format-ratio: 4 / 5;
     }
     * { box-sizing: border-box; }
     html { scroll-behavior: smooth; }
     body { margin: 0; min-width: 320px; background: #0a0a09; }
     button, input, select, textarea { font: inherit; letter-spacing: 0; }
     button { color: inherit; }
+    :focus-visible { outline: 2px solid #78aeea; outline-offset: 2px; }
     .lab-header {
       position: sticky;
       top: 0;
@@ -57,6 +59,24 @@
     .tool-button { border-color: #393a35; color: #eee; background: #191917; }
     .tool-button:hover { border-color: #60615a; background: #232320; }
     .tool-button.accent { border-color: var(--orange); color: #150d09; background: var(--orange); font-weight: 700; }
+    .format-dock { position: sticky; top: 68px; z-index: 19; min-height: 48px; display: flex; align-items: center; gap: 7px; padding: 7px 22px; border-bottom: 1px solid var(--line); background: rgba(15,15,13,.96); backdrop-filter: blur(16px); }
+    .format-dock-label { margin-right: 4px; color: #777871; font-size: 9px; font-weight: 700; letter-spacing: .9px; text-transform: uppercase; }
+    .format-preset { height: 32px; display: flex; align-items: center; gap: 7px; padding: 0 10px; border: 1px solid #34352f; border-radius: 4px; color: #aaa9a3; background: #181816; font-size: 10px; cursor: pointer; }
+    .format-preset:hover { color: #fff; border-color: #5b5c55; }
+    .format-preset.active { color: #fff; border-color: #74503d; background: #2a211c; box-shadow: inset 0 0 0 1px rgba(255,90,47,.15); }
+    .format-preset b { color: #ddd; font: 700 9px Consolas, monospace; }
+    .custom-format { position: relative; }
+    .custom-format summary { height: 32px; display: flex; align-items: center; padding: 0 10px; border: 1px solid #34352f; border-radius: 4px; color: #aaa9a3; background: #181816; font-size: 10px; list-style: none; cursor: pointer; }
+    .custom-format summary::-webkit-details-marker { display:none; }
+    .custom-format.active summary { color: #fff; border-color: #74503d; background: #2a211c; }
+    .custom-popover { position: absolute; top: 38px; left: 0; z-index: 40; width: 210px; display: grid; grid-template-columns: 1fr auto 1fr; align-items: end; gap: 7px; padding: 10px; border: 1px solid #464741; border-radius: 5px; background: #181816; box-shadow: 0 16px 46px rgba(0,0,0,.5); }
+    .custom-popover label { display: grid; gap: 5px; color: #777871; font-size: 8px; text-transform: uppercase; }
+    .custom-popover input { width: 100%; height: 30px; padding: 0 6px; border: 1px solid #393a34; border-radius: 3px; outline: 0; color: #eee; background: #0e0e0d; }
+    .custom-popover > button { grid-column: 1 / -1; height: 30px; border: 1px solid var(--orange); border-radius: 3px; color: #140d09; background: var(--orange); font-size: 9px; font-weight: 700; cursor:pointer; }
+    .dock-spacer { flex: 1; }
+    .dock-toggle { height: 32px; display: flex; align-items: center; gap: 7px; padding: 0 10px; border: 1px solid #34352f; border-radius: 4px; color: #aaa9a3; background: transparent; font-size: 10px; cursor: pointer; }
+    .dock-toggle.active { color: #cfe1ff; border-color: #4c6584; background: #192331; }
+    .export-size { color: #777871; font: 9px Consolas, monospace; }
     .intro {
       display: grid;
       grid-template-columns: minmax(0, 1.4fr) minmax(260px, .6fr);
@@ -90,7 +110,7 @@
       --accent: #ff5a2f;
       --accent2: #ffb09a;
       position: relative;
-      aspect-ratio: 4 / 5;
+      aspect-ratio: var(--format-ratio);
       overflow: hidden;
       color: #f6f6f2;
       background: #050505;
@@ -99,6 +119,8 @@
       container-type: inline-size;
     }
     .artboard::after { content: ""; position: absolute; inset: 0; border: 1px solid rgba(255,255,255,.08); pointer-events: none; z-index: 9; }
+    .artboard.show-guides::before { content: "SAFE AREA"; position: absolute; inset: var(--safe-top,5%) var(--safe-right,5%) var(--safe-bottom,5%) var(--safe-left,5%); z-index: 30; border: 1px dashed rgba(112,167,234,.9); color: rgba(188,216,250,.92); background: linear-gradient(90deg, rgba(86,139,204,.12) 1px, transparent 1px), linear-gradient(rgba(86,139,204,.12) 1px, transparent 1px); background-size: 33.333% 33.333%; font: 700 7px/1 Arial, sans-serif; letter-spacing: .8px; padding: 5px; pointer-events: none; box-shadow: 0 0 0 9999px rgba(5,13,24,.08); }
+    .artboard.is-exporting::before, .artboard.is-exporting::after { display: none; }
     .artboard.light { color: #0a0a09; background: #eeeFEa; }
     .artboard.orange { color: #0b0908; background: var(--accent); }
     .artboard.orange.layout-stat .caption,
@@ -342,7 +364,7 @@
     .modal { position: fixed; inset: 0; z-index: 50; display: none; grid-template-columns: minmax(0, 1fr) 390px; background: rgba(5,5,5,.94); backdrop-filter: blur(12px); }
     .modal.open { display: grid; }
     .modal-stage { position: relative; display: grid; place-items: center; min-width: 0; padding: 28px 68px; }
-    .modal-artboard { height: min(88vh, 1080px); aspect-ratio: 4/5; box-shadow: 0 30px 90px rgba(0,0,0,.7); }
+    .modal-artboard { height: min(82vh, 960px); max-width: 100%; aspect-ratio: var(--format-ratio); box-shadow: 0 30px 90px rgba(0,0,0,.7); }
     .modal-artboard .artboard { width: 100%; height: 100%; aspect-ratio: auto; cursor: default; }
     .artboard [data-edit-id].editor-hidden { display: none !important; }
     .modal-artboard.editing .artboard [data-edit-id] { cursor: pointer; }
@@ -354,9 +376,15 @@
     .editor-added-mark { width: 16%; aspect-ratio: 1; }
     .artboard:not(.light):not(.orange) .editor-added-mark { filter: invert(1); }
     .editor-added-shape { width: 28%; aspect-ratio: 1; background: var(--accent); }
+    .editor-added-image { width: 42%; height: 32%; object-fit: cover; }
+    .editor-added-group { overflow: visible; }
     .modal-panel { min-height: 0; display: flex; flex-direction: column; padding: 16px; border-left: 1px solid var(--line); background: #11110f; overflow: hidden; }
     .modal-panel .close { width: 32px; height: 32px; border: 1px solid #3c3d37; border-radius: 4px; background: transparent; cursor: pointer; }
     .modal-panel .panel-head { display: grid; grid-template-columns: 1fr auto; gap: 12px; align-items: start; padding-bottom: 14px; border-bottom: 1px solid var(--line); }
+    .panel-tools { display: flex; gap: 4px; }
+    .panel-tools button:not(.close) { width: 32px; height: 32px; padding: 0; border: 1px solid #34352f; border-radius: 4px; color: #aaa9a3; background: transparent; cursor: pointer; }
+    .panel-tools button:not(.close):hover { color: #fff; border-color: #5b5c55; }
+    .panel-tools button:disabled { opacity: .35; cursor: default; }
     .modal-panel .eyebrow { color: var(--orange); font: 650 9px Arial, Helvetica, sans-serif; letter-spacing: 1.2px; text-transform: uppercase; }
     .modal-panel h2 { margin: 7px 0 0; font-size: 20px; letter-spacing: -.4px; }
     .editor-scroll { min-height: 0; flex: 1; overflow-y: auto; margin: 0 -8px; padding: 14px 8px 24px; scrollbar-width: thin; scrollbar-color: #42433d transparent; }
@@ -364,7 +392,7 @@
     .editor-section-head { display: flex; align-items: center; justify-content: space-between; min-height: 28px; margin-bottom: 9px; }
     .editor-section-head strong { font-size: 10px; letter-spacing: .9px; text-transform: uppercase; }
     .editor-section-head span { color: #74756e; font-size: 9px; }
-    .layer-actions { display: grid; grid-template-columns: repeat(3, 1fr); gap: 5px; margin-bottom: 8px; }
+    .layer-actions { display: grid; grid-template-columns: repeat(4, 1fr); gap: 5px; margin-bottom: 8px; }
     .layer-actions button, .mini-button { height: 30px; border: 1px solid #34352f; border-radius: 3px; color: #b8b9b2; background: #1b1b18; font-size: 9px; cursor: pointer; }
     .layer-actions button:hover, .mini-button:hover { color: #fff; border-color: #62635b; }
     .layers { display: grid; gap: 3px; }
@@ -381,18 +409,30 @@
     .editor-field input:not([type="color"]), .editor-field select, .editor-field textarea { width: 100%; height: 32px; padding: 0 8px; border: 1px solid #363731; border-radius: 3px; color: #efefe9; background: #1a1a18; outline: 0; }
     .editor-field textarea { height: 62px; padding: 8px; resize: vertical; line-height: 1.35; }
     .editor-field input:focus, .editor-field select:focus, .editor-field textarea:focus { border-color: #5fa8ff; }
+    .post-fields { display: grid; gap: 9px; }
+    .post-fields textarea { width:100%; min-height:72px; padding:8px; border:1px solid #363731; border-radius:3px; outline:0; color:#efefe9; background:#1a1a18; font:10px/1.45 Arial,sans-serif; resize:vertical; }
+    .post-fields textarea:focus { border-color:#5fa8ff; }
+    .post-field-head { display:flex; justify-content:space-between; margin-bottom:5px; color:#777871; font-size:8px; font-weight:650; letter-spacing:.7px; text-transform:uppercase; }
+    .post-field-head b { color:#a9aaa3; font:8px Consolas,monospace; }
+    .copy-post { width:100%; height:32px; border:1px solid #45463f; border-radius:3px; color:#ddd; background:#22231f; font-size:9px; cursor:pointer; }
     .color-field { display: grid; grid-template-columns: 32px 1fr; gap: 6px; }
     .color-field input[type="color"] { width: 32px; height: 32px; padding: 2px; border: 1px solid #363731; border-radius: 3px; background: #1a1a18; cursor: pointer; }
-    .inline-actions { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; margin-top: 10px; }
+    .inline-actions { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 6px; margin-top: 10px; }
     .inline-actions .danger { color: #ff8c73; }
     .modal-panel .modal-actions { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; padding-top: 12px; border-top: 1px solid var(--line); }
     .modal-panel .modal-actions button { height: 38px; padding: 0 8px; border: 1px solid #3d3e38; border-radius: 4px; background: #20201d; font-size: 10px; white-space: nowrap; cursor: pointer; }
     .modal-panel .modal-actions button.primary { color: #100b08; border-color: var(--orange); background: var(--orange); font-weight: 700; }
     .modal-nav { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; margin-top: 6px; }
     .modal-nav button { height: 34px; border: 1px solid #33342f; border-radius: 4px; background: transparent; font-size: 10px; cursor: pointer; }
+    .export-actions { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 6px; padding-top: 6px; }
+    .export-actions button { height: 38px; border: 1px solid #4a4b44; border-radius: 4px; color: #efefe9; background: #292a26; font-size: 10px; font-weight: 700; cursor: pointer; }
+    .export-actions button:first-child { color: #120d09; border-color: var(--orange); background: var(--orange); }
+    .export-actions button:disabled { opacity: .45; cursor: wait; }
+    .toast { position: fixed; left: 50%; bottom: 18px; z-index: 100; min-width: 240px; padding: 11px 14px; border: 1px solid #4b4d46; border-radius: 5px; color: #efefe9; background: #20211e; box-shadow: 0 18px 60px rgba(0,0,0,.55); font-size: 11px; text-align: center; transform: translate(-50%, 90px); transition: transform .22s ease; }
+    .toast.visible { transform: translate(-50%,0); }
     @media (max-width: 1180px) { .gallery { grid-template-columns: repeat(2, minmax(0, 1fr)); } .lab-brand { min-width: 170px; } }
     @media (max-width: 980px) { .modal { grid-template-columns: minmax(0,1fr) 340px; } .modal-stage { padding: 20px; } }
-    @media (max-width: 820px) { .lab-header { height: auto; min-height: 64px; flex-wrap: wrap; padding: 10px 14px; } .lab-brand { min-width: 0; } .filters { order: 3; width: 100%; } .intro { grid-template-columns: 1fr; padding: 38px 14px; } .gallery { grid-template-columns: repeat(2, minmax(0, 1fr)); padding: 16px 14px 100px; } .modal { grid-template-columns: 1fr; grid-template-rows: minmax(300px,48vh) minmax(0,1fr); } .modal-stage { padding: 12px; } .modal-artboard { height: 44vh; } .modal-panel { border-top: 1px solid var(--line); border-left: 0; } .editor-scroll { padding-bottom: 12px; } }
+    @media (max-width: 820px) { .lab-header { position: relative; height: auto; min-height: 64px; flex-wrap: wrap; padding: 10px 14px; } .lab-brand { min-width: 0; } .filters { order: 3; width: 100%; } .format-dock { top: 0; padding: 7px 14px; overflow-x: auto; } .format-dock-label, .export-size { display:none; } .format-preset span { display:none; } .intro { grid-template-columns: 1fr; padding: 38px 14px; } .gallery { grid-template-columns: repeat(2, minmax(0, 1fr)); padding: 16px 14px 100px; } .modal { grid-template-columns: 1fr; grid-template-rows: minmax(300px,48vh) minmax(0,1fr); } .modal-stage { padding: 12px; } .modal-artboard { height: 44vh; } .modal-panel { border-top: 1px solid var(--line); border-left: 0; } .editor-scroll { padding-bottom: 12px; } }
     @media (max-width: 520px) { .gallery { grid-template-columns: 1fr; } .counter { display: none; } .intro h1 { letter-spacing: -2px; } .modal { grid-template-rows: 42vh minmax(0,1fr); } .modal-stage { align-items: center; padding: 8px; } .modal-artboard { width: auto; height: 39vh; } .modal-panel { padding: 12px; } }
     @media (prefers-reduced-motion: reduce) { * { scroll-behavior: auto !important; transition: none !important; } }
   </style>
@@ -406,25 +446,42 @@
     <button class="tool-button" id="shuffle">Shuffle</button>
     <button class="tool-button accent" id="pickedOnly">Picked</button>
   </header>
+  <section class="format-dock" aria-label="Output format">
+    <span class="format-dock-label">Instagram format</span>
+    <button class="format-preset" data-format="portrait"><b>4:5</b><span>Feed portrait</span></button>
+    <button class="format-preset" data-format="square"><b>1:1</b><span>Square</span></button>
+    <button class="format-preset" data-format="story"><b>9:16</b><span>Story / Reel</span></button>
+    <button class="format-preset" data-format="landscape"><b>1.91:1</b><span>Landscape</span></button>
+    <details class="custom-format" id="customFormat"><summary>Custom</summary><div class="custom-popover"><label>Width<input id="customWidth" type="number" min="320" max="4096" value="1080"></label><span>×</span><label>Height<input id="customHeight" type="number" min="320" max="4096" value="1350"></label><button id="applyCustom">Apply canvas</button></div></details>
+    <div class="dock-spacer"></div>
+    <span class="export-size" id="exportSize">1080 × 1350 px</span>
+    <button class="dock-toggle" id="toggleGuides">Safe zones</button>
+  </section>
   <section class="intro">
     <h1>Sixty identity ideas. <em>One mark, many systems.</em></h1>
     <div class="intro-copy"><b>One card is one idea.</b> Switch variants in place, then open any version to edit its layers, spacing, type, and colour before exporting the final shortlist.</div>
   </section>
   <main class="gallery" id="gallery"></main>
-  <aside class="selection-tray" id="selectionTray"><div><strong id="selectionCount">0 picked</strong><span id="selectionIds"></span></div><div class="spacer"></div><button id="clearSelection">Clear</button><button id="exportSelection">Export JSON</button></aside>
+  <aside class="selection-tray" id="selectionTray"><div><strong id="selectionCount">0 picked</strong><span id="selectionIds">Pick order becomes carousel order</span></div><div class="spacer"></div><button id="clearSelection">Clear</button><button id="exportSelection">Export JSON</button><button id="exportPack">PNG pack</button></aside>
   <div class="modal" id="modal" role="dialog" aria-modal="true" aria-label="Composition preview">
     <div class="modal-stage"><div class="modal-artboard" id="modalArtboard"></div></div>
     <aside class="modal-panel">
-      <div class="panel-head"><div><span class="eyebrow" id="modalEyebrow"></span><h2 id="modalTitle"></h2></div><button class="close" id="closeModal" aria-label="Close">&#215;</button></div>
+      <div class="panel-head"><div><span class="eyebrow" id="modalEyebrow"></span><h2 id="modalTitle"></h2></div><div class="panel-tools"><button id="undoEdit" title="Undo">↶</button><button id="redoEdit" title="Redo">↷</button><button class="close" id="closeModal" aria-label="Close">&#215;</button></div></div>
       <div class="editor-scroll">
-        <section class="editor-section"><div class="editor-section-head"><strong>Layers</strong><span id="layerCount"></span></div><div class="layer-actions"><button id="addText">+ Text</button><button id="addMark">+ Mark</button><button id="addShape">+ Shape</button></div><div class="layers" id="layers"></div></section>
+        <section class="editor-section"><div class="editor-section-head"><strong>Layers</strong><span id="layerCount"></span></div><div class="layer-actions"><button id="addText">+ Text</button><button id="addMark">+ Mark</button><button id="addShape">+ Shape</button><button id="addImage">+ Image</button></div><input id="imageInput" type="file" accept="image/png,image/jpeg,image/webp" hidden><div class="layers" id="layers"></div></section>
         <section class="editor-section"><div class="editor-section-head"><strong>Properties</strong><span id="selectedType">Canvas</span></div><div id="inspector"></div></section>
+        <section class="editor-section"><div class="editor-section-head"><strong>Post copy</strong><span>Saved with composition</span></div><div class="post-fields"><label><span class="post-field-head">Caption <b id="captionCount">0</b></span><textarea id="postCaption" placeholder="Write the post caption…"></textarea></label><label><span class="post-field-head">Alt text <b id="altCount">0</b></span><textarea id="postAlt" placeholder="Describe the visual for accessibility…"></textarea></label><label><span class="post-field-head">Hashtags</span><textarea id="postHashtags" placeholder="#autocubes #designstudio"></textarea></label><button class="copy-post" id="copyPost">Copy complete post</button></div></section>
       </div>
       <div class="modal-actions"><button class="primary" id="modalPick"></button><button id="resetComposition">Reset edits</button></div>
+      <div class="export-actions"><button id="exportPng">Export PNG</button><button id="exportJpeg">Export JPEG</button><button id="exportAllSizes">All formats</button></div>
       <div class="modal-nav"><button id="prevComposition">&#8592; Variant</button><button id="nextComposition">Variant &#8594;</button></div>
     </aside>
   </div>
-  <script>
+  <div class="toast" id="toast" role="status"></div>
+  <script type="module">
+    import {toJpeg, toPng} from 'html-to-image';
+    import JSZip from 'jszip';
+    import {mediaPresets} from '../../packages/core/media-presets.ts';
     const projects = [
       {title:'Forever Estates', type:'Real estate in Dubai', image:'assets/forever-estates.webp', copy:'A lead-focused site for a Dubai real-estate consulting firm.', accent:'#ff6b45'},
       {title:'Vicube', type:'Video production studio', image:'assets/vicube.webp', copy:'Editorial structure, cinematic media, and an edited-reel pace.', accent:'#8ec5ff'},
@@ -470,13 +527,115 @@
       12:['Code field','System texture','ASCII pattern','Engineering field','Data texture','Technical poster'],
       14:['Studio manifesto','Capability manifesto','Four principles','Studio statement','Offer manifesto','Practice summary']
     };
-    const picked = new Set(JSON.parse(localStorage.getItem('autocubes-identity-v2-picked') || '[]'));
+    function readStored(key, fallback) {
+      try { return JSON.parse(localStorage.getItem(key) || 'null') ?? fallback; }
+      catch { localStorage.removeItem(key); return fallback; }
+    }
+    const picked = new Set(readStored('autocubes-identity-v2-picked', []));
     let activeFilter = 'All';
     let pickedMode = false;
     let currentId = null;
     const EDITS_KEY = 'autocubes-identity-v3-edits';
-    const edits = JSON.parse(localStorage.getItem(EDITS_KEY) || '{}');
+    const edits = readStored(EDITS_KEY, {});
     const editorState = {selected:'canvas', drag:null};
+    const editHistory = [];
+    const editFuture = [];
+    const formatFromPreset = (id, presetId) => {
+      const preset = mediaPresets.find(item => item.id === presetId);
+      return {id, label:preset.label, width:preset.width, height:preset.height, ratio:`${preset.width} / ${preset.height}`, safe:preset.safeArea};
+    };
+    const formats = {
+      portrait: formatFromPreset('portrait','instagram-portrait'),
+      square: formatFromPreset('square','instagram-square'),
+      story: formatFromPreset('story','instagram-reel'),
+      landscape: formatFromPreset('landscape','instagram-landscape'),
+      custom: {id:'custom', label:'Custom canvas', width:1080, height:1350, ratio:'1080 / 1350', safe:{top:5,right:5,bottom:5,left:5}}
+    };
+    try {
+      const savedCustom = readStored('autocubes-identity-custom-format', null);
+      if (savedCustom?.width && savedCustom?.height) formats.custom = {...formats.custom, ...savedCustom, ratio:`${savedCustom.width} / ${savedCustom.height}`};
+    } catch {}
+    let currentFormat = formats[localStorage.getItem('autocubes-identity-format')] || formats.portrait;
+    let guidesVisible = localStorage.getItem('autocubes-identity-guides') !== 'false';
+    let toastTimer = 0;
+
+    function showToast(message) {
+      const toast = document.getElementById('toast');
+      toast.textContent = message;
+      toast.classList.add('visible');
+      clearTimeout(toastTimer);
+      toastTimer = setTimeout(() => toast.classList.remove('visible'), 2400);
+    }
+
+    const cloneValue = value => value == null ? null : JSON.parse(JSON.stringify(value));
+    function updateHistoryButtons() {
+      document.getElementById('undoEdit').disabled = editHistory.length === 0;
+      document.getElementById('redoEdit').disabled = editFuture.length === 0;
+    }
+    function checkpoint() {
+      editHistory.push(cloneValue(edits[currentId] || null));
+      if (editHistory.length > 80) editHistory.shift();
+      editFuture.length = 0;
+      updateHistoryButtons();
+    }
+    function restoreEdit(record) {
+      if (record) edits[currentId] = cloneValue(record);
+      else delete edits[currentId];
+      saveEdits();
+      openModal(currentId, true);
+    }
+    function undoEdit() {
+      if (!editHistory.length) return;
+      editFuture.push(cloneValue(edits[currentId] || null));
+      restoreEdit(editHistory.pop());
+      updateHistoryButtons();
+    }
+    function redoEdit() {
+      if (!editFuture.length) return;
+      editHistory.push(cloneValue(edits[currentId] || null));
+      restoreEdit(editFuture.pop());
+      updateHistoryButtons();
+    }
+
+    function applyFormat(formatId, persist = true) {
+      currentFormat = formats[formatId] || formats.portrait;
+      const root = document.documentElement;
+      root.style.setProperty('--format-ratio', currentFormat.ratio);
+      root.style.setProperty('--safe-top', `${currentFormat.safe.top}%`);
+      root.style.setProperty('--safe-right', `${currentFormat.safe.right}%`);
+      root.style.setProperty('--safe-bottom', `${currentFormat.safe.bottom}%`);
+      root.style.setProperty('--safe-left', `${currentFormat.safe.left}%`);
+      document.getElementById('exportSize').textContent = `${currentFormat.width} × ${currentFormat.height} px`;
+      document.getElementById('customWidth').value = currentFormat.width;
+      document.getElementById('customHeight').value = currentFormat.height;
+      document.querySelectorAll('[data-format]').forEach(button => button.classList.toggle('active', button.dataset.format === currentFormat.id));
+      document.getElementById('customFormat').classList.toggle('active', currentFormat.id === 'custom');
+      document.querySelectorAll('.artboard').forEach(board => board.classList.toggle('show-guides', guidesVisible));
+      document.querySelectorAll('.composition .artboard').forEach(board => applyStoredEdits(board, Number(board.closest('.composition')?.dataset.id)));
+      if (currentId && currentBoard()) {
+        applyStoredEdits(currentBoard(), currentId);
+        if (document.getElementById('modal').classList.contains('open')) selectEditorElement(editorState.selected);
+      }
+      const guideButton = document.getElementById('toggleGuides');
+      guideButton.classList.toggle('active', guidesVisible);
+      guideButton.textContent = guidesVisible ? 'Safe zones on' : 'Safe zones';
+      fitModalArtboard();
+      if (persist) localStorage.setItem('autocubes-identity-format', currentFormat.id);
+    }
+
+    function fitModalArtboard() {
+      const shell = document.getElementById('modalArtboard');
+      const stage = shell?.parentElement;
+      if (!shell || !stage) return;
+      const maxWidth = Math.max(240, stage.clientWidth - 32);
+      const maxHeight = Math.max(240, stage.clientHeight - 32);
+      const ratio = currentFormat.width / currentFormat.height;
+      let width = Math.min(maxWidth, maxHeight * ratio);
+      let height = width / ratio;
+      if (height > maxHeight) { height = maxHeight; width = height * ratio; }
+      shell.style.width = `${width}px`;
+      shell.style.height = `${height}px`;
+    }
 
     const logo = () => '<img class="logo" src="/assets/brand/autocubes.svg" alt="">';
     const lockup = () => '<div class="brand-lockup"><img src="/assets/brand/autocubes.svg" alt=""><span>autocubes</span></div>';
@@ -526,11 +685,37 @@
 
     function editRecord(id) {
       if (!edits[id]) edits[id] = {board:{}, nodes:{}, added:[]};
+      edits[id].board ||= {};
+      edits[id].nodes ||= {};
+      edits[id].added ||= [];
+      if (!edits[id].post) edits[id].post = {caption:'', alt:'', hashtags:''};
       return edits[id];
     }
 
+    function renderPostFields() {
+      const post = editRecord(currentId).post;
+      document.getElementById('postCaption').value = post.caption || '';
+      document.getElementById('postAlt').value = post.alt || '';
+      document.getElementById('postHashtags').value = post.hashtags || '';
+      document.getElementById('captionCount').textContent = String((post.caption || '').length);
+      document.getElementById('altCount').textContent = String((post.alt || '').length);
+    }
+
+    function updatePostField(field, value) {
+      checkpoint();
+      editRecord(currentId).post[field] = value;
+      saveEdits();
+      if (field === 'caption') document.getElementById('captionCount').textContent = String(value.length);
+      if (field === 'alt') document.getElementById('altCount').textContent = String(value.length);
+    }
+
     function saveEdits() {
-      localStorage.setItem(EDITS_KEY, JSON.stringify(edits));
+      try {
+        localStorage.setItem(EDITS_KEY, JSON.stringify(edits));
+      } catch (error) {
+        console.error(error);
+        showToast('Browser storage is full. Export or remove large image layers.');
+      }
     }
 
     function assignEditIds(board) {
@@ -541,32 +726,38 @@
 
     function applyNodeStyle(element, node = {}) {
       const style = node.style || {};
-      element.style.translate = `${Number(style.x || 0)}cqw ${Number(style.y || 0) * 1.25}cqw`;
+      const verticalScale = currentFormat.height / currentFormat.width;
+      element.style.translate = `${Number(style.x || 0)}cqw ${Number(style.y || 0) * verticalScale}cqw`;
       element.style.width = style.width === '' || style.width == null ? '' : `${style.width}cqw`;
-      element.style.height = style.height === '' || style.height == null ? '' : `${Number(style.height) * 1.25}cqw`;
+      element.style.height = style.height === '' || style.height == null ? '' : `${Number(style.height) * verticalScale}cqw`;
       element.style.padding = style.padding === '' || style.padding == null ? '' : `${style.padding}cqw`;
       element.style.fontSize = style.fontSize === '' || style.fontSize == null ? '' : `${style.fontSize}cqw`;
+      element.style.letterSpacing = style.letterSpacing === '' || style.letterSpacing == null ? '' : `${style.letterSpacing}em`;
+      element.style.lineHeight = style.lineHeight === '' || style.lineHeight == null ? '' : String(style.lineHeight);
       element.style.opacity = style.opacity == null ? '' : String(style.opacity);
       element.style.color = style.color || '';
       element.style.backgroundColor = style.backgroundColor || '';
       element.style.borderRadius = style.borderRadius === '' || style.borderRadius == null ? '' : `${style.borderRadius}cqw`;
       element.style.textAlign = style.textAlign || '';
       element.style.zIndex = style.zIndex === '' || style.zIndex == null ? '' : String(style.zIndex);
+      element.style.rotate = style.rotation === '' || style.rotation == null ? '' : `${style.rotation}deg`;
+      if (element.tagName === 'IMG') element.style.objectFit = style.objectFit || '';
       element.classList.toggle('editor-hidden', Boolean(node.hidden));
       if (typeof node.text === 'string' && element.children.length === 0) element.textContent = node.text;
     }
 
     function createAddedElement(item) {
       let element;
-      if (item.type === 'mark') {
+      if (item.type === 'mark' || item.type === 'image') {
         element = document.createElement('img');
-        element.src = '/assets/brand/autocubes.svg';
+        element.src = item.type === 'mark' ? '/assets/brand/autocubes.svg' : item.src;
         element.alt = '';
-        element.className = 'editor-added editor-added-mark';
+        element.className = `editor-added editor-added-${item.type}`;
       } else {
         element = document.createElement('div');
         element.className = `editor-added editor-added-${item.type}`;
         if (item.type === 'text') element.textContent = item.text || 'New text';
+        if (item.type === 'group') element.innerHTML = item.html || '';
       }
       element.dataset.addedId = item.id;
       element.dataset.editId = item.id;
@@ -576,6 +767,7 @@
 
     function applyStoredEdits(board, id) {
       if (!board) return;
+      board.querySelectorAll('[data-added-id]').forEach(element => element.remove());
       assignEditIds(board);
       const record = edits[id];
       if (!record) return;
@@ -684,13 +876,18 @@
           ${numberField('Offset X','x',style.x ?? 0)}${numberField('Offset Y','y',style.y ?? 0)}
           ${numberField('Width %','width',style.width)}${numberField('Height %','height',style.height)}
           ${numberField('Padding %','padding',style.padding)}${numberField('Type size','fontSize',style.fontSize)}
+          ${numberField('Rotation °','rotation',style.rotation)}${numberField('Letter space','letterSpacing',style.letterSpacing)}
+          ${numberField('Line height','lineHeight',style.lineHeight,'min="0.5" max="3" step="0.05"')}${numberField('Layer','zIndex',style.zIndex)}
           ${numberField('Opacity %','opacity',style.opacity == null ? 100 : Math.round(style.opacity * 100),'min="0" max="100"')}${numberField('Radius %','borderRadius',style.borderRadius)}
           ${colorField('Text', 'color', style.color || computed.color)}${colorField('Fill','backgroundColor',style.backgroundColor || computed.backgroundColor)}
           <div class="editor-field"><label>Align</label><select data-prop="textAlign"><option value="">Auto</option><option value="left">Left</option><option value="center">Center</option><option value="right">Right</option></select></div>
-          ${numberField('Layer','zIndex',style.zIndex)}
-        </div><div class="inline-actions"><button class="mini-button" id="toggleSelected">${node.hidden ? 'Show layer' : 'Hide layer'}</button><button class="mini-button danger" id="removeSelected">Remove layer</button></div>`;
+          ${element.tagName === 'IMG' ? '<div class="editor-field"><label>Image fit</label><select data-prop="objectFit"><option value="">Auto</option><option value="cover">Cover</option><option value="contain">Contain</option><option value="fill">Stretch</option></select></div>' : ''}
+        </div><div class="inline-actions"><button class="mini-button" id="duplicateSelected">Duplicate</button><button class="mini-button" id="toggleSelected">${node.hidden ? 'Show layer' : 'Hide layer'}</button><button class="mini-button danger" id="removeSelected">Remove</button></div>`;
         const align = inspector.querySelector('[data-prop="textAlign"]');
         if (align) align.value = style.textAlign || '';
+        const objectFit = inspector.querySelector('[data-prop="objectFit"]');
+        if (objectFit) objectFit.value = style.objectFit || '';
+        document.getElementById('duplicateSelected').onclick = duplicateSelectedLayer;
         document.getElementById('toggleSelected').onclick = () => toggleLayer(editorState.selected);
         document.getElementById('removeSelected').onclick = () => removeLayer(editorState.selected);
       }
@@ -700,6 +897,7 @@
     }
 
     function updateProperty(property, value, source) {
+      checkpoint();
       const board = currentBoard();
       if (editorState.selected === 'canvas') {
         const record = editRecord(currentId);
@@ -712,7 +910,7 @@
         const node = nodeRecord();
         if (property === 'text') node.text = value;
         else if (property === 'opacity') node.style.opacity = Math.max(0, Math.min(100, Number(value))) / 100;
-        else if (['color','backgroundColor','textAlign'].includes(property)) node.style[property] = value;
+        else if (['color','backgroundColor','textAlign','objectFit'].includes(property)) node.style[property] = value;
         else node.style[property] = value === '' ? '' : Number(value);
         applyNodeStyle(currentElement(), node);
       }
@@ -727,6 +925,7 @@
     }
 
     function toggleLayer(key) {
+      checkpoint();
       const node = nodeRecord(key);
       node.hidden = !node.hidden;
       applyNodeStyle(currentBoard().querySelector(`[data-edit-id="${key}"]`), node);
@@ -736,6 +935,7 @@
     }
 
     function removeLayer(key) {
+      checkpoint();
       const record = editRecord(currentId);
       if (key.startsWith('a')) {
         record.added = record.added.filter(item => item.id !== key);
@@ -746,13 +946,40 @@
         applyNodeStyle(currentBoard().querySelector(`[data-edit-id="${key}"]`), node);
       }
       saveEdits();
-      selectEditorElement('canvas');
+      const previousSelection = editorState.selected;
+      selectEditorElement(previousSelection !== 'canvas' && currentBoard()?.querySelector(`[data-edit-id="${previousSelection}"]`) ? previousSelection : 'canvas');
     }
 
-    function addElement(type) {
+    function addElement(type, source = '') {
+      checkpoint();
       const record = editRecord(currentId);
-      const item = {id:`a${Date.now()}-${type}`, type, text:type === 'text' ? 'New text' : '', style:{x:0,y:0,zIndex:12}};
+      const item = {id:`a${Date.now()}-${type}`, type, text:type === 'text' ? 'New text' : '', src:source, style:{x:0,y:0,zIndex:12}};
       record.added.push(item);
+      currentBoard().appendChild(createAddedElement(item));
+      saveEdits();
+      selectEditorElement(item.id);
+    }
+
+    function duplicateSelectedLayer() {
+      const element = currentElement();
+      if (!element || editorState.selected === 'canvas') return;
+      checkpoint();
+      const sourceNode = nodeRecord();
+      const bounds = element.getBoundingClientRect();
+      const boardBounds = currentBoard().getBoundingClientRect();
+      const isImage = element.tagName === 'IMG';
+      const isText = !isImage && element.children.length === 0 && element.textContent.trim();
+      const type = isImage ? 'image' : isText ? 'text' : 'group';
+      const currentZ = Number(sourceNode.style?.zIndex ?? getComputedStyle(element).zIndex);
+      const item = {
+        id:`a${Date.now()}-${type}`,
+        type,
+        text:isText ? element.textContent : '',
+        html:type === 'group' ? element.outerHTML.replace(/ data-(?:edit|added)-id="[^"]*"/g,'').replace(/ class="([^"]*)editor-selected([^"]*)"/,' class="$1$2"') : '',
+        src:isImage ? element.src : '',
+        style:{...cloneValue(sourceNode.style || {}), x:Number(sourceNode.style?.x || 0)+2, y:Number(sourceNode.style?.y || 0)+2, width:sourceNode.style?.width ?? bounds.width / boardBounds.width * 100, height:sourceNode.style?.height ?? bounds.height / boardBounds.height * 100, zIndex:Number.isFinite(currentZ) ? currentZ + 1 : 13}
+      };
+      editRecord(currentId).added.push(item);
       currentBoard().appendChild(createAddedElement(item));
       saveEdits();
       selectEditorElement(item.id);
@@ -770,6 +997,7 @@
         }
         event.preventDefault();
         selectEditorElement(target.dataset.editId);
+        checkpoint();
         const style = nodeRecord().style || {};
         editorState.drag = {pointer:event.pointerId, startX:event.clientX, startY:event.clientY, x:Number(style.x || 0), y:Number(style.y || 0)};
         target.setPointerCapture(event.pointerId);
@@ -792,7 +1020,8 @@
           saveEdits();
         }
       });
-      selectEditorElement('canvas');
+      const previousSelection = editorState.selected;
+      selectEditorElement(previousSelection !== 'canvas' && board.querySelector(`[data-edit-id="${previousSelection}"]`) ? previousSelection : 'canvas');
     }
 
     function templateName(template) {
@@ -810,7 +1039,7 @@
       return {template:ideaIndex, engine, family:templateFamilies[engine], title:ideaNames[engine][Math.floor(ideaIndex / ideaTemplates.length)], studies};
     });
     const studies = groups.flatMap(group => group.studies);
-    const storedPositions = JSON.parse(localStorage.getItem('autocubes-identity-v2-positions') || '{}');
+    const storedPositions = readStored('autocubes-identity-v2-positions', {});
     const positions = Object.fromEntries(groups.map(group => [group.template, Math.min(Number(storedPositions[group.template] || 0), group.studies.length - 1)]));
     let groupOrder = [...groups];
     const gallery = document.getElementById('gallery');
@@ -836,6 +1065,7 @@
       gallery.querySelectorAll('.composition').forEach(card => {
         const board = card.querySelector('.artboard');
         applyStoredEdits(board, Number(card.dataset.id));
+        board.classList.toggle('show-guides', guidesVisible);
         board.onclick = () => openModal(Number(card.dataset.id));
         card.querySelector('.pick-button').onclick = () => togglePick(Number(card.dataset.id));
         card.querySelectorAll('.variant-nav button').forEach(button => button.onclick = () => cycleVariant(Number(card.dataset.template), Number(button.dataset.delta)));
@@ -864,32 +1094,37 @@
 
     function togglePick(id) {
       picked.has(id) ? picked.delete(id) : picked.add(id);
-      localStorage.setItem('autocubes-identity-v2-picked', JSON.stringify([...picked].sort((a,b)=>a-b)));
+      localStorage.setItem('autocubes-identity-v2-picked', JSON.stringify([...picked]));
       if (currentId === id) updateModalPick();
       updateTray();
       renderGallery(groupOrder);
     }
 
     function updateTray() {
-      const ids = [...picked].sort((a,b)=>a-b);
+      const ids = [...picked];
       document.getElementById('selectionTray').classList.toggle('visible', ids.length > 0);
       document.getElementById('selectionCount').textContent = `${ids.length} picked`;
-      document.getElementById('selectionIds').textContent = ids.length ? ids.map(x=>String(x).padStart(3,'0')).join(' · ') : '';
+      document.getElementById('selectionIds').textContent = ids.length ? ids.map((x,index)=>`${index + 1}. ${String(x).padStart(3,'0')}`).join(' · ') : 'Pick order becomes carousel order';
     }
 
-    function openModal(id) {
+    function openModal(id, preserveHistory = false) {
       currentId = Math.max(1, Math.min(studies.length,id));
+      if (!preserveHistory) { editHistory.length = 0; editFuture.length = 0; editorState.selected = 'canvas'; }
       const study = studies[currentId-1];
       const group = groups[study.template];
       const variant = group.studies.findIndex(item => item.id === study.id) + 1;
       document.getElementById('modalArtboard').innerHTML = study.html;
       applyStoredEdits(currentBoard(), currentId);
+      currentBoard().classList.toggle('show-guides', guidesVisible);
       document.getElementById('modalEyebrow').textContent = `Idea ${String(study.template + 1).padStart(2,'0')} · Variant ${String(variant).padStart(2,'0')} / ${String(group.studies.length).padStart(2,'0')} · ${study.family}`;
       document.getElementById('modalTitle').textContent = study.title;
       document.getElementById('modal').classList.add('open');
       document.body.style.overflow = 'hidden';
       updateModalPick();
       beginCanvasEditing();
+      renderPostFields();
+      requestAnimationFrame(fitModalArtboard);
+      updateHistoryButtons();
     }
 
     function closeModal() { document.getElementById('modal').classList.remove('open'); document.body.style.overflow = ''; renderGallery(groupOrder); }
@@ -902,6 +1137,18 @@
     }
 
     document.getElementById('closeModal').onclick = closeModal;
+    document.getElementById('undoEdit').onclick = undoEdit;
+    document.getElementById('redoEdit').onclick = redoEdit;
+    document.getElementById('postCaption').oninput = event => updatePostField('caption', event.target.value);
+    document.getElementById('postAlt').oninput = event => updatePostField('alt', event.target.value);
+    document.getElementById('postHashtags').oninput = event => updatePostField('hashtags', event.target.value);
+    document.getElementById('copyPost').onclick = async () => {
+      const post = editRecord(currentId).post;
+      const copy = [post.caption, post.hashtags].filter(Boolean).join('\n\n');
+      if (!copy) { showToast('Add a caption or hashtags first'); return; }
+      try { await navigator.clipboard.writeText(copy); showToast('Post copy copied'); }
+      catch { showToast('Clipboard access is unavailable in this browser'); }
+    };
     document.getElementById('modal').onclick = e => { if (e.target.id === 'modal') closeModal(); };
     document.getElementById('modalPick').onclick = () => togglePick(currentId);
     document.getElementById('prevComposition').onclick = () => cycleModal(-1);
@@ -909,10 +1156,21 @@
     document.getElementById('addText').onclick = () => addElement('text');
     document.getElementById('addMark').onclick = () => addElement('mark');
     document.getElementById('addShape').onclick = () => addElement('shape');
+    document.getElementById('addImage').onclick = () => document.getElementById('imageInput').click();
+    document.getElementById('imageInput').onchange = event => {
+      const file = event.target.files?.[0];
+      if (!file) return;
+      if (file.size > 3 * 1024 * 1024) { showToast('Choose an image under 3 MB for browser storage'); event.target.value = ''; return; }
+      const reader = new FileReader();
+      reader.onload = () => { addElement('image', String(reader.result)); showToast('Image added to the canvas'); };
+      reader.readAsDataURL(file);
+      event.target.value = '';
+    };
     document.getElementById('resetComposition').onclick = () => {
+      checkpoint();
       delete edits[currentId];
       saveEdits();
-      openModal(currentId);
+      openModal(currentId, true);
     };
     document.getElementById('shuffle').onclick = () => { groupOrder = [...groups].sort(()=>Math.random()-.5); renderGallery(groupOrder); };
     document.getElementById('pickedOnly').onclick = e => {
@@ -926,14 +1184,148 @@
     };
     document.getElementById('clearSelection').onclick = () => { picked.clear(); localStorage.removeItem('autocubes-identity-v2-picked'); updateTray(); renderGallery(groupOrder); };
     document.getElementById('exportSelection').onclick = () => {
-      const ids = [...picked].sort((a,b)=>a-b);
+      const ids = [...picked];
       const blob = new Blob([JSON.stringify({project:'autocubes identity lab',selected:ids.map(id=>({id:`AC-${String(id).padStart(3,'0')}`,family:studies[id-1].family,title:studies[id-1].title,edits:edits[id] || null}))},null,2)],{type:'application/json'});
-      const link = document.createElement('a'); link.href = URL.createObjectURL(blob); link.download = 'autocubes-identity-selection.json'; link.click(); URL.revokeObjectURL(link.href);
+      const link = document.createElement('a'); link.href = URL.createObjectURL(blob); link.download = 'autocubes-identity-selection.json'; link.click(); setTimeout(() => URL.revokeObjectURL(link.href), 1000);
     };
+    document.getElementById('exportPack').onclick = async event => {
+      const ids = [...picked];
+      if (!ids.length) return;
+      if (ids.length > 20) { showToast('Export up to 20 picked compositions at once'); return; }
+      const button = event.currentTarget;
+      button.disabled = true;
+      const zip = new JSZip();
+      const host = document.createElement('div');
+      host.style.cssText = `position:fixed;left:-10000px;top:0;width:540px;aspect-ratio:${currentFormat.ratio};`;
+      document.body.appendChild(host);
+      try {
+        await document.fonts.ready;
+        for (let index = 0; index < ids.length; index++) {
+          const id = ids[index];
+          const study = studies[id - 1];
+          host.innerHTML = study.html;
+          const board = host.querySelector('.artboard');
+          board.style.width = '100%'; board.style.height = '100%'; board.style.aspectRatio = 'auto';
+          board.classList.add('is-exporting');
+          applyStoredEdits(board, id);
+          showToast(`Rendering ${index + 1} of ${ids.length}…`);
+          const dataUrl = await toPng(board, {canvasWidth:currentFormat.width, canvasHeight:currentFormat.height, pixelRatio:1, cacheBust:true, backgroundColor:getComputedStyle(board).backgroundColor});
+          zip.file(`AC-${String(id).padStart(3,'0')}-${currentFormat.id}.png`, dataUrl.split(',')[1], {base64:true});
+        }
+        zip.file('manifest.json', JSON.stringify({format:currentFormat, compositions:ids.map(id => ({id, family:studies[id-1].family, title:studies[id-1].title, post:edits[id]?.post || null}))}, null, 2));
+        const blob = await zip.generateAsync({type:'blob', compression:'DEFLATE', compressionOptions:{level:6}});
+        const url = URL.createObjectURL(blob);
+        const link = document.createElement('a'); link.href = url; link.download = `autocubes-${currentFormat.id}-${ids.length}-compositions.zip`; link.click();
+        setTimeout(() => URL.revokeObjectURL(url), 1000);
+        showToast(`${ids.length} compositions exported as a ZIP pack`);
+      } catch (error) {
+        console.error(error);
+        showToast('Could not build the PNG pack');
+      } finally {
+        host.remove();
+        button.disabled = false;
+      }
+    };
+    async function exportComposition(kind) {
+      const board = currentBoard();
+      if (!board || !currentId) return;
+      const buttons = [document.getElementById('exportPng'), document.getElementById('exportJpeg'), document.getElementById('exportAllSizes')];
+      buttons.forEach(button => button.disabled = true);
+      const shell = document.getElementById('modalArtboard');
+      const hadGuides = board.classList.contains('show-guides');
+      shell.classList.remove('editing');
+      board.classList.remove('show-guides');
+      board.classList.add('is-exporting');
+      board.querySelectorAll('.editor-selected').forEach(element => element.classList.remove('editor-selected'));
+      try {
+        await document.fonts.ready;
+        const options = {canvasWidth:currentFormat.width, canvasHeight:currentFormat.height, pixelRatio:1, cacheBust:true, backgroundColor:getComputedStyle(board).backgroundColor};
+        const dataUrl = kind === 'png' ? await toPng(board, options) : await toJpeg(board, {...options, quality:.94});
+        const link = document.createElement('a');
+        link.href = dataUrl;
+        link.download = `autocubes-${String(currentId).padStart(3,'0')}-${currentFormat.id}.${kind === 'png' ? 'png' : 'jpg'}`;
+        link.click();
+        showToast(`${currentFormat.width} × ${currentFormat.height} ${kind.toUpperCase()} exported`);
+      } catch (error) {
+        console.error(error);
+        showToast('Export failed. Check image assets and try again.');
+      } finally {
+        shell.classList.add('editing');
+        board.classList.remove('is-exporting');
+        if (hadGuides) board.classList.add('show-guides');
+        selectEditorElement(editorState.selected);
+        buttons.forEach(button => button.disabled = false);
+      }
+    }
+    document.getElementById('exportPng').onclick = () => exportComposition('png');
+    document.getElementById('exportJpeg').onclick = () => exportComposition('jpeg');
+    document.getElementById('exportAllSizes').onclick = async event => {
+      const board = currentBoard();
+      if (!board || !currentId) return;
+      const button = event.currentTarget;
+      const originalFormat = currentFormat.id;
+      const shell = document.getElementById('modalArtboard');
+      button.disabled = true;
+      shell.classList.remove('editing');
+      board.classList.remove('show-guides');
+      const zip = new JSZip();
+      try {
+        await document.fonts.ready;
+        for (const formatId of ['portrait','square','story','landscape']) {
+          applyFormat(formatId, false);
+          await new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve)));
+          const activeBoard = currentBoard();
+          activeBoard.classList.remove('show-guides');
+          activeBoard.classList.add('is-exporting');
+          const dataUrl = await toPng(activeBoard, {canvasWidth:currentFormat.width, canvasHeight:currentFormat.height, pixelRatio:1, cacheBust:true, backgroundColor:getComputedStyle(activeBoard).backgroundColor});
+          zip.file(`AC-${String(currentId).padStart(3,'0')}-${formatId}.png`, dataUrl.split(',')[1], {base64:true});
+          showToast(`Rendering ${currentFormat.label}…`);
+        }
+        zip.file('manifest.json', JSON.stringify({composition:currentId, formats:['portrait','square','story','landscape'], post:edits[currentId]?.post || null}, null, 2));
+        const blob = await zip.generateAsync({type:'blob', compression:'DEFLATE', compressionOptions:{level:6}});
+        const url = URL.createObjectURL(blob);
+        const link = document.createElement('a'); link.href = url; link.download = `autocubes-${String(currentId).padStart(3,'0')}-instagram-formats.zip`; link.click();
+        setTimeout(() => URL.revokeObjectURL(url), 1000);
+        showToast('Four Instagram formats exported');
+      } catch (error) {
+        console.error(error);
+        showToast('Could not export all formats');
+      } finally {
+        applyFormat(originalFormat, false);
+        currentBoard()?.classList.remove('is-exporting');
+        currentBoard()?.classList.toggle('show-guides', guidesVisible);
+        shell.classList.add('editing');
+        selectEditorElement(editorState.selected);
+        button.disabled = false;
+      }
+    };
+    document.querySelectorAll('[data-format]').forEach(button => button.onclick = () => {
+      applyFormat(button.dataset.format);
+      showToast(`${currentFormat.label} · ${currentFormat.width} × ${currentFormat.height}`);
+    });
+    document.getElementById('toggleGuides').onclick = () => {
+      guidesVisible = !guidesVisible;
+      localStorage.setItem('autocubes-identity-guides', String(guidesVisible));
+      applyFormat(currentFormat.id, false);
+    };
+    document.getElementById('applyCustom').onclick = () => {
+      const width = Math.max(320, Math.min(4096, Number(document.getElementById('customWidth').value) || 1080));
+      const height = Math.max(320, Math.min(4096, Number(document.getElementById('customHeight').value) || 1350));
+      formats.custom = {...formats.custom, width, height, ratio:`${width} / ${height}`};
+      localStorage.setItem('autocubes-identity-custom-format', JSON.stringify({width,height}));
+      applyFormat('custom');
+      document.getElementById('customFormat').removeAttribute('open');
+      showToast(`Custom canvas · ${width} × ${height}`);
+    };
+    window.addEventListener('resize', fitModalArtboard);
     document.addEventListener('keydown', event => {
       if (!document.getElementById('modal').classList.contains('open')) return;
       const isField = ['INPUT','TEXTAREA','SELECT'].includes(event.target.tagName);
       if (event.key === 'Escape') closeModal();
+      if ((event.ctrlKey || event.metaKey) && event.key.toLowerCase() === 'z') { event.preventDefault(); event.shiftKey ? redoEdit() : undoEdit(); return; }
+      if ((event.ctrlKey || event.metaKey) && event.key.toLowerCase() === 'y') { event.preventDefault(); redoEdit(); return; }
+      if ((event.ctrlKey || event.metaKey) && event.key.toLowerCase() === 'e') { event.preventDefault(); exportComposition('png'); return; }
+      if (!isField && event.key.toLowerCase() === 'g') document.getElementById('toggleGuides').click();
       if (!isField && editorState.selected !== 'canvas' && event.key.startsWith('Arrow')) {
         event.preventDefault();
         const node = nodeRecord();
@@ -950,7 +1342,9 @@
       if (!isField && ['Delete','Backspace'].includes(event.key) && editorState.selected !== 'canvas') removeLayer(editorState.selected);
       if (!isField && event.key.toLowerCase() === 'f') togglePick(currentId);
     });
+    applyFormat(currentFormat.id, false);
     renderGallery();
+    applyFormat(currentFormat.id, false);
     updateTray();
   </script>
 </body>
