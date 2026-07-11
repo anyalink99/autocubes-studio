@@ -361,10 +361,10 @@
     .selection-tray .spacer { flex: 1; }
     .selection-tray button { height: 29px; padding: 0 10px; border: 1px solid #3b3c37; border-radius: 4px; background: #242421; font-size: 10px; cursor: pointer; }
     .selection-tray button:hover { border-color: #696a62; }
-    .modal { position: fixed; inset: 0; z-index: 50; display: none; grid-template-columns: minmax(0, 1fr) 390px; background: rgba(5,5,5,.94); backdrop-filter: blur(12px); }
+    .modal { position: fixed; inset: 0; z-index: 50; display: none; grid-template-columns: minmax(0, 1fr) 390px; grid-template-rows: minmax(0, 1fr); background: rgba(5,5,5,.94); backdrop-filter: blur(12px); }
     .modal.open { display: grid; }
-    .modal-stage { position: relative; display: grid; place-items: center; min-width: 0; padding: 28px 68px; }
-    .modal-artboard { height: min(82vh, 960px); max-width: 100%; aspect-ratio: var(--format-ratio); box-shadow: 0 30px 90px rgba(0,0,0,.7); }
+    .modal-stage { position: relative; display: grid; place-items: center; min-width: 0; min-height: 0; overflow: hidden; padding: 28px 68px; container-type: size; }
+    .modal-artboard { width: min(100cqw, calc(100cqh * var(--format-aspect))); max-width: 100%; max-height: 100%; aspect-ratio: var(--format-ratio); box-shadow: 0 30px 90px rgba(0,0,0,.7); }
     .modal-artboard .artboard { width: 100%; height: 100%; aspect-ratio: auto; cursor: default; }
     .artboard [data-edit-id].editor-hidden { display: none !important; }
     .modal-artboard.editing .artboard [data-edit-id] { cursor: pointer; }
@@ -378,7 +378,7 @@
     .editor-added-shape { width: 28%; aspect-ratio: 1; background: var(--accent); }
     .editor-added-image { width: 42%; height: 32%; object-fit: cover; }
     .editor-added-group { overflow: visible; }
-    .modal-panel { min-height: 0; display: flex; flex-direction: column; padding: 16px; border-left: 1px solid var(--line); background: #11110f; overflow: hidden; }
+    .modal-panel { min-width: 0; min-height: 0; display: grid; grid-template-rows: auto minmax(0,1fr) auto auto auto; padding: 16px; border-left: 1px solid var(--line); background: #11110f; overflow: hidden; }
     .modal-panel .close { width: 32px; height: 32px; border: 1px solid #3c3d37; border-radius: 4px; background: transparent; cursor: pointer; }
     .modal-panel .panel-head { display: grid; grid-template-columns: 1fr auto; gap: 12px; align-items: start; padding-bottom: 14px; border-bottom: 1px solid var(--line); }
     .panel-tools { display: flex; gap: 4px; }
@@ -387,7 +387,7 @@
     .panel-tools button:disabled { opacity: .35; cursor: default; }
     .modal-panel .eyebrow { color: var(--orange); font: 650 9px Arial, Helvetica, sans-serif; letter-spacing: 1.2px; text-transform: uppercase; }
     .modal-panel h2 { margin: 7px 0 0; font-size: 20px; letter-spacing: -.4px; }
-    .editor-scroll { min-height: 0; flex: 1; overflow-y: auto; margin: 0 -8px; padding: 14px 8px 24px; scrollbar-width: thin; scrollbar-color: #42433d transparent; }
+    .editor-scroll { min-width: 0; min-height: 0; height: 100%; overflow-y: auto; overscroll-behavior: contain; margin: 0 -8px; padding: 14px 8px 24px; scrollbar-width: thin; scrollbar-color: #42433d transparent; }
     .editor-section + .editor-section { margin-top: 20px; padding-top: 18px; border-top: 1px solid var(--line); }
     .editor-section-head { display: flex; align-items: center; justify-content: space-between; min-height: 28px; margin-bottom: 9px; }
     .editor-section-head strong { font-size: 10px; letter-spacing: .9px; text-transform: uppercase; }
@@ -432,8 +432,8 @@
     .toast.visible { transform: translate(-50%,0); }
     @media (max-width: 1180px) { .gallery { grid-template-columns: repeat(2, minmax(0, 1fr)); } .lab-brand { min-width: 170px; } }
     @media (max-width: 980px) { .modal { grid-template-columns: minmax(0,1fr) 340px; } .modal-stage { padding: 20px; } }
-    @media (max-width: 820px) { .lab-header { position: relative; height: auto; min-height: 64px; flex-wrap: wrap; padding: 10px 14px; } .lab-brand { min-width: 0; } .filters { order: 3; width: 100%; } .format-dock { top: 0; padding: 7px 14px; overflow-x: auto; } .format-dock-label, .export-size { display:none; } .format-preset span { display:none; } .intro { grid-template-columns: 1fr; padding: 38px 14px; } .gallery { grid-template-columns: repeat(2, minmax(0, 1fr)); padding: 16px 14px 100px; } .modal { grid-template-columns: 1fr; grid-template-rows: minmax(300px,48vh) minmax(0,1fr); } .modal-stage { padding: 12px; } .modal-artboard { height: 44vh; } .modal-panel { border-top: 1px solid var(--line); border-left: 0; } .editor-scroll { padding-bottom: 12px; } }
-    @media (max-width: 520px) { .gallery { grid-template-columns: 1fr; } .counter { display: none; } .intro h1 { letter-spacing: -2px; } .modal { grid-template-rows: 42vh minmax(0,1fr); } .modal-stage { align-items: center; padding: 8px; } .modal-artboard { width: auto; height: 39vh; } .modal-panel { padding: 12px; } }
+    @media (max-width: 820px) { .lab-header { position: relative; height: auto; min-height: 64px; flex-wrap: wrap; padding: 10px 14px; } .lab-brand { min-width: 0; } .filters { order: 3; width: 100%; } .format-dock { top: 0; padding: 7px 14px; overflow-x: auto; } .format-dock-label, .export-size { display:none; } .format-preset span { display:none; } .intro { grid-template-columns: 1fr; padding: 38px 14px; } .gallery { grid-template-columns: repeat(2, minmax(0, 1fr)); padding: 16px 14px 100px; } .modal { grid-template-columns: 1fr; grid-template-rows: minmax(300px,48vh) minmax(0,1fr); } .modal-stage { padding: 12px; } .modal-panel { border-top: 1px solid var(--line); border-left: 0; } .editor-scroll { padding-bottom: 12px; } }
+    @media (max-width: 520px) { .gallery { grid-template-columns: 1fr; } .counter { display: none; } .intro h1 { letter-spacing: -2px; } .modal { grid-template-rows: 42vh minmax(0,1fr); } .modal-stage { align-items: center; padding: 8px; } .modal-panel { padding: 12px; } }
     @media (prefers-reduced-motion: reduce) { * { scroll-behavior: auto !important; transition: none !important; } }
   </style>
 </head>
@@ -601,6 +601,7 @@
       currentFormat = formats[formatId] || formats.portrait;
       const root = document.documentElement;
       root.style.setProperty('--format-ratio', currentFormat.ratio);
+      root.style.setProperty('--format-aspect', String(currentFormat.width / currentFormat.height));
       root.style.setProperty('--safe-top', `${currentFormat.safe.top}%`);
       root.style.setProperty('--safe-right', `${currentFormat.safe.right}%`);
       root.style.setProperty('--safe-bottom', `${currentFormat.safe.bottom}%`);
@@ -619,22 +620,7 @@
       const guideButton = document.getElementById('toggleGuides');
       guideButton.classList.toggle('active', guidesVisible);
       guideButton.textContent = guidesVisible ? 'Safe zones on' : 'Safe zones';
-      fitModalArtboard();
       if (persist) localStorage.setItem('autocubes-identity-format', currentFormat.id);
-    }
-
-    function fitModalArtboard() {
-      const shell = document.getElementById('modalArtboard');
-      const stage = shell?.parentElement;
-      if (!shell || !stage) return;
-      const maxWidth = Math.max(240, stage.clientWidth - 32);
-      const maxHeight = Math.max(240, stage.clientHeight - 32);
-      const ratio = currentFormat.width / currentFormat.height;
-      let width = Math.min(maxWidth, maxHeight * ratio);
-      let height = width / ratio;
-      if (height > maxHeight) { height = maxHeight; width = height * ratio; }
-      shell.style.width = `${width}px`;
-      shell.style.height = `${height}px`;
     }
 
     const logo = () => '<img class="logo" src="/assets/brand/autocubes.svg" alt="">';
@@ -1056,20 +1042,35 @@
 
     function activeStudy(group) { return group.studies[positions[group.template] || 0]; }
 
+    function cardMarkup(group) {
+      const study = activeStudy(group);
+      const variant = (positions[group.template] || 0) + 1;
+      return `<article class="composition ${picked.has(study.id) ? 'picked' : ''}" data-id="${study.id}" data-template="${group.template}" data-family="${group.family}"><div class="card-head"><span>Idea ${String(group.template + 1).padStart(2,'0')}</span><span class="family">${group.family} / ${group.title}</span><span class="spacer"></span><div class="variant-nav"><button data-delta="-1" title="Previous variant">&#8592;</button><span>${String(variant).padStart(2,'0')} / ${String(group.studies.length).padStart(2,'0')}</span><button data-delta="1" title="Next variant">&#8594;</button></div><button class="pick-button" title="Pick variant" aria-label="Pick variant">&#10003;</button></div>${study.html}</article>`;
+    }
+
+    function hydrateCard(card) {
+      const board = card.querySelector('.artboard');
+      applyStoredEdits(board, Number(card.dataset.id));
+      board.classList.toggle('show-guides', guidesVisible);
+      board.onclick = () => openModal(Number(card.dataset.id));
+      card.querySelector('.pick-button').onclick = () => togglePick(Number(card.dataset.id));
+      card.querySelectorAll('.variant-nav button').forEach(button => button.onclick = () => cycleVariant(Number(card.dataset.template), Number(button.dataset.delta)));
+    }
+
+    function updateGroupCard(template) {
+      const previous = gallery.querySelector(`.composition[data-template="${template}"]`);
+      if (!previous) return;
+      const holder = document.createElement('div');
+      holder.innerHTML = cardMarkup(groups[template]);
+      const next = holder.firstElementChild;
+      previous.replaceWith(next);
+      hydrateCard(next);
+      applyFilters();
+    }
+
     function renderGallery(order = groupOrder) {
-      gallery.innerHTML = order.map(group => {
-        const study = activeStudy(group);
-        const variant = (positions[group.template] || 0) + 1;
-        return `<article class="composition ${picked.has(study.id) ? 'picked' : ''}" data-id="${study.id}" data-template="${group.template}" data-family="${group.family}"><div class="card-head"><span>Idea ${String(group.template + 1).padStart(2,'0')}</span><span class="family">${group.family} / ${group.title}</span><span class="spacer"></span><div class="variant-nav"><button data-delta="-1" title="Previous variant">←</button><span>${String(variant).padStart(2,'0')} / ${String(group.studies.length).padStart(2,'0')}</span><button data-delta="1" title="Next variant">→</button></div><button class="pick-button" title="Pick variant" aria-label="Pick variant">&#10003;</button></div>${study.html}</article>`;
-      }).join('');
-      gallery.querySelectorAll('.composition').forEach(card => {
-        const board = card.querySelector('.artboard');
-        applyStoredEdits(board, Number(card.dataset.id));
-        board.classList.toggle('show-guides', guidesVisible);
-        board.onclick = () => openModal(Number(card.dataset.id));
-        card.querySelector('.pick-button').onclick = () => togglePick(Number(card.dataset.id));
-        card.querySelectorAll('.variant-nav button').forEach(button => button.onclick = () => cycleVariant(Number(card.dataset.template), Number(button.dataset.delta)));
-      });
+      gallery.innerHTML = order.map(cardMarkup).join('');
+      gallery.querySelectorAll('.composition').forEach(hydrateCard);
       applyFilters();
     }
 
@@ -1077,7 +1078,7 @@
       const group = groups[template];
       positions[template] = (positions[template] + delta + group.studies.length) % group.studies.length;
       localStorage.setItem('autocubes-identity-v2-positions', JSON.stringify(positions));
-      renderGallery(groupOrder);
+      updateGroupCard(template);
     }
 
     function applyFilters() {
@@ -1097,7 +1098,8 @@
       localStorage.setItem('autocubes-identity-v2-picked', JSON.stringify([...picked]));
       if (currentId === id) updateModalPick();
       updateTray();
-      renderGallery(groupOrder);
+      const study = studies[id - 1];
+      if (study) updateGroupCard(study.template);
     }
 
     function updateTray() {
@@ -1123,17 +1125,24 @@
       updateModalPick();
       beginCanvasEditing();
       renderPostFields();
-      requestAnimationFrame(fitModalArtboard);
       updateHistoryButtons();
     }
 
-    function closeModal() { document.getElementById('modal').classList.remove('open'); document.body.style.overflow = ''; renderGallery(groupOrder); }
+    function closeModal() {
+      const study = currentId ? studies[currentId - 1] : null;
+      document.getElementById('modal').classList.remove('open');
+      document.body.style.overflow = '';
+      if (study) updateGroupCard(study.template);
+    }
     function updateModalPick() { document.getElementById('modalPick').textContent = picked.has(currentId) ? 'Remove from picked' : 'Pick this composition'; }
     function cycleModal(delta) {
       const study = studies[currentId - 1];
       const group = groups[study.template];
       const index = group.studies.findIndex(item => item.id === currentId);
-      openModal(group.studies[(index + delta + group.studies.length) % group.studies.length].id);
+      const nextIndex = (index + delta + group.studies.length) % group.studies.length;
+      positions[group.template] = nextIndex;
+      localStorage.setItem('autocubes-identity-v2-positions', JSON.stringify(positions));
+      openModal(group.studies[nextIndex].id);
     }
 
     document.getElementById('closeModal').onclick = closeModal;
@@ -1317,7 +1326,6 @@
       document.getElementById('customFormat').removeAttribute('open');
       showToast(`Custom canvas · ${width} × ${height}`);
     };
-    window.addEventListener('resize', fitModalArtboard);
     document.addEventListener('keydown', event => {
       if (!document.getElementById('modal').classList.contains('open')) return;
       const isField = ['INPUT','TEXTAREA','SELECT'].includes(event.target.tagName);

@@ -19,8 +19,9 @@
     "remotion:studio": "remotion studio packages/video/index.ts",
     "typecheck": "tsc --noEmit",
     "qa:smoke": "tsx tooling/qa/studio-smoke.ts",
+    "qa:identity": "tsx tooling/qa/identity-stress.ts",
     "video:check": "remotion compositions packages/video/index.ts",
-    "check": "npm run typecheck && npm run build && npm run qa:smoke && npm run video:check"
+    "check": "npm run typecheck && npm run build && npm run qa:smoke && npm run qa:identity && npm run video:check"
   },
   "dependencies": {
     "@remotion/cli": "4.0.486",
