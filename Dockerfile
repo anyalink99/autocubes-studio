@@ -5,11 +5,11 @@ COPY package.json package-lock.json ./
 RUN npm ci
 COPY . .
 
-FROM source AS verify
-RUN npm run typecheck && npm run qa:sync && npm run qa:workflows
-
 FROM source AS build
 RUN npm run build
+
+FROM build AS verify
+RUN npm run typecheck && npm run qa:sync && STUDIO_QA_PREVIEW=1 npm run qa:workflows
 
 FROM source AS runtime
 COPY --from=build /app/dist /app/dist

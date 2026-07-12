@@ -1,17 +1,20 @@
 import fs from 'node:fs/promises';
 import path from 'node:path';
 import {chromium} from 'playwright';
-import {createServer} from 'vite';
+import {createServer, preview} from 'vite';
 import JSZip from 'jszip';
 
 const main=async()=>{
   const port=4193;
   const baseUrl=`http://127.0.0.1:${port}`;
-  const server=await createServer({configFile:path.resolve('vite.config.ts'),server:{host:'127.0.0.1',port,strictPort:true,open:false}});
+  const previewMode=process.env.STUDIO_QA_PREVIEW==='1';
+  const server=previewMode
+    ? await preview({configFile:path.resolve('vite.config.ts'),preview:{host:'127.0.0.1',port,strictPort:true,open:false}})
+    : await createServer({configFile:path.resolve('vite.config.ts'),server:{host:'127.0.0.1',port,strictPort:true,open:false}});
   const browser=await chromium.launch({headless:true});
   const errors:string[]=[];
   try{
-    await server.listen();
+    if(!previewMode)await server.listen();
     const page=await browser.newPage({viewport:{width:1440,height:1000}});
     await page.addInitScript(()=>sessionStorage.setItem('autocubes-sync-disabled','true'));
     page.on('pageerror',(error)=>errors.push(error.message));
