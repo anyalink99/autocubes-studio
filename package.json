@@ -22,8 +22,9 @@
     "qa:smoke": "tsx tooling/qa/studio-smoke.ts",
     "qa:identity": "tsx tooling/qa/identity-stress.ts",
     "qa:workflows": "tsx tooling/qa/studio-workflows.ts",
+    "qa:operations": "tsx tooling/qa/operations-smoke.ts",
     "video:check": "remotion compositions packages/video/index.ts",
-    "check": "npm run typecheck && npm run build && npm run qa:smoke && npm run qa:identity && npm run qa:workflows && npm run video:check"
+    "check": "npm run typecheck && npm run build && npm run qa:smoke && npm run qa:identity && npm run qa:workflows && npm run qa:operations && npm run video:check"
   },
   "dependencies": {
     "@remotion/cli": "4.0.486",

@@ -27,9 +27,20 @@ Rules:
 
 ## Runtime surfaces
 
+### Operations Desk
+
+The root application is the studio operating layer. It owns four connected local-first domains:
+
+- CRM leads move through a small explicit pipeline and always carry a next action. A won lead can create a project without re-entering client context.
+- Project OS uses the shared brief-to-support phase model. Tasks, owners, deadlines, deliverables, health, and activity remain attached to the project.
+- Reviews are versioned project deliverables. Internal comments can be pinned to preview coordinates; the isolated `?review=<project-id>` surface exposes only client-safe review data and approval actions.
+- The library stores references and reusable solutions with source, technology, tags, license, code notes, and project links.
+
+Operations data is stored under `autocubes-operations-v1` and can be exported as portable JSON. Shared contracts live in `packages/core/operations.ts`; browser state and presentation live in `apps/operations`.
+
 ### Studio
 
-The root React application is the launch surface. It reads motion project summaries from the local API and the document index from browser storage.
+The legacy launch dashboard remains in `apps/studio` for reference while Operations Desk is the root launch surface. Motion, Identity, and Documents remain independent production applications linked from its tool rail.
 
 ### Motion Desk
 

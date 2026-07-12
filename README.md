@@ -15,6 +15,12 @@ The studio opens at `http://127.0.0.1:4178/`.
 
 ## Applications
 
+- `/` — Operations Desk: CRM, project production, client reviews, and the component/reference library.
+- `/?view=crm` — compact studio sales pipeline with next actions and lead-to-project conversion.
+- `/?view=projects` — Project OS with production phases, tasks, owners, deadlines, and deliverables.
+- `/?view=reviews` — internal review workspace; `/?review=<project-id>` opens the isolated client portal.
+- `/?view=library` — reusable components, references, code notes, sources, and licenses.
+
 | Surface | URL | Responsibility |
 | --- | --- | --- |
 | Studio | `/` | Workspace navigation and project register |

@@ -47,10 +47,10 @@ const main = async () => {
       return [item,{left:(bounds.left-boardBounds.left)/boardBounds.width,top:(bounds.top-boardBounds.top)/boardBounds.height,width:bounds.width/boardBounds.width,height:bounds.height/boardBounds.height,fontSize:Number.parseFloat(computed.fontSize)/(board as HTMLElement).clientWidth,border:Number.parseFloat(computed.borderBottomWidth)/(board as HTMLElement).clientWidth}];
     }));
   });
-  const galleryProcess = await readProcessGeometry('.composition[data-template="5"] .artboard');
+  const galleryProcess: Record<string, Record<string, number>> = await readProcessGeometry('.composition[data-template="5"] .artboard');
   await page.locator('.composition[data-template="5"] .artboard').click();
   await page.waitForTimeout(250);
-  const editorProcess = await readProcessGeometry('#modalArtboard .artboard');
+  const editorProcess: Record<string, Record<string, number>> = await readProcessGeometry('#modalArtboard .artboard');
   for (const key of Object.keys(galleryProcess)) for (const metric of Object.keys(galleryProcess[key])) {
     if (Math.abs(galleryProcess[key][metric]-editorProcess[key][metric])>.002) throw new Error(`Process layout mismatch at ${key}.${metric}: ${galleryProcess[key][metric]} vs ${editorProcess[key][metric]}`);
   }
