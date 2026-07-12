@@ -1,5 +1,24 @@
 # Changelog
 
+## 0.5.1 — Operations workspace refinement
+
+### CRM and Project OS
+
+- Replaced the fragile seven-column default CRM with a dense list and persistent inspector while retaining a touch-safe optional board.
+- Added stage, deadline and search filters, reliable lead-to-project conversion, notes, deletion, deep links, and mobile full-screen contact editing.
+- Made project progress phase-aware, added guarded stage transitions with an activity trail, and made project settings functional.
+
+### Reviews and library
+
+- Rebuilt internal reviews as a fixed three-panel desk with a material queue, fit/zoom controls, coordinate comments, version actions, and a pinned discussion composer.
+- Replaced the tall client handoff page with an immediate viewport-fitted review app for materials, decisions, comments, and approvals.
+- Added editable library context, favorite filtering, deletion, and explicit links between reusable solutions and projects.
+
+### Workspace quality
+
+- Turned the command palette into real cross-workspace search with deep links.
+- Added validated JSON import beside export, browser history support, local persistence safeguards, visible keyboard focus, and expanded end-to-end Operations QA.
+
 ## 0.5.0 — Capture director and Russian studio
 
 ### Motion Desk

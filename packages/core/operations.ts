@@ -1,13 +1,29 @@
-export type LeadStage = 'new' | 'contacted' | 'replied' | 'meeting' | 'proposal' | 'won' | 'lost';
-export type ProjectStage = 'brief' | 'references' | 'prototype' | 'design' | 'development' | 'content' | 'revision' | 'launch' | 'support';
-export type Priority = 'low' | 'medium' | 'high';
-export type ReviewStatus = 'draft' | 'review' | 'changes' | 'approved';
+export type LeadStage =
+  | "new"
+  | "contacted"
+  | "replied"
+  | "meeting"
+  | "proposal"
+  | "won"
+  | "lost";
+export type ProjectStage =
+  | "brief"
+  | "references"
+  | "prototype"
+  | "design"
+  | "development"
+  | "content"
+  | "revision"
+  | "launch"
+  | "support";
+export type Priority = "low" | "medium" | "high";
+export type ReviewStatus = "draft" | "review" | "changes" | "approved";
 
 export type Activity = {
   id: string;
   createdAt: string;
   text: string;
-  kind: 'note' | 'call' | 'email' | 'status' | 'task' | 'review';
+  kind: "note" | "call" | "email" | "status" | "task" | "review";
 };
 
 export type Lead = {
@@ -46,7 +62,7 @@ export type Deliverable = {
   id: string;
   title: string;
   url: string;
-  type: 'site' | 'identity' | 'motion' | 'document' | 'other';
+  type: "site" | "identity" | "motion" | "document" | "other";
   status: ReviewStatus;
   version: number;
   updatedAt: string;
@@ -57,8 +73,8 @@ export type StudioProject = {
   title: string;
   client: string;
   stage: ProjectStage;
-  status: 'active' | 'paused' | 'completed';
-  health: 'good' | 'attention' | 'risk';
+  status: "active" | "paused" | "completed";
+  health: "good" | "attention" | "risk";
   progress: number;
   owner: string;
   deadline: string;
@@ -99,7 +115,14 @@ export type LibraryItem = {
   description: string;
   url: string;
   preview: string;
-  category: 'site' | 'section' | 'animation' | 'component' | 'identity' | 'form' | '3d';
+  category:
+    | "site"
+    | "section"
+    | "animation"
+    | "component"
+    | "identity"
+    | "form"
+    | "3d";
   technology: string[];
   tags: string[];
   code: string;
@@ -117,44 +140,74 @@ export type OperationsState = {
   library: LibraryItem[];
 };
 
-export const leadStages: Array<{id: LeadStage; title: string}> = [
-  {id: 'new', title: 'Новые'},
-  {id: 'contacted', title: 'Связались'},
-  {id: 'replied', title: 'Ответили'},
-  {id: 'meeting', title: 'Созвон'},
-  {id: 'proposal', title: 'КП'},
-  {id: 'won', title: 'В работе'},
-  {id: 'lost', title: 'Отказ'},
+export const leadStages: Array<{ id: LeadStage; title: string }> = [
+  { id: "new", title: "Новые" },
+  { id: "contacted", title: "Связались" },
+  { id: "replied", title: "Ответили" },
+  { id: "meeting", title: "Созвон" },
+  { id: "proposal", title: "КП" },
+  { id: "won", title: "В работе" },
+  { id: "lost", title: "Отказ" },
 ];
 
-export const projectStages: Array<{id: ProjectStage; title: string}> = [
-  {id: 'brief', title: 'Бриф'},
-  {id: 'references', title: 'Референсы'},
-  {id: 'prototype', title: 'Прототип'},
-  {id: 'design', title: 'Дизайн'},
-  {id: 'development', title: 'Разработка'},
-  {id: 'content', title: 'Контент'},
-  {id: 'revision', title: 'Правки'},
-  {id: 'launch', title: 'Запуск'},
-  {id: 'support', title: 'Поддержка'},
+export const projectStages: Array<{ id: ProjectStage; title: string }> = [
+  { id: "brief", title: "Бриф" },
+  { id: "references", title: "Референсы" },
+  { id: "prototype", title: "Прототип" },
+  { id: "design", title: "Дизайн" },
+  { id: "development", title: "Разработка" },
+  { id: "content", title: "Контент" },
+  { id: "revision", title: "Правки" },
+  { id: "launch", title: "Запуск" },
+  { id: "support", title: "Поддержка" },
 ];
 
-export const uid = (prefix: string) => `${prefix}-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 7)}`;
+export const uid = (prefix: string) =>
+  `${prefix}-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 7)}`;
 
 export const today = () => new Date().toISOString().slice(0, 10);
 
-export const createProjectPhases = (): ProjectPhase[] => projectStages.map((stage, index) => ({
-  id: stage.id,
-  title: stage.title,
-  done: false,
-  tasks: index === 0 ? [
-    {id: uid('task'), title: 'Получить материалы и доступы', done: false, assignee: 'Стас', dueAt: today(), priority: 'high'},
-    {id: uid('task'), title: 'Зафиксировать задачу и критерии успеха', done: false, assignee: 'Рома', dueAt: today(), priority: 'medium'},
-  ] : [],
-}));
+export const createProjectPhases = (): ProjectPhase[] =>
+  projectStages.map((stage, index) => ({
+    id: stage.id,
+    title: stage.title,
+    done: false,
+    tasks:
+      index === 0
+        ? [
+            {
+              id: uid("task"),
+              title: "Получить материалы и доступы",
+              done: false,
+              assignee: "Стас",
+              dueAt: today(),
+              priority: "high",
+            },
+            {
+              id: uid("task"),
+              title: "Зафиксировать задачу и критерии успеха",
+              done: false,
+              assignee: "Рома",
+              dueAt: today(),
+              priority: "medium",
+            },
+          ]
+        : [],
+  }));
 
 export const calculateProgress = (project: StudioProject) => {
-  const all = project.phases.flatMap((phase) => phase.tasks);
-  if (!all.length) return project.progress;
-  return Math.round((all.filter((task) => task.done).length / all.length) * 100);
+  if (project.status === "completed") return 100;
+  const activeIndex = Math.max(
+    0,
+    project.phases.findIndex((phase) => phase.id === project.stage),
+  );
+  const score = project.phases.reduce((sum, phase, index) => {
+    if (phase.done || index < activeIndex) return sum + 1;
+    if (index !== activeIndex) return sum;
+    if (!phase.tasks.length) return sum + 0.15;
+    return (
+      sum + phase.tasks.filter((task) => task.done).length / phase.tasks.length
+    );
+  }, 0);
+  return Math.min(100, Math.round((score / project.phases.length) * 100));
 };

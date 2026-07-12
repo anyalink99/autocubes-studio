@@ -36,7 +36,7 @@ The root application is the studio operating layer. It owns four connected local
 - Reviews are versioned project deliverables. Internal comments can be pinned to preview coordinates; the isolated `?review=<project-id>` surface exposes only client-safe review data and approval actions.
 - The library stores references and reusable solutions with source, technology, tags, license, code notes, and project links.
 
-Operations data is stored under `autocubes-operations-v1` and can be exported as portable JSON. Shared contracts live in `packages/core/operations.ts`; browser state and presentation live in `apps/operations`.
+Operations data is stored under `autocubes-operations-v1` and can be imported or exported as portable JSON. The review workspace deliberately uses a fixed three-panel geometry so tall source images scroll or scale inside the canvas instead of expanding the application document. Shared contracts live in `packages/core/operations.ts`; browser state and presentation live in `apps/operations`.
 
 ### Studio
 
