@@ -2,6 +2,8 @@
 
 Local-first creative production workspace for Autocubes. It combines a project dashboard, browser-based motion editing, identity exploration, document production, website capture, and Remotion rendering without coupling those concerns into one application.
 
+The canonical private repository is `https://git.autocubes.site/stas/autocubes-studio`. Work in feature branches and merge through GitLab; `main` is protected and requires a successful pipeline. The former GitHub repository is retained only as a legacy remote and is not a second source of truth.
+
 ## Quick start
 
 ```bash
