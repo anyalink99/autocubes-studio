@@ -6,6 +6,7 @@ import {migrateEditorProject} from '../../packages/core/editor-operations';
 import {ensureCleanDir, sleep} from './utils';
 
 const projectPath = path.resolve(process.argv[2] ?? 'data/projects/flowline.editor.json');
+let pendingOutput: string | undefined;
 
 const scrollTo = async (page: Page, y: number, duration: number, easing: EasingName) => {
   await page.evaluate(`
@@ -46,14 +47,17 @@ const pointerTarget = async (page: Page, action: PointerEvent) => {
 
 const main = async () => {
   const project = migrateEditorProject(JSON.parse(await fs.readFile(projectPath, 'utf8')) as EditorProject);
-  const captureId = `editor-${project.id}`;
+  const captureBaseId = `editor-${project.id}`;
+  const revision = `${new Date().toISOString().replace(/[-:TZ.]/g, '').slice(0, 14)}-${process.pid}`;
+  const captureId = `${captureBaseId}-${revision}`;
   const output = path.resolve('public', 'captures', captureId);
   const captureRoot = path.dirname(output);
-  const staging = path.join(captureRoot, `.${captureId}-next`);
-  const backup = path.join(captureRoot, `.${captureId}-previous`);
-  const videoDirectory = path.join(staging, 'raw-video');
-  const stillDirectory = path.join(staging, 'stills');
-  await ensureCleanDir(staging);
+  pendingOutput = output;
+  // Остаток старой схемы публикации мог сохраниться после Windows EPERM.
+  await fs.rm(path.join(captureRoot, `.${captureBaseId}-next`), {recursive: true, force: true}).catch(() => undefined);
+  const videoDirectory = path.join(output, 'raw-video');
+  const stillDirectory = path.join(output, 'stills');
+  await ensureCleanDir(output);
   await fs.mkdir(videoDirectory, {recursive: true});
   await fs.mkdir(stillDirectory, {recursive: true});
 
@@ -111,32 +115,31 @@ const main = async () => {
   const recordedPath = await video?.path();
   await browser.close();
 
-  if (!recordedPath) throw new Error('Playwright did not produce a video');
-  await fs.copyFile(recordedPath, path.join(staging, 'capture.webm'));
+  if (!recordedPath) throw new Error('Playwright не создал видеофайл');
+  await fs.copyFile(recordedPath, path.join(output, 'capture.webm'));
   await fs.rm(videoDirectory, {recursive: true, force: true});
 
-  // Новая запись заменяет предыдущую только после полного успешного завершения.
-  await fs.rm(backup, {recursive: true, force: true});
-  const previousExists = await fs.access(output).then(() => true).catch(() => false);
-  if (previousExists) await fs.rename(output, backup);
-  try {
-    await fs.rename(staging, output);
-    await fs.rm(backup, {recursive: true, force: true});
-  } catch (error) {
-    if (previousExists) await fs.rename(backup, output).catch(() => undefined);
-    throw error;
-  }
-
+  // Каталог ревизии никем не используется до этой точки. Публикация происходит
+  // одной сменой URL в проекте, поэтому открытое старое превью не блокирует запись.
   project.pageHeight = pageHeight;
   project.videoOffset = videoOffset;
   project.previewVideo = `/captures/${captureId}/capture.webm`;
   project.frames = project.frames.map((frame) => ({...frame, thumbnail: `/captures/${captureId}/stills/${frame.id}.png?v=${Date.now()}`}));
   await fs.writeFile(projectPath, `${JSON.stringify(project, null, 2)}\n`, 'utf8');
   await fs.writeFile(path.resolve('data/generated/editor-project.json'), `${JSON.stringify(project, null, 2)}\n`, 'utf8');
+  pendingOutput = undefined;
+  const oldRevisions = (await fs.readdir(captureRoot, {withFileTypes: true}))
+    .filter((entry) => entry.isDirectory() && entry.name.startsWith(`${captureBaseId}-`) && entry.name !== captureId)
+    .map((entry) => entry.name)
+    .sort()
+    .reverse()
+    .slice(4);
+  await Promise.all(oldRevisions.map((name) => fs.rm(path.join(captureRoot, name), {recursive: true, force: true}).catch(() => undefined)));
   console.log(`Захват готов: ${project.previewVideo}`);
 };
 
-main().catch((error) => {
+main().catch(async (error) => {
+  if (pendingOutput) await fs.rm(pendingOutput, {recursive: true, force: true}).catch(() => undefined);
   console.error(error);
   process.exit(1);
 });
