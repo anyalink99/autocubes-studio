@@ -10,7 +10,7 @@ const main = async () => {
   await page.addInitScript(() => sessionStorage.setItem("autocubes-sync-disabled", "true"));
   page.setDefaultTimeout(7_000);
   try {
-    await page.goto(baseUrl, { waitUntil: "networkidle" });
+    await page.goto(`${baseUrl}/operations.html`, { waitUntil: "networkidle" });
     await page.evaluate(() =>
       localStorage.removeItem("autocubes-operations-v1"),
     );
@@ -74,7 +74,7 @@ const main = async () => {
     await page.getByLabel("Состояние").selectOption("attention");
     await page.getByRole("button", { name: /Готово/ }).click();
 
-    await page.goto(`${baseUrl}/?view=reviews`, { waitUntil: "networkidle" });
+    await page.goto(`${baseUrl}/operations.html?view=reviews`, { waitUntil: "networkidle" });
     const stage = page.locator(".review-stage-viewport");
     const box = await stage.boundingBox();
     if (!box) throw new Error("Review stage is not visible");
@@ -94,14 +94,14 @@ const main = async () => {
       .first()
       .waitFor();
 
-    await page.goto(`${baseUrl}/?review=project-flowline`, {
+    await page.goto(`${baseUrl}/operations.html?review=project-flowline`, {
       waitUntil: "networkidle",
     });
     await page.locator(".client-review-app").waitFor();
     await page.getByRole("button", { name: /Согласовать версию/ }).click();
     await page.getByRole("button", { name: "Согласовано" }).waitFor();
 
-    await page.goto(`${baseUrl}/?view=library`, { waitUntil: "networkidle" });
+    await page.goto(`${baseUrl}/operations.html?view=library`, { waitUntil: "networkidle" });
     await page
       .locator(".ops-library-card")
       .first()

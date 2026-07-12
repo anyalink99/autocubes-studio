@@ -46,7 +46,7 @@ const modules = [
     id: 'canvas',
     title: 'Центр проектов',
     label: 'Материалы / статусы / передача',
-    href: '#project-hub',
+    href: '/operations.html',
     icon: Users,
     tone: 'muted',
     copy: 'Связывайте motion-проекты, выбранную айдентику, документы и финальные материалы.',
@@ -86,6 +86,7 @@ export const StudioApp = () => {
         <nav className="studio-nav" aria-label="Studio tools">
           <span className="nav-caption">Студия</span>
           <a className="active" href="/"><Boxes size={16} />Обзор</a>
+          <a href="/operations.html"><Users size={16} />Operations</a>
           <a href="/editor.html"><Film size={16} />Motion</a>
           <a href="/apps/identity/identity-lab.html"><Palette size={16} />Айдентика</a>
           <a href="/documents.html"><FileText size={16} />Документы</a>

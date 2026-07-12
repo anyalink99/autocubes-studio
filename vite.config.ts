@@ -10,7 +10,8 @@ export default defineConfig({
   build: {
     rollupOptions: {
       input: {
-        operations: path.resolve('index.html'),
+        studio: path.resolve('index.html'),
+        operations: path.resolve('operations.html'),
         motion: path.resolve('editor.html'),
         documents: path.resolve('documents.html'),
         identity: path.resolve('apps/identity/identity-lab.html'),

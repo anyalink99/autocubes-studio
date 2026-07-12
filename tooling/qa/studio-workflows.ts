@@ -103,6 +103,8 @@ const main=async()=>{
     await page.screenshot({path:path.resolve('out/qa/documents-blocks.png')});
 
     await page.goto(baseUrl,{waitUntil:'networkidle'});
+    if(!await page.locator('.studio-shell').isVisible())throw new Error('Studio tools home is missing');
+    await page.goto(`${baseUrl}/operations.html`,{waitUntil:'networkidle'});
     if(!await page.locator('.ops-shell').isVisible())throw new Error('Operations Desk root is missing');
     if(await page.locator('.ops-sidebar nav button').count()!==5)throw new Error('Operations Desk navigation is incomplete');
     if(errors.length)throw new Error(`Browser errors:\n${errors.join('\n')}`);
