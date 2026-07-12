@@ -1,8 +1,9 @@
 import React, {useEffect, useMemo, useRef, useState} from 'react';
 import {toPng} from 'html-to-image';
-import {Crosshair, Download, Film, Image as ImageIcon, LayoutGrid, Maximize2} from 'lucide-react';
+import {Crosshair, Download, Film, Image as ImageIcon, LayoutGrid, Maximize2, ZoomIn, ZoomOut} from 'lucide-react';
 import {EditorProject, Selection} from '../../packages/core/editor-project';
 import {findMediaPreset, formatRatio, mediaPresets} from '../../packages/core/media-presets';
+import {maxScroll, scrollPercent} from '../../packages/core/editor-operations';
 
 type Props = {
   project: EditorProject;
@@ -14,14 +15,17 @@ type Props = {
   onPickPointer: (x: number, y: number) => void;
   onChangeViewport: (viewport: EditorProject['viewport']) => void;
   onToggleGuides: () => void;
+  onChangeFramePosition: (scrollY: number) => void;
 };
 
 const ease = (value: number) => value < 0.5 ? 4 * value ** 3 : 1 - Math.pow(-2 * value + 2, 3) / 2;
 
-export const Preview = ({project, currentTime, playing, mode, selection, onModeChange, onPickPointer, onChangeViewport, onToggleGuides}: Props) => {
+export const Preview = ({project, currentTime, playing, mode, selection, onModeChange, onPickPointer, onChangeViewport, onToggleGuides, onChangeFramePosition}: Props) => {
   const videoRef = useRef<HTMLVideoElement>(null);
   const stageRef = useRef<HTMLDivElement>(null);
+  const stageShellRef = useRef<HTMLDivElement>(null);
   const [exportingFrame, setExportingFrame] = useState(false);
+  const [canvasZoom, setCanvasZoom] = useState(100);
   const sortedFrames = useMemo(() => [...project.frames].sort((a, b) => a.at - b.at), [project.frames]);
   const preset = findMediaPreset(project.viewport.width, project.viewport.height);
   const safeArea = preset?.safeArea ?? {top: 5, right: 5, bottom: 5, left: 5};
@@ -73,6 +77,8 @@ export const Preview = ({project, currentTime, playing, mode, selection, onModeC
   const transitionProgress = transition ? (currentTime - transition.at) / Math.max(0.01, transition.duration) : 0;
   const transitionOpacity = transition ? Math.sin(Math.PI * transitionProgress) * transition.strength : 0;
   const caption = project.captions.find((item) => currentTime >= item.at && currentTime <= item.at + item.duration);
+  const overlay = (project.overlays ?? []).find((item) => currentTime >= item.at && currentTime <= item.at + item.duration);
+  const selectedFrame = selection.track === 'frames' ? project.frames.find((item) => item.id === selection.id) : undefined;
 
   const handlePick = (event: React.MouseEvent<HTMLDivElement>) => {
     if (selection.track !== 'pointer') return;
@@ -124,22 +130,33 @@ export const Preview = ({project, currentTime, playing, mode, selection, onModeC
         </select>
         <button className={`icon-button ${project.guides !== false ? 'is-active' : ''}`} title="Toggle safe zones" onClick={onToggleGuides}><LayoutGrid size={16}/></button>
         <button className="icon-button" disabled={mode === 'capture' || exportingFrame} title={mode === 'capture' ? 'Switch to Storyboard to export a cover' : 'Export current frame as PNG'} onClick={() => void exportFrame()}><Download size={16}/></button>
-        <button className="icon-button" title="Preview fits automatically"><Maximize2 size={16}/></button>
+        <button className="icon-button" title="Zoom out" onClick={() => setCanvasZoom((value) => Math.max(40,value - 10))}><ZoomOut size={15}/></button>
+        <button className="preview-zoom-readout" onClick={() => setCanvasZoom(100)} title="Reset preview zoom">{canvasZoom}%</button>
+        <button className="icon-button" title="Zoom in" onClick={() => setCanvasZoom((value) => Math.min(180,value + 10))}><ZoomIn size={15}/></button>
+        <button className="icon-button" title="Open fullscreen preview" onClick={() => {setCanvasZoom(100);void stageShellRef.current?.requestFullscreen();}}><Maximize2 size={16}/></button>
       </div>
 
-      <div className="stage-shell">
-        <div ref={stageRef} className={`stage ${selection.track === 'pointer' ? 'is-picking' : ''}`} style={{aspectRatio: `${project.viewport.width} / ${project.viewport.height}`}} onClick={handlePick}>
+      <div className="stage-shell" ref={stageShellRef}>
+        <div ref={stageRef} className={`stage ${selection.track === 'pointer' ? 'is-picking' : ''} ${selectedFrame ? 'is-positioning' : ''}`} style={{aspectRatio: `${project.viewport.width} / ${project.viewport.height}`, transform:`scale(${canvasZoom / 100})`}} onClick={handlePick}>
           {mode === 'capture' && project.previewVideo ? <video ref={videoRef} src={project.previewVideo} muted playsInline/> : (
             <>
               {frameState.previous?.thumbnail ? <img src={frameState.previous.thumbnail} alt="" style={{opacity: 1 - frameState.blend}}/> : null}
               {frameState.current?.thumbnail ? <img src={frameState.current.thumbnail} alt="" style={{opacity: frameState.blend}}/> : <div className="stage-empty">Capture a frame to start the storyboard</div>}
             </>
           )}
+          {selection.track==='pointer'&&project.pointer.length?<svg className="pointer-path" viewBox={`0 0 ${project.viewport.width} ${project.viewport.height}`} preserveAspectRatio="none" aria-hidden="true"><polyline points={[...project.pointer].sort((a,b)=>a.at-b.at).map((item)=>`${item.x},${item.y}`).join(' ')}/>{project.pointer.map((item)=><circle key={item.id} cx={item.x} cy={item.y} r={item.id===selection.id?18:11} className={item.id===selection.id?'selected':''}/>)}</svg>:null}
           {pointer.visible ? <div className={`preview-cursor ${pointer.click ? 'clicking' : ''}`} style={{left: `${(pointer.x / project.viewport.width) * 100}%`, top: `${(pointer.y / project.viewport.height) * 100}%`}}><svg viewBox="0 0 34 40" aria-hidden="true"><path d="M4 3L29 26L18 28L14 38L4 3Z"/></svg></div> : null}
-          {transition ? <div className={`transition-preview transition-${transition.kind}`} style={{opacity: transitionOpacity, backdropFilter: transition.kind === 'blur' ? `blur(${transitionOpacity * 14}px)` : undefined}}/> : null}
-          {caption ? <div className={`preview-caption position-${caption.position} style-${caption.style}`} style={{fontSize:`${caption.size / project.viewport.width * 100}cqw`}}>{caption.text}</div> : null}
+          {transition ? <div className={`transition-preview transition-${transition.kind} direction-${transition.direction ?? 'left'}`} style={{opacity: transitionOpacity, backgroundColor:transition.color, backdropFilter: transition.kind === 'blur' || transition.kind === 'zoomBlur' ? `blur(${transitionOpacity * 14}px)` : undefined, clipPath:transition.kind === 'wipe' ? `inset(0 ${100 - transitionProgress * 100}% 0 0)` : undefined, transform:transition.kind === 'slide' ? `translateX(${(1-transitionProgress) * (transition.direction === 'right' ? -100 : 100)}%)` : transition.kind === 'zoomBlur' ? `scale(${1 + transitionOpacity * .08})` : undefined}}/> : null}
+          {caption ? <div className={`preview-caption position-${caption.position} style-${caption.style} animation-${caption.animation ?? 'none'} ${selection.id === caption.id ? 'is-selected' : ''}`} style={{fontSize:`${caption.size / project.viewport.width * 100}cqw`, textAlign:caption.align ?? 'center', maxWidth:`${caption.maxWidth ?? 86}%`, lineHeight:caption.lineHeight ?? 1.08, letterSpacing:`${(caption.letterSpacing ?? -2.5) / 100}em`, color:caption.color, backgroundColor:caption.background}}>{caption.text}</div> : null}
+          {overlay ? <div className={`preview-overlay overlay-${overlay.kind} ${selection.id === overlay.id ? 'is-selected' : ''}`} style={{left:`${overlay.x}%`,top:`${overlay.y}%`,opacity:overlay.opacity,transform:`scale(${overlay.scale})`,color:overlay.color}}>{overlay.kind === 'progress' ? <i style={{width:`${currentTime / project.duration * 100}%`}}/> : overlay.text}</div> : null}
           {project.guides !== false ? <div className="safe-zone-overlay" style={{inset: `${safeArea.top}% ${safeArea.right}% ${safeArea.bottom}% ${safeArea.left}%`}}><span>safe area</span></div> : null}
         </div>
+        {selectedFrame ? <aside className="preview-position-rail">
+          <span>{Math.round(scrollPercent(project, selectedFrame.scrollY) * 100)}%</span>
+          <input type="range" min={0} max={maxScroll(project)} step={1} value={selectedFrame.scrollY} onChange={(event) => onChangeFramePosition(Number(event.target.value))}/>
+          <strong>{Math.round(selectedFrame.scrollY)}px</strong>
+          <small>Page position</small>
+        </aside> : null}
       </div>
     </section>
   );

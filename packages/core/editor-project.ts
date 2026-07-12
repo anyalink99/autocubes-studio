@@ -1,6 +1,9 @@
 export type EasingName = 'linear' | 'easeIn' | 'easeOut' | 'easeInOut' | 'spring';
-export type TransitionKind = 'cut' | 'fade' | 'blur' | 'dipBlack' | 'dipWhite';
+export type TransitionKind = 'cut' | 'fade' | 'blur' | 'dipBlack' | 'dipWhite' | 'wipe' | 'slide' | 'zoomBlur' | 'flash';
 export type PointerKind = 'move' | 'click' | 'hover';
+export type TimeDisplay = 'timecode' | 'seconds' | 'frames';
+export type CaptionAnimation = 'none' | 'fade' | 'rise' | 'scale' | 'words';
+export type OverlayKind = 'logo' | 'progress' | 'label' | 'cta' | 'frame' | 'grain';
 
 export type ScrollFrame = {
   id: string;
@@ -33,6 +36,8 @@ export type TransitionEvent = {
   duration: number;
   kind: TransitionKind;
   strength: number;
+  direction?: 'left' | 'right' | 'up' | 'down';
+  color?: string;
 };
 
 export type AudioEvent = {
@@ -43,6 +48,12 @@ export type AudioEvent = {
   asset: string;
   volume: number;
   enabled: boolean;
+  fadeIn?: number;
+  fadeOut?: number;
+  loop?: boolean;
+  category?: 'music' | 'voice' | 'sfx';
+  beatInterval?: number;
+  ducking?: boolean;
 };
 
 export type CaptionEvent = {
@@ -54,7 +65,32 @@ export type CaptionEvent = {
   position: 'top' | 'center' | 'bottom';
   style: 'clean' | 'boxed' | 'accent';
   size: number;
+  x?: number;
+  y?: number;
+  align?: 'left' | 'center' | 'right';
+  maxWidth?: number;
+  lineHeight?: number;
+  letterSpacing?: number;
+  animation?: CaptionAnimation;
+  color?: string;
+  background?: string;
 };
+
+export type OverlayEvent = {
+  id: string;
+  label: string;
+  text: string;
+  at: number;
+  duration: number;
+  kind: OverlayKind;
+  x: number;
+  y: number;
+  scale: number;
+  opacity: number;
+  color: string;
+};
+
+export type TimelineMarker = {id: string; label: string; at: number; color?: string};
 
 export type EditorProject = {
   version: number;
@@ -66,6 +102,10 @@ export type EditorProject = {
   viewport: {width: number; height: number};
   guides?: boolean;
   snap?: boolean;
+  timeDisplay?: TimeDisplay;
+  playbackRate?: number;
+  masterVolume?: number;
+  exportRange?: {in: number; out: number};
   pageHeight: number;
   previewVideo?: string;
   videoOffset?: number;
@@ -74,11 +114,14 @@ export type EditorProject = {
   transitions: TransitionEvent[];
   captions: CaptionEvent[];
   audio: AudioEvent[];
+  overlays?: OverlayEvent[];
+  markers?: TimelineMarker[];
 };
 
 export type Selection = {
-  track: 'frames' | 'pointer' | 'transitions' | 'captions' | 'audio' | 'project';
+  track: 'frames' | 'pointer' | 'transitions' | 'captions' | 'audio' | 'overlays' | 'project';
   id?: string;
+  ids?: string[];
 };
 
 export type AssetLibrary = {

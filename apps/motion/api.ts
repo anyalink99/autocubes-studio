@@ -1,4 +1,5 @@
 import {AssetLibrary, EditorProject, JobState, ProjectSummary} from '../../packages/core/editor-project';
+import {migrateEditorProject} from '../../packages/core/editor-operations';
 
 const json = async <T>(response: Response): Promise<T> => {
   if (!response.ok) {
@@ -10,7 +11,7 @@ const json = async <T>(response: Response): Promise<T> => {
 
 export const listProjects = () => fetch('/api/projects').then((response) => json<ProjectSummary[]>(response));
 
-export const loadProject = (id?: string) => fetch(`/api/project${id ? `?id=${encodeURIComponent(id)}` : ''}`).then((response) => json<EditorProject>(response));
+export const loadProject = (id?: string) => fetch(`/api/project${id ? `?id=${encodeURIComponent(id)}` : ''}`).then((response) => json<EditorProject>(response)).then(migrateEditorProject);
 
 export const createProject = (source?: EditorProject) => fetch('/api/projects', {
   method: 'POST',

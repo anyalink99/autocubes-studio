@@ -59,6 +59,45 @@
     .tool-button { border-color: #393a35; color: #eee; background: #191917; }
     .tool-button:hover { border-color: #60615a; background: #232320; }
     .tool-button.accent { border-color: var(--orange); color: #150d09; background: var(--orange); font-weight: 700; }
+    .studio-drawer { position:fixed; top:0; right:0; bottom:0; z-index:80; width:min(420px,100vw); display:grid; grid-template-rows:auto minmax(0,1fr) auto; border-left:1px solid #45463f; background:#151513; box-shadow:-30px 0 80px rgba(0,0,0,.55); transform:translateX(105%); transition:transform .24s ease; }
+    .studio-drawer.open { transform:translateX(0); }
+    .drawer-head { min-height:68px; display:flex; align-items:center; justify-content:space-between; padding:14px 16px; border-bottom:1px solid var(--line); }
+    .drawer-head span { color:var(--orange); font-size:8px; font-weight:700; letter-spacing:.14em; text-transform:uppercase; }
+    .drawer-head h2 { margin:4px 0 0; font-size:18px; }
+    .drawer-head button { width:32px; height:32px; border:1px solid var(--line); border-radius:4px; background:transparent; cursor:pointer; }
+    .drawer-body { min-height:0; overflow:auto; padding:16px; }
+    .brand-field { display:block; margin-bottom:13px; }
+    .brand-field > span { display:block; margin-bottom:5px; color:#85867f; font-size:8px; font-weight:700; letter-spacing:.08em; text-transform:uppercase; }
+    .brand-field input, .brand-field textarea { width:100%; height:34px; padding:0 9px; border:1px solid #393a35; border-radius:3px; outline:0; color:#eee; background:#10110f; }
+    .brand-field textarea { height:68px; padding:8px 9px; resize:vertical; }
+    .brand-field input:focus,.brand-field textarea:focus { border-color:#76503b; }
+    .brand-colors { display:grid; grid-template-columns:1fr 1fr; gap:8px; }
+    .brand-colors .brand-field input { padding:2px; }
+    .brand-toggle { min-height:34px; display:flex; align-items:center; gap:8px; margin:4px 0 14px; color:#aaa; font-size:10px; }
+    .brand-toggle input { accent-color:var(--orange); }
+    .drawer-note { padding:11px; border:1px dashed #3d3e38; color:#7d7e77; font-size:9px; line-height:1.5; }
+    .drawer-actions { display:grid; grid-template-columns:1fr 1fr; gap:6px; padding:12px 16px; border-top:1px solid var(--line); }
+    .drawer-actions button { height:38px; border:1px solid #42433d; border-radius:4px; background:#252522; cursor:pointer; }
+    .drawer-actions button.primary { color:#130e0b; border-color:var(--orange); background:var(--orange); font-weight:700; }
+    .carousel-builder { position:fixed; inset:0; z-index:82; display:none; grid-template-columns:minmax(0,1fr) 360px; background:rgba(5,5,5,.96); }
+    .carousel-builder.open { display:grid; }
+    .carousel-preview { min-width:0; display:grid; place-items:center; padding:40px; overflow:auto; }
+    .carousel-strip { display:flex; gap:18px; align-items:center; max-width:100%; overflow:auto; padding:22px; scroll-snap-type:x mandatory; }
+    .carousel-slide { flex:0 0 min(54vh,420px); scroll-snap-align:center; }
+    .carousel-slide { position:relative; }
+    .carousel-slide .artboard { width:100%; }
+    .carousel-number { position:absolute; right:8px; bottom:8px; z-index:20; padding:5px 7px; color:#eee; background:rgba(0,0,0,.72); font:8px Consolas,monospace; }
+    .carousel-panel { min-height:0; display:grid; grid-template-rows:auto minmax(0,1fr) auto; border-left:1px solid var(--line); background:#151513; }
+    .carousel-list { min-height:0; overflow:auto; padding:10px; }
+    .carousel-item { display:grid; grid-template-columns:28px 50px minmax(0,1fr) auto; align-items:center; gap:7px; min-height:59px; padding:5px; border:1px solid transparent; border-bottom-color:#292a26; }
+    .carousel-item > span { color:#777; font:9px Consolas,monospace; }
+    .carousel-item .mini-art { width:50px; height:46px; overflow:hidden; background:#0d0e0d; }
+    .carousel-item .mini-art .artboard { width:100%; height:100%; aspect-ratio:auto; }
+    .carousel-item strong { overflow:hidden; text-overflow:ellipsis; white-space:nowrap; font-size:10px; }
+    .carousel-item div:last-child { display:flex; }
+    .carousel-item button { width:24px; height:25px; padding:0; border:0; color:#888; background:transparent; cursor:pointer; }
+    .carousel-item button:hover { color:#fff; }
+    .mutate-button { height:24px!important; padding:0 6px!important; color:#d7ad94!important; border-color:#604431!important; font-size:8px!important; }
     .format-dock { position: sticky; top: 68px; z-index: 19; min-height: 48px; display: flex; align-items: center; gap: 7px; padding: 7px 22px; border-bottom: 1px solid var(--line); background: rgba(15,15,13,.96); backdrop-filter: blur(16px); }
     .format-dock-label { margin-right: 4px; color: #777871; font-size: 9px; font-weight: 700; letter-spacing: .9px; text-transform: uppercase; }
     .format-preset { height: 32px; display: flex; align-items: center; gap: 7px; padding: 0 10px; border: 1px solid #34352f; border-radius: 4px; color: #aaa9a3; background: #181816; font-size: 10px; cursor: pointer; }
@@ -433,6 +472,7 @@
     @media (max-width: 1180px) { .gallery { grid-template-columns: repeat(2, minmax(0, 1fr)); } .lab-brand { min-width: 170px; } }
     @media (max-width: 980px) { .modal { grid-template-columns: minmax(0,1fr) 340px; } .modal-stage { padding: 20px; } }
     @media (max-width: 820px) { .lab-header { position: relative; height: auto; min-height: 64px; flex-wrap: wrap; padding: 10px 14px; } .lab-brand { min-width: 0; } .filters { order: 3; width: 100%; } .format-dock { top: 0; padding: 7px 14px; overflow-x: auto; } .format-dock-label, .export-size { display:none; } .format-preset span { display:none; } .intro { grid-template-columns: 1fr; padding: 38px 14px; } .gallery { grid-template-columns: repeat(2, minmax(0, 1fr)); padding: 16px 14px 100px; } .modal { grid-template-columns: 1fr; grid-template-rows: minmax(300px,48vh) minmax(0,1fr); } .modal-stage { padding: 12px; } .modal-panel { border-top: 1px solid var(--line); border-left: 0; } .editor-scroll { padding-bottom: 12px; } }
+    @media (max-width: 820px) { .carousel-builder { grid-template-columns:1fr; grid-template-rows:45vh minmax(0,1fr); } .carousel-preview { padding:10px; } .carousel-panel { border-top:1px solid var(--line); border-left:0; } }
     @media (max-width: 520px) { .gallery { grid-template-columns: 1fr; } .counter { display: none; } .intro h1 { letter-spacing: -2px; } .modal { grid-template-rows: 42vh minmax(0,1fr); } .modal-stage { align-items: center; padding: 8px; } .modal-panel { padding: 12px; } }
     @media (prefers-reduced-motion: reduce) { * { scroll-behavior: auto !important; transition: none !important; } }
   </style>
@@ -443,6 +483,7 @@
     <nav class="filters" aria-label="Composition filters"></nav>
     <div class="header-spacer"></div>
     <span class="counter"></span>
+    <button class="tool-button" id="openBrandKit">Brand Kit</button>
     <button class="tool-button" id="shuffle">Shuffle</button>
     <button class="tool-button accent" id="pickedOnly">Picked</button>
   </header>
@@ -462,7 +503,9 @@
     <div class="intro-copy"><b>One card is one idea.</b> Switch variants in place, then open any version to edit its layers, spacing, type, and colour before exporting the final shortlist.</div>
   </section>
   <main class="gallery" id="gallery"></main>
-  <aside class="selection-tray" id="selectionTray"><div><strong id="selectionCount">0 picked</strong><span id="selectionIds">Pick order becomes carousel order</span></div><div class="spacer"></div><button id="clearSelection">Clear</button><button id="exportSelection">Export JSON</button><button id="exportPack">PNG pack</button></aside>
+  <aside class="selection-tray" id="selectionTray"><div><strong id="selectionCount">0 picked</strong><span id="selectionIds">Pick order becomes carousel order</span></div><div class="spacer"></div><button id="openCarousel">Carousel</button><button id="clearSelection">Clear</button><button id="exportSelection">Export JSON</button><button id="exportPack">PNG pack</button></aside>
+  <aside class="studio-drawer" id="brandDrawer" aria-label="Brand Kit"><div class="drawer-head"><div><span>Shared identity source</span><h2>Brand Kit</h2></div><button id="closeBrandKit">×</button></div><div class="drawer-body"><label class="brand-field"><span>Brand name</span><input id="brandName"></label><label class="brand-field"><span>Studio line</span><input id="brandTagline"></label><label class="brand-field"><span>Email</span><input id="brandEmail" type="email"></label><label class="brand-field"><span>Website</span><input id="brandWebsite"></label><label class="brand-field"><span>Logo URL</span><input id="brandLogo" placeholder="/assets/brand/autocubes.svg"></label><div class="brand-colors"><label class="brand-field"><span>Primary</span><input id="brandPrimary" type="color"></label><label class="brand-field"><span>Secondary</span><input id="brandSecondary" type="color"></label></div><label class="brand-toggle"><input id="brandUseColors" type="checkbox">Apply Brand Kit colours to every idea</label><label class="brand-field"><span>Default social caption</span><textarea id="brandCaption"></textarea></label><label class="brand-field"><span>Default hashtags</span><textarea id="brandHashtags"></textarea></label><div class="drawer-note">Brand Kit updates shared names, lockups, contact details and optional colours. Individual layer edits remain stronger than the kit.</div></div><div class="drawer-actions"><button id="resetBrandKit">Reset</button><button class="primary" id="saveBrandKit">Apply to ideas</button></div></aside>
+  <div class="carousel-builder" id="carouselBuilder"><div class="carousel-preview"><div class="carousel-strip" id="carouselStrip"></div></div><aside class="carousel-panel"><div class="drawer-head"><div><span>Instagram sequence</span><h2>Carousel Builder</h2></div><button id="closeCarousel">×</button></div><div class="carousel-list" id="carouselList"></div><div class="drawer-actions"><button id="reverseCarousel">Reverse</button><button class="primary" id="exportCarousel">Export PNG pack</button></div></aside></div>
   <div class="modal" id="modal" role="dialog" aria-modal="true" aria-label="Composition preview">
     <div class="modal-stage"><div class="modal-artboard" id="modalArtboard"></div></div>
     <aside class="modal-panel">
@@ -532,6 +575,9 @@
       catch { localStorage.removeItem(key); return fallback; }
     }
     const picked = new Set(readStored('autocubes-identity-v2-picked', []));
+    const BRAND_KEY = 'autocubes-identity-brand-kit-v1';
+    const brandDefaults = {name:'autocubes', tagline:'Design. Code. Motion.', email:'contact@autocubes.site', website:'autocubes.site', logo:'/assets/brand/autocubes.svg', primary:'#ff5a2f', secondary:'#ffb19d', useColors:false, caption:'Built to ship.', hashtags:'#autocubes #designstudio'};
+    let brandKit = {...brandDefaults, ...readStored(BRAND_KEY, {})};
     let activeFilter = 'All';
     let pickedMode = false;
     let currentId = null;
@@ -623,8 +669,8 @@
       if (persist) localStorage.setItem('autocubes-identity-format', currentFormat.id);
     }
 
-    const logo = () => '<img class="logo" src="/assets/brand/autocubes.svg" alt="">';
-    const lockup = () => '<div class="brand-lockup"><img src="/assets/brand/autocubes.svg" alt=""><span>autocubes</span></div>';
+    const logo = () => `<img class="logo" src="${brandKit.logo}" alt="">`;
+    const lockup = () => `<div class="brand-lockup"><img src="${brandKit.logo}" alt=""><span>${brandKit.name}</span></div>`;
     const image = (project) => `<img class="project-image" src="${project.image}" alt="${project.title}">`;
     const slabs = () => `<div class="slabs"><div class="slab">${logo()}</div><div class="slab">${logo()}</div><div class="slab">${logo()}</div></div>`;
     const themeClass = (palette) => palette[2] === 'dark' ? '' : palette[2];
@@ -674,7 +720,7 @@
       edits[id].board ||= {};
       edits[id].nodes ||= {};
       edits[id].added ||= [];
-      if (!edits[id].post) edits[id].post = {caption:'', alt:'', hashtags:''};
+      if (!edits[id].post) edits[id].post = {caption:brandKit.caption || '', alt:'', hashtags:brandKit.hashtags || ''};
       return edits[id];
     }
 
@@ -751,9 +797,21 @@
       return element;
     }
 
+    function applyBrandKit(board) {
+      board.querySelectorAll('.brand-lockup > span').forEach(element => {element.textContent = brandKit.name;});
+      board.querySelectorAll('.brand-lockup > img, img.logo').forEach(element => {element.src = brandKit.logo;});
+      board.querySelectorAll('.footline span:first-child').forEach(element => {element.textContent = `${brandKit.name} studio`;});
+      board.querySelectorAll('.email').forEach(element => {element.textContent = brandKit.email;});
+      if (brandKit.useColors) {
+        board.style.setProperty('--accent', brandKit.primary);
+        board.style.setProperty('--accent2', brandKit.secondary);
+      }
+    }
+
     function applyStoredEdits(board, id) {
       if (!board) return;
       board.querySelectorAll('[data-added-id]').forEach(element => element.remove());
+      applyBrandKit(board);
       assignEditIds(board);
       const record = edits[id];
       if (!record) return;
@@ -1045,7 +1103,7 @@
     function cardMarkup(group) {
       const study = activeStudy(group);
       const variant = (positions[group.template] || 0) + 1;
-      return `<article class="composition ${picked.has(study.id) ? 'picked' : ''}" data-id="${study.id}" data-template="${group.template}" data-family="${group.family}"><div class="card-head"><span>Idea ${String(group.template + 1).padStart(2,'0')}</span><span class="family">${group.family} / ${group.title}</span><span class="spacer"></span><div class="variant-nav"><button data-delta="-1" title="Previous variant">&#8592;</button><span>${String(variant).padStart(2,'0')} / ${String(group.studies.length).padStart(2,'0')}</span><button data-delta="1" title="Next variant">&#8594;</button></div><button class="pick-button" title="Pick variant" aria-label="Pick variant">&#10003;</button></div>${study.html}</article>`;
+      return `<article class="composition ${picked.has(study.id) ? 'picked' : ''}" data-id="${study.id}" data-template="${group.template}" data-family="${group.family}"><div class="card-head"><span>Idea ${String(group.template + 1).padStart(2,'0')}</span><span class="family">${group.family} / ${group.title}</span><span class="spacer"></span><button class="mutate-button" title="Generate a different controlled variation">Mutate</button><div class="variant-nav"><button data-delta="-1" title="Previous variant">&#8592;</button><span>${String(variant).padStart(2,'0')} / ${String(group.studies.length).padStart(2,'0')}</span><button data-delta="1" title="Next variant">&#8594;</button></div><button class="pick-button" title="Pick variant" aria-label="Pick variant">&#10003;</button></div>${study.html}</article>`;
     }
 
     function hydrateCard(card) {
@@ -1054,6 +1112,7 @@
       board.classList.toggle('show-guides', guidesVisible);
       board.onclick = () => openModal(Number(card.dataset.id));
       card.querySelector('.pick-button').onclick = () => togglePick(Number(card.dataset.id));
+      card.querySelector('.mutate-button').onclick = () => mutateVariant(Number(card.dataset.template));
       card.querySelectorAll('.variant-nav button').forEach(button => button.onclick = () => cycleVariant(Number(card.dataset.template), Number(button.dataset.delta)));
     }
 
@@ -1079,6 +1138,17 @@
       positions[template] = (positions[template] + delta + group.studies.length) % group.studies.length;
       localStorage.setItem('autocubes-identity-v2-positions', JSON.stringify(positions));
       updateGroupCard(template);
+    }
+
+    function mutateVariant(template) {
+      const group = groups[template];
+      const current = positions[template] || 0;
+      let next = current;
+      while (next === current && group.studies.length > 1) next = Math.floor(Math.random() * group.studies.length);
+      positions[template] = next;
+      localStorage.setItem('autocubes-identity-v2-positions', JSON.stringify(positions));
+      updateGroupCard(template);
+      showToast(`Idea ${String(template + 1).padStart(2,'0')} mutated · variant ${next + 1}`);
     }
 
     function applyFilters() {
@@ -1107,6 +1177,68 @@
       document.getElementById('selectionTray').classList.toggle('visible', ids.length > 0);
       document.getElementById('selectionCount').textContent = `${ids.length} picked`;
       document.getElementById('selectionIds').textContent = ids.length ? ids.map((x,index)=>`${index + 1}. ${String(x).padStart(3,'0')}`).join(' · ') : 'Pick order becomes carousel order';
+    }
+
+    function syncBrandFields() {
+      document.getElementById('brandName').value = brandKit.name;
+      document.getElementById('brandTagline').value = brandKit.tagline;
+      document.getElementById('brandEmail').value = brandKit.email;
+      document.getElementById('brandWebsite').value = brandKit.website;
+      document.getElementById('brandLogo').value = brandKit.logo;
+      document.getElementById('brandPrimary').value = brandKit.primary;
+      document.getElementById('brandSecondary').value = brandKit.secondary;
+      document.getElementById('brandUseColors').checked = brandKit.useColors;
+      document.getElementById('brandCaption').value = brandKit.caption;
+      document.getElementById('brandHashtags').value = brandKit.hashtags;
+    }
+
+    function saveBrandKit() {
+      brandKit = {
+        name:document.getElementById('brandName').value.trim() || brandDefaults.name,
+        tagline:document.getElementById('brandTagline').value.trim(),
+        email:document.getElementById('brandEmail').value.trim(),
+        website:document.getElementById('brandWebsite').value.trim(),
+        logo:document.getElementById('brandLogo').value.trim() || brandDefaults.logo,
+        primary:document.getElementById('brandPrimary').value,
+        secondary:document.getElementById('brandSecondary').value,
+        useColors:document.getElementById('brandUseColors').checked,
+        caption:document.getElementById('brandCaption').value.trim(),
+        hashtags:document.getElementById('brandHashtags').value.trim(),
+      };
+      localStorage.setItem(BRAND_KEY, JSON.stringify(brandKit));
+      renderGallery(groupOrder);
+      if (currentId && document.getElementById('modal').classList.contains('open')) openModal(currentId, true);
+      document.getElementById('brandDrawer').classList.remove('open');
+      showToast('Brand Kit applied across Identity Lab');
+    }
+
+    function setPickedOrder(ids) {
+      picked.clear();
+      ids.forEach(id => picked.add(id));
+      localStorage.setItem('autocubes-identity-v2-picked', JSON.stringify(ids));
+      updateTray();
+      renderCarouselBuilder();
+    }
+
+    function renderCarouselBuilder() {
+      const ids = [...picked].filter(id => studies[id - 1]);
+      const list = document.getElementById('carouselList');
+      const strip = document.getElementById('carouselStrip');
+      list.innerHTML = ids.map((id,index) => `<div class="carousel-item" data-id="${id}"><span>${String(index + 1).padStart(2,'0')}</span><div class="mini-art">${studies[id - 1].html}</div><strong>${studies[id - 1].title}</strong><div><button data-move="-1" title="Move earlier">↑</button><button data-move="1" title="Move later">↓</button><button data-remove title="Remove">×</button></div></div>`).join('') || '<div class="drawer-note">Pick at least two compositions to build an Instagram carousel.</div>';
+      strip.innerHTML = ids.map((id,index) => `<div class="carousel-slide" data-id="${id}">${studies[id - 1].html}<span class="carousel-number">${index + 1} / ${ids.length}</span></div>`).join('');
+      [...list.querySelectorAll('.carousel-item')].forEach((item,index) => {
+        const id = Number(item.dataset.id);
+        applyStoredEdits(item.querySelector('.artboard'), id);
+        item.querySelectorAll('[data-move]').forEach(button => button.onclick = () => {
+          const next = Math.max(0, Math.min(ids.length - 1, index + Number(button.dataset.move)));
+          if (next === index) return;
+          const reordered = [...ids];
+          reordered.splice(next, 0, reordered.splice(index, 1)[0]);
+          setPickedOrder(reordered);
+        });
+        item.querySelector('[data-remove]').onclick = () => setPickedOrder(ids.filter(value => value !== id));
+      });
+      [...strip.querySelectorAll('.carousel-slide')].forEach(slide => applyStoredEdits(slide.querySelector('.artboard'), Number(slide.dataset.id)));
     }
 
     function openModal(id, preserveHistory = false) {
@@ -1192,6 +1324,14 @@
       renderGallery(groupOrder);
     };
     document.getElementById('clearSelection').onclick = () => { picked.clear(); localStorage.removeItem('autocubes-identity-v2-picked'); updateTray(); renderGallery(groupOrder); };
+    document.getElementById('openBrandKit').onclick = () => {syncBrandFields(); document.getElementById('brandDrawer').classList.add('open');};
+    document.getElementById('closeBrandKit').onclick = () => document.getElementById('brandDrawer').classList.remove('open');
+    document.getElementById('saveBrandKit').onclick = saveBrandKit;
+    document.getElementById('resetBrandKit').onclick = () => {brandKit = {...brandDefaults}; syncBrandFields();};
+    document.getElementById('openCarousel').onclick = () => {renderCarouselBuilder(); document.getElementById('carouselBuilder').classList.add('open');};
+    document.getElementById('closeCarousel').onclick = () => document.getElementById('carouselBuilder').classList.remove('open');
+    document.getElementById('reverseCarousel').onclick = () => setPickedOrder([...picked].reverse());
+    document.getElementById('exportCarousel').onclick = () => {document.getElementById('carouselBuilder').classList.remove('open'); document.getElementById('exportPack').click();};
     document.getElementById('exportSelection').onclick = () => {
       const ids = [...picked];
       const blob = new Blob([JSON.stringify({project:'autocubes identity lab',selected:ids.map(id=>({id:`AC-${String(id).padStart(3,'0')}`,family:studies[id-1].family,title:studies[id-1].title,edits:edits[id] || null}))},null,2)],{type:'application/json'});

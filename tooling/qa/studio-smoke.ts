@@ -106,7 +106,7 @@ const main = async () => {
     const stageRatio = await page.locator('.stage').evaluate((element) => getComputedStyle(element).aspectRatio);
     if (!stageRatio.includes('1080') || !stageRatio.includes('1350')) throw new Error(`Motion format did not change: ${stageRatio}`);
     if (!await page.locator('.safe-zone-overlay').isVisible()) throw new Error('Motion safe zone is not visible');
-    await page.locator('.track-label').filter({hasText: 'Captions'}).locator('button').click();
+    await page.getByTitle('Add Captions at playhead').click();
     await page.locator('.inspector textarea').fill('Built to ship.');
     if (await page.locator('.preview-caption').textContent() !== 'Built to ship.') throw new Error('Motion caption preview did not update');
     const coverPromise = page.waitForEvent('download');
@@ -139,8 +139,8 @@ const main = async () => {
     } finally {
       await fs.rm(path.resolve('data/projects', `${duplicate.id}.editor.json`), {force: true});
     }
-    const lastProjectDelete = await page.request.delete(`${baseUrl}/api/project?id=${encodeURIComponent(String(sourceProject.id))}`);
-    if (lastProjectDelete.ok()) throw new Error('The API allowed deletion of the last project');
+    const missingProjectDelete = await page.request.delete(`${baseUrl}/api/project?id=qa-project-that-does-not-exist`);
+    if (missingProjectDelete.ok()) throw new Error('The API reported success while deleting a missing project');
 
     const uploadResponse = await page.request.put(`${baseUrl}/api/assets?name=qa-tone.mp3`, {data: Buffer.from('ID3QA')});
     if (!uploadResponse.ok()) throw new Error(`Audio upload returned ${uploadResponse.status()}`);

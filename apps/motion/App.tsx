@@ -2,6 +2,7 @@ import React, {useCallback, useEffect, useMemo, useRef, useState} from 'react';
 import {
   AlertTriangle,
   CheckCircle2,
+  Captions,
   CircleStop,
   Copy,
   Download,
@@ -18,7 +19,6 @@ import {
   Save,
   Settings2,
   Trash2,
-  WandSparkles,
   Undo2,
   Upload,
   Video,
@@ -29,12 +29,14 @@ import {captureFrame, createProject, deleteAudio, deleteProject as deleteProject
 import {Inspector} from './Inspector';
 import {Preview} from './Preview';
 import {Timeline} from './Timeline';
+import {ShotLibrary} from './ShotLibrary';
+import {CaptionLibrary} from './CaptionLibrary';
 import {AssetLibrary, EditorProject, JobState, ProjectSummary, Selection} from '../../packages/core/editor-project';
+import {applyRecipe, arrangeFrames, duplicateTimelineItem, formatEditorTime, migrateEditorProject, MotionRecipeId} from '../../packages/core/editor-operations';
 
 const emptyAssets: AssetLibrary = {audio: [], images: [], videos: []};
 const clone = <T,>(value: T): T => structuredClone(value);
 const uid = (prefix: string) => `${prefix}-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`;
-const formatTime = (value: number) => `${Math.floor(value / 60).toString().padStart(2, '0')}:${Math.floor(value % 60).toString().padStart(2, '0')}:${Math.floor((value % 1) * 100).toString().padStart(2, '0')}`;
 
 export const App = () => {
   const [project, setProject] = useState<EditorProject | null>(null);
@@ -47,11 +49,12 @@ export const App = () => {
   const [looping, setLooping] = useState(false);
   const [previewMode, setPreviewMode] = useState<'storyboard' | 'capture'>('storyboard');
   const [zoom, setZoom] = useState(72);
+  const [timelineHeight, setTimelineHeight] = useState(() => Math.max(250, Math.min(560, Number(localStorage.getItem('motion-desk-timeline-height')) || 368)));
   const [dirty, setDirty] = useState(false);
   const [saving, setSaving] = useState(false);
   const [capturingFrame, setCapturingFrame] = useState(false);
   const [job, setJob] = useState<JobState | null>(null);
-  const [activePanel, setActivePanel] = useState<'shots' | 'assets'>('shots');
+  const [activePanel, setActivePanel] = useState<'shots' | 'captions' | 'assets'>('shots');
   const [assetQuery, setAssetQuery] = useState('');
   const [notice, setNotice] = useState<{tone: 'ok' | 'error'; message: string} | null>(null);
   const [lastSavedAt, setLastSavedAt] = useState<number | null>(null);
@@ -66,6 +69,8 @@ export const App = () => {
   const refreshedJob = useRef<string | null>(null);
   const saveFailed = useRef(false);
   const revision = useRef(0);
+  const lastCommit = useRef<{key?:string; at:number}>({at:0});
+  const clipboard = useRef<{track:Exclude<Selection['track'],'project'>; item:Record<string,unknown>&{id:string;at:number}}|null>(null);
 
   useEffect(() => {
     const requestedId = new URLSearchParams(window.location.search).get('project') ?? undefined;
@@ -78,11 +83,16 @@ export const App = () => {
     }).catch((error) => setLoadError(error instanceof Error ? error.message : 'Could not load Motion Desk'));
   }, []);
 
-  const commit = useCallback((updater: (current: EditorProject) => EditorProject) => {
+  const commit = useCallback((updater: (current: EditorProject) => EditorProject, coalesceKey?: string) => {
     setProject((current) => {
       if (!current) return current;
-      history.current.push(clone(current));
-      history.current = history.current.slice(-80);
+      const now = performance.now();
+      const coalesced = Boolean(coalesceKey && lastCommit.current.key === coalesceKey && now - lastCommit.current.at < 650);
+      if (!coalesced) {
+        history.current.push(clone(current));
+        history.current = history.current.slice(-80);
+      }
+      lastCommit.current = {key:coalesceKey,at:now};
       future.current = [];
       setDirty(true);
       saveFailed.current = false;
@@ -192,7 +202,7 @@ export const App = () => {
     playbackStart.current = {clock: performance.now(), time: currentTime};
     let animation = 0;
     const tick = (clock: number) => {
-      const next = playbackStart.current.time + (clock - playbackStart.current.clock) / 1000;
+      const next = playbackStart.current.time + (clock - playbackStart.current.clock) / 1000 * (project.playbackRate ?? 1);
       if (next >= project.duration) {
         if (looping) {
           audioInstances.current.forEach((audio) => audio.pause());
@@ -222,7 +232,9 @@ export const App = () => {
       ? item.at <= currentTime && item.at + item.duration > currentTime
       : item.at > from && item.at <= currentTime)).forEach((item) => {
       const audio = new Audio(item.asset);
-      audio.volume = Math.min(1, item.volume);
+      audio.volume = Math.min(1, item.volume * (project.masterVolume ?? 1));
+      audio.playbackRate = project.playbackRate ?? 1;
+      audio.loop = item.loop ?? false;
       if (starting) audio.currentTime = Math.max(0, currentTime - item.at);
       void audio.play();
       audioInstances.current.push(audio);
@@ -269,10 +281,11 @@ export const App = () => {
     if (track === 'project' || !selection.id) return;
     commit((draft) => {
       const list = draft[track];
+      if (!list) return draft;
       const index = list.findIndex((item) => item.id === selection.id);
       if (index >= 0) Object.assign(list[index], patch);
       return draft;
-    });
+    }, `${track}:${selection.id}:${Object.keys(patch).sort().join(',')}`);
   }, [commit, selection]);
 
   const addItem = useCallback((track: Exclude<Selection['track'], 'project'>, selectedAsset?: string) => {
@@ -285,8 +298,9 @@ export const App = () => {
       if (track === 'captions') draft.captions.push({id, label: 'Caption', text: 'Your message', at: currentTime, duration: 2.5, position: 'bottom', style: 'boxed', size: 54});
       if (track === 'audio') {
         const asset = selectedAsset ?? assets.audio[0] ?? '';
-        draft.audio.push({id, label: asset.split('/').pop()?.replace(/\.[^.]+$/, '') || 'Audio cue', at: currentTime, duration: 1, asset, volume: 0.3, enabled: true});
+        draft.audio.push({id, label: asset.split('/').pop()?.replace(/\.[^.]+$/, '') || 'Audio cue', at: currentTime, duration: 1, asset, volume: 0.3, enabled: true, fadeIn:0, fadeOut:0, category:'sfx', beatInterval:0});
       }
+      if (track === 'overlays') draft.overlays?.push({id, label: 'Studio label', text: 'AUTOCUBES', at: currentTime, duration: 2.5, kind: 'label', x: 8, y: 8, scale: 1, opacity: 1, color: '#ffffff'});
       return draft;
     });
     setSelection({track, id});
@@ -320,25 +334,59 @@ export const App = () => {
   const deleteSelected = useCallback(() => {
     const track = selection.track;
     if (track === 'project' || !selection.id) return;
+    const ids = new Set(selection.ids?.length ? selection.ids : [selection.id]);
     commit((draft) => {
       const list = draft[track];
-      const index = list.findIndex((item) => item.id === selection.id);
-      if (index >= 0) list.splice(index, 1);
+      if (!list) return draft;
+      for (let index = list.length - 1; index >= 0; index -= 1) if (ids.has(list[index].id)) list.splice(index, 1);
       return draft;
     });
     setSelection({track: 'project'});
   }, [commit, selection]);
 
+  const splitSelected = useCallback(() => {
+    const track = selection.track;
+    if (track === 'project' || !selection.id) return;
+    commit((draft) => {
+      const list = draft[track] as Array<Record<string, unknown> & {id:string; at:number; duration:number; hold?:number}> | undefined;
+      const source = list?.find((item) => item.id === selection.id);
+      if (!list || !source) return draft;
+      const end = source.at + source.duration + (source.hold ?? 0);
+      if (currentTime <= source.at + 1 / draft.fps || currentTime >= end - 1 / draft.fps) return draft;
+      const next = clone(source);
+      next.id = uid(track);
+      next.at = currentTime;
+      if (track === 'frames') {
+        const firstLength = currentTime - source.at;
+        const secondLength = end - currentTime;
+        source.duration = Math.min(source.duration, firstLength);
+        source.hold = Math.max(0, firstLength - source.duration);
+        next.duration = Math.min(Number(next.duration), secondLength);
+        next.hold = Math.max(0, secondLength - next.duration);
+      } else {
+        next.duration = end - currentTime;
+        source.duration = currentTime - source.at;
+      }
+      list.push(next);
+      return draft;
+    });
+    setNotice({tone:'ok', message:'Clip split at the playhead'});
+  }, [commit, currentTime, selection]);
+
+  const addMarker = useCallback((at: number) => commit((draft) => {
+    draft.markers ??= [];
+    draft.markers.push({id:uid('marker'), label:`Marker ${draft.markers.length + 1}`, at, color:'#ffb35c'});
+    return draft;
+  }), [commit]);
+
   const duplicateSelected = useCallback(() => {
     const track = selection.track;
     if (!project || track === 'project' || !selection.id) return;
-    const source = project[track].find((item) => item.id === selection.id);
+    const source = project[track]?.find((item) => item.id === selection.id);
     if (!source) return;
     const id = uid(selection.track);
     commit((draft) => {
-      const list = draft[track];
-      list.push({...clone(source), id, at: Math.min(project.duration - 0.1, source.at + 0.5)} as never);
-      return draft;
+      return duplicateTimelineItem(draft, selection, id);
     });
     setSelection({track, id});
   }, [commit, project, selection]);
@@ -348,16 +396,27 @@ export const App = () => {
       const input = event.target instanceof HTMLInputElement || event.target instanceof HTMLTextAreaElement || event.target instanceof HTMLSelectElement;
       if (input || showShortcuts) return;
       if ((event.ctrlKey || event.metaKey) && event.key.toLowerCase() === 'd') {event.preventDefault(); duplicateSelected();}
+      if ((event.ctrlKey || event.metaKey) && event.key.toLowerCase() === 'c' && selection.track !== 'project' && selection.id && project) {
+        const item=project[selection.track]?.find((candidate)=>candidate.id===selection.id);
+        if(item){event.preventDefault();clipboard.current={track:selection.track,item:clone(item) as Record<string,unknown>&{id:string;at:number}};setNotice({tone:'ok',message:'Clip copied'});}
+      }
+      if ((event.ctrlKey || event.metaKey) && event.key.toLowerCase() === 'v' && clipboard.current) {
+        event.preventDefault(); const source=clipboard.current; const id=uid(source.track);
+        commit((draft)=>{const list=draft[source.track]; if(list) list.push({...clone(source.item),id,at:currentTime} as never); return draft;});
+        setSelection({track:source.track,id,ids:[id]}); setNotice({tone:'ok',message:'Clip pasted at the playhead'});
+      }
       if (event.key === 'Delete' || event.key === 'Backspace') {event.preventDefault(); deleteSelected();}
+      if (event.key === 'Escape') setSelection({track:'project'});
+      if (event.key.toLowerCase() === 's' && !event.ctrlKey && !event.metaKey) {event.preventDefault();splitSelected();}
       if (!event.ctrlKey && !event.metaKey && event.key.toLowerCase() === 'c') {event.preventDefault(); addItem('captions');}
     };
     window.addEventListener('keydown', keydown);
     return () => window.removeEventListener('keydown', keydown);
-  }, [addItem, deleteSelected, duplicateSelected, showShortcuts]);
+  }, [addItem, commit, currentTime, deleteSelected, duplicateSelected, project, selection, showShortcuts, splitSelected]);
 
-  const captureSelectedFrame = useCallback(async () => {
-    if (!project || selection.track !== 'frames' || !selection.id) return;
-    const frame = project.frames.find((item) => item.id === selection.id);
+  const captureFrameById = useCallback(async (frameId: string) => {
+    if (!project) return;
+    const frame = project.frames.find((item) => item.id === frameId);
     if (!frame) return;
     setCapturingFrame(true);
     try {
@@ -372,7 +431,11 @@ export const App = () => {
     } finally {
       setCapturingFrame(false);
     }
-  }, [commit, project, selection]);
+  }, [commit, project]);
+
+  const captureSelectedFrame = useCallback(async () => {
+    if (selection.track === 'frames' && selection.id) await captureFrameById(selection.id);
+  }, [captureFrameById, selection]);
 
   const runJob = useCallback(async (kind: 'capture' | 'render') => {
     if (!project) return;
@@ -385,17 +448,16 @@ export const App = () => {
     }
   }, [dirty, project, save]);
 
-  const autoArrangeFrames = useCallback(() => {
-    commit((draft) => {
-      let at = 0;
-      draft.frames.sort((a, b) => a.scrollY - b.scrollY).forEach((frame) => {
-        frame.at = Math.round(at * 10) / 10;
-        at += frame.duration + frame.hold;
-      });
-      draft.duration = Math.max(draft.duration, Math.ceil(at));
-      return draft;
-    });
-    setNotice({tone: 'ok', message: 'Frames arranged by page position'});
+  const autoArrangeFrames = useCallback((pace: 'slow' | 'balanced' | 'punchy' = 'balanced') => {
+    commit((draft) => arrangeFrames(draft, pace));
+    setNotice({tone: 'ok', message: `Shots arranged with a ${pace} pace`});
+  }, [commit]);
+
+  const applyMotionRecipe = useCallback((recipe: MotionRecipeId) => {
+    commit((draft) => applyRecipe(draft, recipe));
+    setSelection({track: 'frames'});
+    setCurrentTime(0);
+    setNotice({tone: 'ok', message: 'Story structure created. Every shot remains editable.'});
   }, [commit]);
 
   const switchProject = useCallback(async (id: string) => {
@@ -455,7 +517,7 @@ export const App = () => {
 
   const importProjectFile = useCallback(async (file: File) => {
     try {
-      const source = JSON.parse(await file.text()) as EditorProject;
+      const source = migrateEditorProject(JSON.parse(await file.text()) as EditorProject);
       if (!source.title || !source.url || !source.viewport || !Array.isArray(source.frames)) throw new Error('This is not a Motion Desk project');
       const created = await createProject({...source, captions: source.captions ?? []});
       setProjects(await listProjects());
@@ -507,14 +569,14 @@ export const App = () => {
   const missingFrames = useMemo(() => project?.frames.filter((frame) => !frame.thumbnail).length ?? 0, [project]);
   const outOfBounds = useMemo(() => {
     if (!project) return 0;
-    return [...project.frames, ...project.pointer, ...project.transitions, ...project.captions, ...project.audio].filter((item) => item.at < 0 || item.at + ('hold' in item ? item.duration + item.hold : item.duration) > project.duration + .01).length;
+    return [...project.frames, ...project.pointer, ...project.transitions, ...project.captions, ...project.audio, ...(project.overlays ?? [])].filter((item) => item.at < 0 || item.at + ('hold' in item ? item.duration + item.hold : item.duration) > project.duration + .01).length;
   }, [project]);
 
   if (!project && loadError) return <div className="loading-screen error-screen"><AlertTriangle/><strong>Motion Desk could not start</strong><span>{loadError}</span><button onClick={() => window.location.reload()}>Retry</button></div>;
   if (!project) return <div className="loading-screen"><LoaderCircle className="spin" /> Loading Motion Desk</div>;
 
   return (
-    <div className="editor-app">
+    <div className="editor-app" style={{gridTemplateRows:`54px minmax(0,1fr) ${timelineHeight}px`}}>
       <header className="topbar">
         <a className="brand" href="/"><img src="/assets/brand/autocubes.svg" /><div><strong>Motion Desk</strong><span>Autocubes</span></div></a>
         <div className="project-switcher"><span className={dirty ? 'dirty-dot' : 'saved-dot'} /><select value={project.id} onFocus={() => setSelection({track: 'project'})} onChange={(event) => void switchProject(event.target.value)} aria-label="Project">{projects.map((item) => <option key={item.id} value={item.id}>{item.title}</option>)}</select><button onClick={exportProjectFile} title="Export project JSON"><Download size={13}/></button><label className="project-file-action" title="Import project JSON"><Upload size={13}/><input type="file" accept="application/json,.json" onChange={(event) => {const file=event.target.files?.[0]; if(file) void importProjectFile(file); event.target.value='';}}/></label><button onClick={() => void duplicateProject()} title="Duplicate project"><Copy size={14}/></button><button onClick={() => void addProject()} title="New project"><Plus size={15} /></button></div>
@@ -534,20 +596,24 @@ export const App = () => {
         <aside className="sidebar">
           <div className="sidebar-tabs">
             <button className={activePanel === 'shots' ? 'active' : ''} onClick={() => setActivePanel('shots')}><FolderOpen size={15} />Shots</button>
+            <button className={activePanel === 'captions' ? 'active' : ''} onClick={() => setActivePanel('captions')}><Captions size={15}/>Text</button>
             <button className={activePanel === 'assets' ? 'active' : ''} onClick={() => setActivePanel('assets')}><Volume2 size={15} />Audio</button>
           </div>
           {activePanel === 'shots' ? (
-            <div className="shot-list">
-              <div className="sidebar-section-head"><span>{project.frames.length} frames</span><div><button onClick={autoArrangeFrames} title="Arrange by page position"><WandSparkles size={14}/></button><button onClick={() => addItem('frames')} title="Add frame at playhead"><Plus size={15} /></button></div></div>
-              {[...project.frames].sort((a, b) => a.at - b.at).map((frame, index) => (
-                <button className={`shot-row ${selection.track === 'frames' && selection.id === frame.id ? 'selected' : ''}`} key={frame.id} onClick={() => {setSelection({track: 'frames', id: frame.id}); setCurrentTime(frame.at + frame.duration);}}>
-                  <span className="shot-index">{String(index + 1).padStart(2, '0')}</span>
-                  <span className="shot-thumb">{frame.thumbnail ? <img src={frame.thumbnail} /> : null}</span>
-                  <span className="shot-copy"><strong>{frame.label}</strong><small>{frame.at.toFixed(1)}s · {Math.round((frame.scrollY / Math.max(1, project.pageHeight - project.viewport.height)) * 100)}%</small></span>
-                </button>
-              ))}
-            </div>
-          ) : (
+            <ShotLibrary
+              project={project}
+              selectedId={selection.track === 'frames' ? selection.id : undefined}
+              currentTime={currentTime}
+              onSelect={(id) => {const frame = project.frames.find((item) => item.id === id); setSelection({track: 'frames', id}); if (frame) setCurrentTime(frame.at + frame.duration);}}
+              onChange={(id, patch) => changeItemFor('frames', id, patch)}
+              onAdd={(scrollY) => {const id = uid('frames'); commit((draft) => {draft.frames.push({id, label: `Shot ${draft.frames.length + 1}`, at: currentTime, scrollY: scrollY ?? draft.frames.find((item) => currentTime >= item.at)?.scrollY ?? 0, duration: .8, hold: 1, easing: 'easeInOut', thumbnail: draft.frames[0]?.thumbnail}); return draft;}); setSelection({track:'frames', id});}}
+              onDuplicate={(id) => {setSelection({track:'frames', id}); const source = project.frames.find((item) => item.id === id); if (!source) return; const nextId = uid('frames'); commit((draft) => duplicateTimelineItem(draft, {track:'frames', id}, nextId)); setSelection({track:'frames', id:nextId});}}
+              onDelete={(id) => {commit((draft) => {draft.frames = draft.frames.filter((item) => item.id !== id); return draft;}); if (selection.id === id) setSelection({track:'project'});}}
+              onCapture={(id) => void captureFrameById(id)}
+              onArrange={autoArrangeFrames}
+              onRecipe={applyMotionRecipe}
+            />
+          ) : activePanel === 'captions' ? <CaptionLibrary project={project} currentTime={currentTime} selectedId={selection.track==='captions'?selection.id:undefined} onSelect={(id)=>{const caption=project.captions.find((item)=>item.id===id);setSelection({track:'captions',id,ids:[id]});if(caption)setCurrentTime(caption.at);}} onImport={(captions)=>commit((draft)=>{draft.captions.push(...captions); draft.duration=Math.max(draft.duration,...captions.map((item)=>item.at+item.duration)); return draft;})}/> : (
             <div className="asset-list">
               <div className="sidebar-section-head"><span>{assets.audio.length} files</span><div><label className="asset-upload" title="Import audio">{uploadingAudio ? <LoaderCircle className="spin" size={13}/> : <Upload size={13}/>}<input type="file" accept="audio/wav,audio/mpeg,audio/mp4,audio/aac" disabled={uploadingAudio} onChange={(event) => {const file = event.target.files?.[0]; if (file) void importAudio(file); event.target.value = '';}}/></label><button onClick={() => void loadAssets().then(setAssets)} title="Refresh"><RotateCcw size={14} /></button></div></div>
               <input className="asset-search" value={assetQuery} onChange={(event) => setAssetQuery(event.target.value)} placeholder="Filter audio…" aria-label="Filter audio"/>
@@ -557,26 +623,27 @@ export const App = () => {
         </aside>
 
         <div className="center-column">
-          <Preview project={project} currentTime={currentTime} playing={playing} mode={previewMode} selection={selection} onModeChange={setPreviewMode} onPickPointer={(x, y) => changeItem({x, y})} onChangeViewport={(viewport) => commit((draft) => {draft.viewport = viewport; draft.guides = true; return draft;})} onToggleGuides={() => commit((draft) => {draft.guides = draft.guides === false; return draft;})} />
+          <Preview project={project} currentTime={currentTime} playing={playing} mode={previewMode} selection={selection} onModeChange={setPreviewMode} onPickPointer={(x, y) => changeItem({x, y})} onChangeViewport={(viewport) => commit((draft) => {draft.viewport = viewport; draft.guides = true; return draft;})} onToggleGuides={() => commit((draft) => {draft.guides = draft.guides === false; return draft;})} onChangeFramePosition={(scrollY) => changeItem({scrollY})} />
           <div className="transport">
             <button className="icon-button" onClick={() => {setPlaying(false); setCurrentTime(0);}} title="Stop"><CircleStop size={17} /></button>
             <button className="play-button" onClick={togglePlayback} title="Play / pause">{playing ? <Pause size={18} /> : <Play size={18} fill="currentColor" />}</button>
             <button className={`icon-button ${looping ? 'is-active' : ''}`} onClick={() => setLooping((value) => !value)} title="Loop playback (L)"><Repeat2 size={15}/></button>
-            <span className="timecode">{formatTime(currentTime)}</span><span className="time-divider">/</span><span className="duration-readout">{formatTime(project.duration)}</span>
+            <span className="timecode">{formatEditorTime(currentTime, project.fps, project.timeDisplay)}</span><span className="time-divider">/</span><span className="duration-readout">{formatEditorTime(project.duration, project.fps, project.timeDisplay)}</span>
             <div className="transport-spacer" />
             {overlaps || missingFrames || outOfBounds ? <span className="warning-badge"><AlertTriangle size={14}/>{[overlaps && `${overlaps} overlaps`, missingFrames && `${missingFrames} uncaptured`, outOfBounds && `${outOfBounds} outside duration`].filter(Boolean).join(' · ')}</span> : <span className="ready-badge"><CheckCircle2 size={13}/>Ready to render</span>}
             <label className="zoom-control"><span>Zoom</span><input type="range" min={38} max={150} value={zoom} onChange={(event) => setZoom(Number(event.target.value))} /></label>
+            <select className="playback-rate" value={project.playbackRate ?? 1} onChange={(event) => commit((draft) => {draft.playbackRate=Number(event.target.value); return draft;})} aria-label="Playback speed"><option value={.25}>0.25×</option><option value={.5}>0.5×</option><option value={1}>1×</option><option value={1.5}>1.5×</option><option value={2}>2×</option></select>
           </div>
         </div>
 
         <Inspector project={project} selection={selection} assets={assets} capturingFrame={capturingFrame} onChangeProject={(patch) => commit((draft) => Object.assign(draft, patch))} onChangeItem={changeItem} onDelete={deleteSelected} onDuplicate={duplicateSelected} onCaptureFrame={() => void captureSelectedFrame()} onDeleteProject={() => void deleteCurrentProject()} />
       </main>
 
-      <Timeline project={project} currentTime={currentTime} selection={selection} pixelsPerSecond={zoom} onSeek={(time) => {setPlaying(false); setCurrentTime(time);}} onSelect={setSelection} onMoveItem={(track, id, at) => {setSelection({track, id}); changeItemFor(track, id, {at});}} onResizeItem={(track, id, duration) => {setSelection({track,id}); if (track === 'frames') {const frame = project.frames.find((item) => item.id === id); changeItemFor(track,id,{hold: Math.max(0, duration - (frame?.duration ?? 0))});} else changeItemFor(track,id,{duration});}} onAdd={addItem} onToggleSnap={() => commit((draft) => {draft.snap = draft.snap === false; return draft;})} />
+      <Timeline project={project} currentTime={currentTime} selection={selection} pixelsPerSecond={zoom} onSeek={(time) => {setPlaying(false); setCurrentTime(time);}} onSelect={setSelection} onMoveItem={(track, id, at) => {setSelection({track, id, ids:[id]}); changeItemFor(track, id, {at});}} onResizeItem={(track, id, duration) => {setSelection({track,id,ids:[id]}); if (track === 'frames') {const frame = project.frames.find((item) => item.id === id); changeItemFor(track,id,{hold: Math.max(0, duration - (frame?.duration ?? 0))});} else changeItemFor(track,id,{duration});}} onAdd={addItem} onToggleSnap={() => commit((draft) => {draft.snap = draft.snap === false; return draft;})} onZoom={setZoom} onSplit={splitSelected} onAddMarker={addMarker} onResizeHeight={(height)=>{setTimelineHeight(height);localStorage.setItem('motion-desk-timeline-height',String(height));}} />
 
       {notice ? <div className={`editor-toast ${notice.tone}`}>{notice.message}</div> : null}
 
-      {showShortcuts ? <div className="shortcut-backdrop" onClick={() => setShowShortcuts(false)}><section className="shortcut-card" onClick={(event) => event.stopPropagation()}><div><span>Motion Desk</span><h2>Keyboard shortcuts</h2><button onClick={() => setShowShortcuts(false)}><X size={15}/></button></div><dl><dt><kbd>Space</kbd></dt><dd>Play or pause</dd><dt><kbd>L</kbd></dt><dd>Toggle playback loop</dd><dt><kbd>←</kbd> <kbd>→</kbd></dt><dd>Move one frame</dd><dt><kbd>Shift</kbd> + <kbd>←</kbd>/<kbd>→</kbd></dt><dd>Move one second</dd><dt><kbd>+</kbd> / <kbd>−</kbd></dt><dd>Timeline zoom</dd><dt><kbd>C</kbd></dt><dd>Add caption at playhead</dd><dt><kbd>Ctrl</kbd> + <kbd>S</kbd></dt><dd>Save now</dd><dt><kbd>Ctrl</kbd> + <kbd>Z</kbd></dt><dd>Undo</dd><dt><kbd>Ctrl</kbd> + <kbd>D</kbd></dt><dd>Duplicate selected clip</dd><dt><kbd>Delete</kbd></dt><dd>Delete selected clip</dd><dt><kbd>Home</kbd> / <kbd>End</kbd></dt><dd>Timeline start or end</dd></dl></section></div> : null}
+      {showShortcuts ? <div className="shortcut-backdrop" onClick={() => setShowShortcuts(false)}><section className="shortcut-card" onClick={(event) => event.stopPropagation()}><div><span>Motion Desk</span><h2>Keyboard shortcuts</h2><button onClick={() => setShowShortcuts(false)}><X size={15}/></button></div><dl><dt><kbd>Space</kbd></dt><dd>Play or pause</dd><dt><kbd>L</kbd></dt><dd>Toggle playback loop</dd><dt><kbd>←</kbd> <kbd>→</kbd></dt><dd>Move one frame</dd><dt><kbd>Shift</kbd> + <kbd>←</kbd>/<kbd>→</kbd></dt><dd>Move one second</dd><dt><kbd>+</kbd> / <kbd>−</kbd></dt><dd>Timeline zoom</dd><dt><kbd>C</kbd></dt><dd>Add caption at playhead</dd><dt><kbd>S</kbd></dt><dd>Split selected clip</dd><dt><kbd>Ctrl</kbd> + <kbd>C</kbd>/<kbd>V</kbd></dt><dd>Copy or paste clip</dd><dt><kbd>Ctrl</kbd> + <kbd>S</kbd></dt><dd>Save now</dd><dt><kbd>Ctrl</kbd> + <kbd>Z</kbd></dt><dd>Undo</dd><dt><kbd>Ctrl</kbd> + <kbd>D</kbd></dt><dd>Duplicate selected clip</dd><dt><kbd>Delete</kbd></dt><dd>Delete selected clip</dd><dt><kbd>Home</kbd> / <kbd>End</kbd></dt><dd>Timeline start or end</dd></dl></section></div> : null}
 
       {job ? (
         <section className={`job-drawer ${job.status}`}>
@@ -589,9 +656,9 @@ export const App = () => {
 
   function changeItemFor(track: Exclude<Selection['track'], 'project'>, id: string, patch: Record<string, unknown>) {
     commit((draft) => {
-      const item = draft[track].find((candidate) => candidate.id === id);
+      const item = draft[track]?.find((candidate) => candidate.id === id);
       if (item) Object.assign(item, patch);
       return draft;
-    });
+    }, `${track}:${id}:${Object.keys(patch).sort().join(',')}`);
   }
 };

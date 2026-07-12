@@ -36,7 +36,7 @@ const modules = [
   {
     id: 'documents',
     title: 'Documents',
-    label: '6 studio templates',
+    label: '15 structured templates',
     href: '/documents.html',
     icon: FileText,
     tone: 'paper',
@@ -44,12 +44,12 @@ const modules = [
   },
   {
     id: 'canvas',
-    title: 'Canvas',
-    label: 'Collaborative design / planned',
-    href: '',
+    title: 'Project hub',
+    label: 'Assets / status / handoff',
+    href: '#project-hub',
     icon: Users,
     tone: 'muted',
-    copy: 'A shared design surface for future Autocubes projects.',
+    copy: 'Connect motion projects, identity selections, documents, and production handoff.',
   },
 ] as const;
 
@@ -69,11 +69,12 @@ export const StudioApp = () => {
 
   const recentDocuments = useMemo(() => {
     try {
-      return JSON.parse(localStorage.getItem('autocubes-documents-index') || '[]') as Array<{id: string; title: string; type: string; updatedAt: string}>;
+      return JSON.parse(localStorage.getItem('autocubes-documents-index') || '[]') as Array<{id: string; title: string; type: string; updatedAt: string; client?:string; project?:string; status?:string}>;
     } catch {
       return [];
     }
   }, []);
+  const identityState=useMemo(()=>{try{return {brand:JSON.parse(localStorage.getItem('autocubes-identity-brand-kit-v1')||'null') as {name?:string}|null,picked:(JSON.parse(localStorage.getItem('autocubes-identity-v2-picked')||'[]') as number[]).length};}catch{return {brand:null,picked:0};}},[]);
 
   return (
     <div className="studio-shell">
@@ -108,8 +109,8 @@ export const StudioApp = () => {
         <section className="studio-metrics" aria-label="Workspace summary">
           <div><span>Tools</span><strong>04</strong></div>
           <div><span>Motion projects</span><strong>{String(projects.length).padStart(2, '0')}</strong></div>
-          <div><span>Document templates</span><strong>06</strong></div>
-          <div><span>Identity studies</span><strong>532</strong></div>
+          <div><span>Studio documents</span><strong>{String(recentDocuments.length).padStart(2,'0')}</strong></div>
+          <div><span>Identity picks</span><strong>{String(identityState.picked).padStart(2,'0')}</strong></div>
         </section>
 
         <section className="module-grid" aria-label="Studio modules">
@@ -122,19 +123,26 @@ export const StudioApp = () => {
                 {module.id === 'motion' && <div className="motion-monitor" aria-hidden="true"><div className="monitor-frame"><span>flowline / 00:08:14</span><Play size={18} fill="currentColor" /></div><div className="monitor-track"><i /><b /><em /></div><div className="monitor-playhead" /></div>}
                 {module.id === 'identity' && <div className="identity-stack" aria-hidden="true"><i /><i /><i /><img src="/assets/brand/autocubes.svg" alt="" /></div>}
                 {module.id === 'documents' && <div className="document-sheet" aria-hidden="true"><i /><b /><span /><span /><span /></div>}
-                {module.id === 'canvas' && <div className="canvas-grid" aria-hidden="true"><ScanLine size={28} /><span>Reserved</span></div>}
+                {module.id === 'canvas' && <div className="canvas-grid" aria-hidden="true"><ScanLine size={28} /><span>{projects.length + recentDocuments.length + identityState.picked} active objects</span></div>}
               </>
             );
-            return module.href ? <a key={module.id} className={`module module-${module.tone} module-${module.id}`} href={module.href}>{content}</a> : <div key={module.id} className={`module module-${module.tone} module-${module.id}`} aria-disabled="true">{content}</div>;
+            return <a key={module.id} className={`module module-${module.tone} module-${module.id}`} href={module.href}>{content}</a>;
           })}
         </section>
 
-        <section className="work-register">
+        <section className="production-flow" aria-label="Studio production flow">
+          <a href="/apps/identity/identity-lab.html"><span>01</span><div><b>Define the system</b><small>{identityState.brand?.name??'Brand Kit'} · {identityState.picked} selected directions</small></div><ArrowRight size={15}/></a>
+          <a href="/editor.html"><span>02</span><div><b>Build the motion</b><small>{projects.length} projects · reels, stories, walkthroughs</small></div><ArrowRight size={15}/></a>
+          <a href="/documents.html"><span>03</span><div><b>Package the work</b><small>{recentDocuments.length} briefs, approvals, and handoffs</small></div><ArrowRight size={15}/></a>
+        </section>
+
+        <section className="work-register" id="project-hub">
           <div className="section-title"><div><span className="eyebrow">Current work</span><h2>Project register</h2></div><a href="/editor.html">Open motion desk <ArrowRight size={15} /></a></div>
           <div className="register-table">
             {(projects.length ? projects : [{id:'flowline', title:'Flowline', url:'https://portfolio.autocubes.site/flowline'}]).slice(0, 5).map((project, index) => <a href={`/editor.html?project=${encodeURIComponent(project.id)}`} className="register-row" key={project.id}><span>{String(index + 1).padStart(2, '0')}</span><strong>{project.title}</strong><span>{project.url.replace(/^https?:\/\//, '')}</span><span>Motion</span><ArrowUpRight size={15} /></a>)}
             {recentDocuments.slice(0, 3).map((document, index) => <a href={`/documents.html?id=${encodeURIComponent(document.id)}`} className="register-row" key={document.id}><span>{String(projects.length + index + 1).padStart(2, '0')}</span><strong>{document.title}</strong><span>{document.type}</span><span>Document</span><ArrowUpRight size={15} /></a>)}
           </div>
+          <div className="hub-actions"><a href="/editor.html"><Film size={14}/>New motion project</a><a href="/apps/identity/identity-lab.html"><Palette size={14}/>Open Brand Kit</a><a href="/documents.html?new=motion-brief"><FileText size={14}/>Create motion brief</a><a href="/documents.html?new=social-pack"><LayoutTemplate size={14}/>Prepare social pack</a></div>
         </section>
       </main>
     </div>

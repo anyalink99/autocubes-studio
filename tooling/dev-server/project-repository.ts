@@ -1,10 +1,11 @@
 import fs from 'node:fs/promises';
 import path from 'node:path';
 import {EditorProject} from '../../packages/core/editor-project';
+import {migrateEditorProject} from '../../packages/core/editor-operations';
 import {generatedProjectFile, projectFile, projectsDirectory} from './paths';
 
 const createEmptyProject = (): EditorProject => ({
-  version: 2,
+  version: 3,
   id: `project-${Date.now()}`,
   title: 'Untitled project',
   url: 'https://example.com',
@@ -19,6 +20,8 @@ const createEmptyProject = (): EditorProject => ({
   transitions: [],
   captions: [],
   audio: [],
+  overlays: [],
+  markers: [],
 });
 
 export const listProjects = async (): Promise<EditorProject[]> => {
@@ -27,7 +30,7 @@ export const listProjects = async (): Promise<EditorProject[]> => {
   const projects = await Promise.all(
     files.map(async (file) => {
       const project = JSON.parse(await fs.readFile(path.join(projectsDirectory, file), 'utf8')) as EditorProject;
-      return {...project, version: Math.max(project.version ?? 1, 2), captions: project.captions ?? [], guides: project.guides ?? true, snap: project.snap ?? true};
+      return migrateEditorProject(project);
     }),
   );
   return projects.sort((a, b) => a.title.localeCompare(b.title));
@@ -36,12 +39,14 @@ export const listProjects = async (): Promise<EditorProject[]> => {
 export const createProject = async (source?: EditorProject) => {
   const project = source ? {
     ...structuredClone(source),
-    version: 2,
+    version: 3,
     id: `project-${Date.now()}`,
     title: `${source.title} copy`,
     captions: source.captions ?? [],
     guides: source.guides ?? true,
     snap: source.snap ?? true,
+    overlays: source.overlays ?? [],
+    markers: source.markers ?? [],
   } : createEmptyProject();
   await saveProject(project, false);
   return project;

@@ -16,9 +16,9 @@ The studio opens at `http://127.0.0.1:4178/`.
 | Surface | URL | Responsibility |
 | --- | --- | --- |
 | Studio | `/` | Workspace navigation and project register |
-| Motion Desk | `/editor.html` | Timeline, capture controls, assets, and render jobs |
-| Documents | `/documents.html` | Structured client-document drafts and export |
-| Identity Lab | `/apps/identity/identity-lab.html` | Standalone identity exploration and review |
+| Motion Desk | `/editor.html` | Page Map, shot building, multi-track editing, captions, overlays, audio, capture, and render jobs |
+| Documents | `/documents.html` | Block-based studio documents, review notes, versions, and multi-format export |
+| Identity Lab | `/apps/identity/identity-lab.html` | Brand Kit, controlled identity variations, carousel assembly, editing, and export |
 
 ## Repository map
 
@@ -70,8 +70,10 @@ Audio imported from Motion Desk is stored in the ignored `public/assets/music/im
 
 Identity Lab and Motion Desk share Instagram-oriented output presets: Reel/Story `9:16`, feed portrait `4:5`, square `1:1`, and landscape `1.91:1`.
 
-Identity Lab supports safe-area guides, custom canvases, image/text/shape layers, drag positioning, detailed typography and layer controls, undo/redo, caption/alt-text metadata, exact PNG/JPEG export, one-click four-format bundles, and ordered carousel ZIP packs for picked compositions.
+Identity Lab supports a reusable Brand Kit, controlled idea mutation, Carousel Builder with ordered swipe preview, safe-area guides, custom canvases, image/text/shape layers, drag positioning, detailed typography and layer controls, undo/redo, caption/alt-text metadata, exact PNG/JPEG export, one-click four-format bundles, and ordered carousel ZIP packs.
 
-Motion Desk supports autosave, JSON project import/export, project variants, format switching, safe-area guides, frame capture, storyboard/capture preview, exact cover PNG export, styled on-screen captions, draggable and resizable timeline clips, magnetic snapping, preflight checks, audio import/search/preview, keyboard editing, Remotion jobs, and direct MP4 download after a render.
+Motion Desk supports an interactive long-page Page Map, semantic Page Position input, shot recipes and pacing, multi-selection, split/copy/paste, markers, track controls, frame-aware snapping, fullscreen preview, pointer paths, SRT captions, overlays, transition controls, beat-aware audio with fades and ducking, autosave, capture, preflight checks, Remotion jobs, and exact social exports.
+
+Documents includes 15 studio templates and structured blocks for text, checklists, tables, timelines, budgets, approvals, signatures, images, and page breaks. Documents have outlines, undo/redo, review notes, local version snapshots, project links, and HTML, Markdown, JSON, print/PDF export.
 
 See [WORKFLOWS.md](./WORKFLOWS.md) for production recipes, [ARCHITECTURE.md](./ARCHITECTURE.md) for boundaries and extension rules, and [CHANGELOG.md](./CHANGELOG.md) for shipped capabilities.

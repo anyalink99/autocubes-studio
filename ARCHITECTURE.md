@@ -35,19 +35,23 @@ The root React application is the launch surface. It reads motion project summar
 
 The editor modifies `data/projects/*.editor.json` through the local API. Capture jobs use Playwright; render jobs synchronize the selected project into `data/generated/editor-project.json` before invoking Remotion.
 
+Motion schema version 3 migrates through `packages/core/editor-operations.ts`. Portable operations own clamping, time formatting, page-position parsing, frame arrangement, recipes, and snapping. Page Map, Shot Library, Timeline, Caption Library, Preview, and Inspector consume those contracts without importing Node infrastructure.
+
 ### Documents
 
-Documents are structured React state stored under `autocubes-documents-v1`. Exported HTML is standalone and print-ready. Templates remain application-owned until another surface needs the same document domain.
+Documents are structured React state stored under `autocubes-documents-v2`. Legacy sections migrate into typed blocks. HTML is standalone and print-ready; Markdown and JSON are portable interchange formats. Review notes and version snapshots remain local-first document data.
 
 ### Identity Lab
 
 Identity Lab remains standalone HTML by design: it can be opened or shared without bootstrapping a React application. Per-variant overrides are stored under `autocubes-identity-v3-edits`.
 
+Brand Kit is stored under `autocubes-identity-brand-kit-v1` and applied before per-composition overrides. Picked composition order is both Carousel Builder order and PNG-pack export order.
+
 Identity export runs in the browser. `html-to-image` rasterizes the active artboard at the selected output resolution; JSZip packages picked compositions without sending artwork to a remote service.
 
 ## Quality gates
 
-`npm run qa:smoke` starts an isolated Vite instance and verifies Identity format switching, undo/redo, exact raster export, Motion format switching, safe zones, and the local projects API in Chromium. Run it with typecheck and build before changing production workflows.
+`npm run qa:smoke` verifies core export and API paths. `npm run qa:identity` stresses variant paging, zoom, and responsive geometry. `npm run qa:workflows` covers Motion Page Map and Timeline, Identity Brand Kit and Carousel Builder, Documents blocks and export, and Studio Project Hub. `npm run check` runs all suites plus TypeScript, production build, and Remotion composition discovery.
 
 ## Persistence direction
 
