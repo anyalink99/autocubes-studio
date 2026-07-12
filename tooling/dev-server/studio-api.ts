@@ -1,12 +1,12 @@
 import fs from 'node:fs/promises';
 import {createReadStream} from 'node:fs';
 import path from 'node:path';
-import {chromium} from 'playwright';
 import {Plugin} from 'vite';
 import {CaptureAnalysis, EditorProject, JobState} from '../../packages/core/editor-project';
 import {getJob, getJobOutput, startJob} from './job-manager';
 import {capturesDirectory, editorFramesDirectory, workspacePath} from './paths';
 import {createProject, deleteProject, listProjects, saveProject} from './project-repository';
+import {launchStudioBrowser} from './browser';
 
 const readBuffer = async (request: NodeJS.ReadableStream, maxBytes = 5 * 1024 * 1024) => {
   const chunks: Buffer[] = [];
@@ -45,7 +45,7 @@ const listFiles = async (directory: string, prefix: string): Promise<string[]> =
 };
 
 const captureFrame = async (project: EditorProject, frameId: string, scrollY: number) => {
-  const browser = await chromium.launch({headless: true});
+  const browser = await launchStudioBrowser();
   try {
     const page = await browser.newPage({viewport: project.viewport});
     await page.goto(project.url, {waitUntil: 'networkidle', timeout: 60_000});
@@ -64,7 +64,7 @@ const captureFrame = async (project: EditorProject, frameId: string, scrollY: nu
 };
 
 const analyzePage = async (project: EditorProject): Promise<CaptureAnalysis> => {
-  const browser = await chromium.launch({headless:true});
+  const browser = await launchStudioBrowser();
   try {
     const page = await browser.newPage({viewport:project.viewport});
     await page.goto(project.url,{waitUntil:'domcontentloaded',timeout:60_000});

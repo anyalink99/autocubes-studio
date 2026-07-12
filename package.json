@@ -9,6 +9,7 @@
     "studio": "vite --config vite.config.ts --open /",
     "editor": "vite --config vite.config.ts --open /editor.html",
     "build": "vite build --config vite.config.ts",
+    "browsers:install": "playwright install chromium",
     "editor:build": "vite build --config vite.config.ts",
     "capture:editor": "tsx tooling/capture/run-editor-project.ts data/projects/flowline.editor.json",
     "render:editor": "remotion render packages/video/index.ts EditorReel out/editor-reel.mp4 --codec=h264 --pixel-format=yuv420p",

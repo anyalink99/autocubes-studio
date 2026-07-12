@@ -52,6 +52,7 @@ The dependency direction is deliberate: applications and tooling may depend on `
 ```bash
 npm run typecheck          # validate every TypeScript boundary
 npm run build              # production build for all browser surfaces
+npm run browsers:install   # install the Chromium revision used by capture tools
 npm run qa:smoke           # browser-test formats, export, guides, and local API
 npm run video:check        # bundle and enumerate Remotion compositions
 npm run check              # run the complete local quality gate
