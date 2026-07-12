@@ -51,8 +51,6 @@ const main=async()=>{
     await page.screenshot({path:path.resolve('out/qa/motion-workflow.png')});
 
     await page.goto(`${baseUrl}/apps/identity/identity-lab.html`,{waitUntil:'networkidle'});
-    await page.evaluate(()=>localStorage.clear());
-    await page.reload({waitUntil:'networkidle'});
     await page.locator('#openBrandKit').click();
     await page.locator('#brandName').fill('Studio Test');
     await page.locator('#brandTaglineEn').fill('One system, every format.');
