@@ -45,7 +45,17 @@ const main = async () => {
   const scrollAfter = await page.evaluate(() => window.scrollY);
   if (Math.abs(scrollAfter - scrollBefore) > 2) throw new Error(`Variant paging moved the page by ${scrollAfter - scrollBefore}px`);
 
+  const galleryTypography = await page.locator('.composition .artboard').first().evaluate((board) => {
+    const element = board.querySelector<HTMLElement>('.brand-lockup > span')!;
+    return Number.parseFloat(getComputedStyle(element).fontSize) / (board as HTMLElement).clientWidth;
+  });
   await page.locator('.composition .artboard').first().click();
+  await page.waitForTimeout(250);
+  const editorTypography = await page.locator('#modalArtboard .artboard').evaluate((board) => {
+    const element = board.querySelector<HTMLElement>('.brand-lockup > span')!;
+    return Number.parseFloat(getComputedStyle(element).fontSize) / (board as HTMLElement).clientWidth;
+  });
+  if (Math.abs(galleryTypography - editorTypography) > .001) throw new Error(`Gallery/editor typography mismatch: ${galleryTypography} vs ${editorTypography}`);
   await page.locator('.layer-row').nth(1).locator('.layer-name').click();
   const defaultFields = await page.locator('#inspector').evaluate((inspector) => Object.fromEntries(
     ['x','y','width','height','fontSize','opacity'].map((property) => [property, (inspector.querySelector<HTMLInputElement>(`[data-prop="${property}"]`)?.value ?? '')]),
