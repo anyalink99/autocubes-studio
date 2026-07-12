@@ -1,0 +1,22 @@
+node_modules
+dist
+out
+output
+shots
+.remotion
+*.log
+.DS_Store
+Thumbs.db
+public/assets/music/imported/
+
+# Local and shared runtime state (never commit client or browser data)
+data/runtime/
+data/generated/
+data/projects/*.editor.json
+public/captures/
+public/editor-frames/
+
+# Environment and credentials
+.env
+.env.*
+!.env.example

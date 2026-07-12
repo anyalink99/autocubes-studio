@@ -1,0 +1,81 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>autocubes focus cover</title>
+  <style>
+    * { box-sizing: border-box; }
+    html, body { width: 1080px; height: 1350px; margin: 0; overflow: hidden; }
+    body {
+      color: #f5f5f2;
+      background: #050505;
+      font-family: Arial, Helvetica, sans-serif;
+    }
+    .canvas { position: relative; width: 100%; height: 100%; overflow: hidden; }
+    .stack {
+      position: absolute;
+      top: -85px;
+      left: -75px;
+      width: 1120px;
+      height: 650px;
+      transform: rotate(-8deg);
+    }
+    .slab {
+      position: absolute;
+      width: 850px;
+      height: 230px;
+      display: flex;
+      align-items: center;
+      justify-content: flex-end;
+      padding-right: 68px;
+      border-radius: 52px;
+      background: linear-gradient(112deg, #87301d 0%, #ff5a2f 36%, #ff8b68 58%, #cf3b19 100%);
+      border: 2px solid rgba(255, 189, 169, .55);
+      box-shadow: 0 30px 45px rgba(0, 0, 0, .65), inset 0 5px 8px rgba(255, 255, 255, .18), inset 0 -9px 18px rgba(49, 5, 0, .42);
+    }
+    .slab:nth-child(1) { top: 8px; left: -100px; }
+    .slab:nth-child(2) { top: 178px; left: 40px; }
+    .slab:nth-child(3) { top: 348px; left: 180px; }
+    .slab img { width: 104px; height: 104px; opacity: .88; }
+    .headline {
+      position: absolute;
+      left: 72px;
+      top: 650px;
+      width: 820px;
+      margin: 0;
+      font-size: 146px;
+      font-weight: 700;
+      line-height: .92;
+      letter-spacing: -7px;
+    }
+    .headline span { color: #ff5a2f; }
+    .footer {
+      position: absolute;
+      left: 72px;
+      right: 72px;
+      bottom: 62px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+    .brand { display: flex; align-items: center; gap: 16px; font-size: 32px; font-weight: 700; }
+    .brand img { width: 42px; height: 42px; filter: invert(1); }
+    .index { color: #ff5a2f; font: 600 18px Arial, Helvetica, sans-serif; letter-spacing: 1px; }
+  </style>
+</head>
+<body>
+  <main class="canvas">
+    <div class="stack">
+      <div class="slab"><img src="/assets/brand/autocubes.svg" alt="" /></div>
+      <div class="slab"><img src="/assets/brand/autocubes.svg" alt="" /></div>
+      <div class="slab"><img src="/assets/brand/autocubes.svg" alt="" /></div>
+    </div>
+    <h1 class="headline">What<br />we <span>do</span></h1>
+    <footer class="footer">
+      <div class="brand"><img src="/assets/brand/autocubes.svg" alt="" />autocubes</div>
+      <div class="index">01 / 05</div>
+    </footer>
+  </main>
+</body>
+</html>

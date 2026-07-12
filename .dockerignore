@@ -1,0 +1,14 @@
+.git
+.github
+node_modules
+dist
+out
+output
+data/runtime
+data/generated
+data/projects
+public/captures
+public/editor-frames
+*.log
+.env*
+!.env.example

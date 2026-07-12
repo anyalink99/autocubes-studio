@@ -1,0 +1,137 @@
+{
+  "version": 2,
+  "id": "flowline",
+  "title": "Flowline",
+  "url": "https://portfolio.autocubes.site/flowline",
+  "fps": 30,
+  "duration": 19,
+  "viewport": {
+    "width": 1080,
+    "height": 1920
+  },
+  "guides": true,
+  "snap": true,
+  "pageHeight": 13393,
+  "previewVideo": "/captures/editor-flowline/capture.webm",
+  "videoOffset": 3.082,
+  "frames": [
+    {
+      "id": "frame-hero",
+      "label": "Hero",
+      "at": 0,
+      "scrollY": 0,
+      "duration": 1.8,
+      "hold": 1.6,
+      "easing": "easeInOut",
+      "thumbnail": "/captures/editor-flowline/stills/frame-hero.png?v=1783728737332"
+    },
+    {
+      "id": "frame-layout",
+      "label": "Layout",
+      "at": 3.4,
+      "scrollY": 2295,
+      "duration": 1.3,
+      "hold": 1.2,
+      "easing": "easeInOut",
+      "thumbnail": "/captures/editor-flowline/stills/frame-layout.png?v=1783728737332"
+    },
+    {
+      "id": "frame-routine",
+      "label": "Routine",
+      "at": 6.4,
+      "scrollY": 4819,
+      "duration": 1.25,
+      "hold": 0.8,
+      "easing": "easeOut",
+      "thumbnail": "/captures/editor-flowline/stills/frame-routine.png?v=1783728737332"
+    },
+    {
+      "id": "frame-metrics",
+      "label": "Metrics",
+      "at": 8.7,
+      "scrollY": 7572,
+      "duration": 1.35,
+      "hold": 1.8,
+      "easing": "easeInOut",
+      "thumbnail": "/captures/editor-flowline/stills/frame-metrics.png?v=1783728737332"
+    },
+    {
+      "id": "frame-reviews",
+      "label": "Reviews",
+      "at": 12.072222222222221,
+      "scrollY": 9408,
+      "duration": 1.35,
+      "hold": 1.4,
+      "easing": "easeInOut",
+      "thumbnail": "/captures/editor-flowline/stills/frame-reviews.png?v=1783728737332"
+    },
+    {
+      "id": "frame-faq",
+      "label": "FAQ",
+      "at": 15.1,
+      "scrollY": 11470,
+      "duration": 1.2,
+      "hold": 1.4,
+      "easing": "easeOut",
+      "thumbnail": "/captures/editor-flowline/stills/frame-faq.png?v=1783728737332"
+    }
+  ],
+  "pointer": [],
+  "transitions": [
+    {
+      "id": "transition-intro",
+      "label": "Intro fade",
+      "at": 0,
+      "duration": 0.55,
+      "kind": "fade",
+      "strength": 0.7
+    },
+    {
+      "id": "transition-outro",
+      "label": "Outro fade",
+      "at": 16.5,
+      "duration": 0.8,
+      "kind": "fade",
+      "strength": 1
+    }
+  ],
+  "captions": [],
+  "audio": [
+    {
+      "id": "audio-lift",
+      "label": "Section lift",
+      "at": 1.9,
+      "duration": 1.15,
+      "asset": "/assets/sfx/section-lift.wav",
+      "volume": 0.2,
+      "enabled": false
+    },
+    {
+      "id": "audio-scroll-a",
+      "label": "Scroll A",
+      "at": 6.6,
+      "duration": 0.92,
+      "asset": "/assets/sfx/scroll-soft-a.wav",
+      "volume": 0.3,
+      "enabled": false
+    },
+    {
+      "id": "audio-scroll-b",
+      "label": "Scroll B",
+      "at": 8.7,
+      "duration": 0.92,
+      "asset": "/assets/sfx/scroll-soft-b.wav",
+      "volume": 0.25,
+      "enabled": false
+    },
+    {
+      "id": "audio-end",
+      "label": "End mark",
+      "at": 16.5,
+      "duration": 1.05,
+      "asset": "/assets/sfx/end-mark.wav",
+      "volume": 0.3,
+      "enabled": false
+    }
+  ]
+}

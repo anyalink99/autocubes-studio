@@ -1,0 +1,1653 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>autocubes identity lab</title>
+  <style>
+    :root {
+      color: #f3f3ef;
+      background: #0a0a09;
+      font-family: Arial, Helvetica, sans-serif;
+      font-synthesis: none;
+      --orange: #ff5a2f;
+      --paper: #f0f0eb;
+      --ink: #090909;
+      --line: #292925;
+      --muted: #8b8c85;
+      --format-ratio: 4 / 5;
+    }
+    * { box-sizing: border-box; }
+    html { scroll-behavior: smooth; }
+    body { margin: 0; min-width: 320px; background: #0a0a09; }
+    button, input, select, textarea { font: inherit; letter-spacing: 0; }
+    button { color: inherit; }
+    :focus-visible { outline: 2px solid #78aeea; outline-offset: 2px; }
+    .lab-header {
+      position: sticky;
+      top: 0;
+      z-index: 20;
+      height: 68px;
+      display: flex;
+      align-items: center;
+      gap: 18px;
+      padding: 0 22px;
+      border-bottom: 1px solid var(--line);
+      background: rgba(10, 10, 9, .94);
+      backdrop-filter: blur(16px);
+    }
+    .lab-brand { display: flex; align-items: center; gap: 10px; min-width: 220px; color: inherit; text-decoration: none; }
+    .lab-brand img { width: 25px; height: 25px; filter: invert(1); }
+    .lab-brand strong { font-size: 14px; }
+    .lab-brand span { display: block; margin-top: 2px; color: var(--muted); font: 600 9px Arial, Helvetica, sans-serif; letter-spacing: 1.3px; text-transform: uppercase; }
+    .filters { display: flex; align-items: center; gap: 4px; min-width: 0; overflow-x: auto; scrollbar-width: none; }
+    .filters::-webkit-scrollbar { display: none; }
+    .filter, .tool-button {
+      height: 32px;
+      padding: 0 11px;
+      border: 1px solid transparent;
+      border-radius: 4px;
+      color: #a5a69f;
+      background: transparent;
+      font-size: 11px;
+      white-space: nowrap;
+      cursor: pointer;
+    }
+    .filter:hover, .filter.active { color: #fff; border-color: #3a3a35; background: #1b1b19; }
+    .header-spacer { flex: 1; }
+    .counter { color: var(--muted); font: 600 10px Arial, Helvetica, sans-serif; white-space: nowrap; }
+    .tool-button { border-color: #393a35; color: #eee; background: #191917; }
+    .tool-button:hover { border-color: #60615a; background: #232320; }
+    .tool-button.accent { border-color: var(--orange); color: #150d09; background: var(--orange); font-weight: 700; }
+    .studio-drawer { position:fixed; top:0; right:0; bottom:0; z-index:80; width:min(420px,100vw); display:grid; grid-template-rows:auto minmax(0,1fr) auto; border-left:1px solid #45463f; background:#151513; box-shadow:-30px 0 80px rgba(0,0,0,.55); transform:translateX(105%); transition:transform .24s ease; }
+    .studio-drawer.open { transform:translateX(0); }
+    .drawer-head { min-height:68px; display:flex; align-items:center; justify-content:space-between; padding:14px 16px; border-bottom:1px solid var(--line); }
+    .drawer-head span { color:var(--orange); font-size:8px; font-weight:700; letter-spacing:.14em; text-transform:uppercase; }
+    .drawer-head h2 { margin:4px 0 0; font-size:18px; }
+    .drawer-head button { width:32px; height:32px; border:1px solid var(--line); border-radius:4px; background:transparent; cursor:pointer; }
+    .drawer-body { min-height:0; overflow:auto; padding:16px; }
+    .brand-field { display:block; margin-bottom:13px; }
+    .brand-field > span { display:block; margin-bottom:5px; color:#85867f; font-size:8px; font-weight:700; letter-spacing:.08em; text-transform:uppercase; }
+    .brand-field input, .brand-field textarea { width:100%; height:34px; padding:0 9px; border:1px solid #393a35; border-radius:3px; outline:0; color:#eee; background:#10110f; }
+    .brand-field textarea { height:68px; padding:8px 9px; resize:vertical; }
+    .brand-field input:focus,.brand-field textarea:focus { border-color:#76503b; }
+    .brand-colors { display:grid; grid-template-columns:1fr 1fr; gap:8px; }
+    .brand-colors .brand-field input { padding:2px; }
+    .brand-toggle { min-height:34px; display:flex; align-items:center; gap:8px; margin:4px 0 14px; color:#aaa; font-size:10px; }
+    .brand-toggle input { accent-color:var(--orange); }
+    .drawer-note { padding:11px; border:1px dashed #3d3e38; color:#7d7e77; font-size:9px; line-height:1.5; }
+    .drawer-actions { display:grid; grid-template-columns:1fr 1fr; gap:6px; padding:12px 16px; border-top:1px solid var(--line); }
+    .drawer-actions button { height:38px; border:1px solid #42433d; border-radius:4px; background:#252522; cursor:pointer; }
+    .drawer-actions button.primary { color:#130e0b; border-color:var(--orange); background:var(--orange); font-weight:700; }
+    .carousel-builder { position:fixed; inset:0; z-index:82; display:none; grid-template-columns:minmax(0,1fr) 360px; background:rgba(5,5,5,.96); }
+    .carousel-builder.open { display:grid; }
+    .carousel-preview { min-width:0; display:grid; place-items:center; padding:40px; overflow:auto; }
+    .carousel-strip { display:flex; gap:18px; align-items:center; max-width:100%; overflow:auto; padding:22px; scroll-snap-type:x mandatory; }
+    .carousel-slide { flex:0 0 min(54vh,420px); scroll-snap-align:center; }
+    .carousel-slide { position:relative; }
+    .carousel-slide .artboard { width:100%; }
+    .carousel-number { position:absolute; right:8px; bottom:8px; z-index:20; padding:5px 7px; color:#eee; background:rgba(0,0,0,.72); font:8px Consolas,monospace; }
+    .carousel-panel { min-height:0; display:grid; grid-template-rows:auto minmax(0,1fr) auto; border-left:1px solid var(--line); background:#151513; }
+    .carousel-list { min-height:0; overflow:auto; padding:10px; }
+    .carousel-item { display:grid; grid-template-columns:28px 50px minmax(0,1fr) auto; align-items:center; gap:7px; min-height:59px; padding:5px; border:1px solid transparent; border-bottom-color:#292a26; }
+    .carousel-item > span { color:#777; font:9px Consolas,monospace; }
+    .carousel-item .mini-art { width:50px; height:46px; overflow:hidden; background:#0d0e0d; }
+    .carousel-item .mini-art .artboard { width:100%; height:100%; aspect-ratio:auto; }
+    .carousel-item strong { overflow:hidden; text-overflow:ellipsis; white-space:nowrap; font-size:10px; }
+    .carousel-item div:last-child { display:flex; }
+    .carousel-item button { width:24px; height:25px; padding:0; border:0; color:#888; background:transparent; cursor:pointer; }
+    .carousel-item button:hover { color:#fff; }
+    .mutate-button { height:24px!important; padding:0 6px!important; color:#d7ad94!important; border-color:#604431!important; font-size:8px!important; }
+    .format-dock { position: sticky; top: 68px; z-index: 19; min-height: 48px; display: flex; align-items: center; gap: 7px; padding: 7px 22px; border-bottom: 1px solid var(--line); background: rgba(15,15,13,.96); backdrop-filter: blur(16px); }
+    .format-dock-label { margin-right: 4px; color: #777871; font-size: 9px; font-weight: 700; letter-spacing: .9px; text-transform: uppercase; }
+    .format-preset { height: 32px; display: flex; align-items: center; gap: 7px; padding: 0 10px; border: 1px solid #34352f; border-radius: 4px; color: #aaa9a3; background: #181816; font-size: 10px; cursor: pointer; }
+    .format-preset:hover { color: #fff; border-color: #5b5c55; }
+    .format-preset.active { color: #fff; border-color: #74503d; background: #2a211c; box-shadow: inset 0 0 0 1px rgba(255,90,47,.15); }
+    .identity-scale { height:32px; display:flex; align-items:center; gap:7px; padding:0 9px; border:1px solid #34352f; border-radius:4px; color:#8d8f87; background:#151613; }
+    .identity-scale>span { font-size:8px; font-weight:700; letter-spacing:.08em; text-transform:uppercase; }
+    .identity-scale input { width:96px; accent-color:var(--orange); cursor:pointer; }
+    .identity-scale output { min-width:31px; color:#ddd; font:8px Consolas,monospace; text-align:right; }
+    .identity-scale button { width:20px; height:22px; display:grid; place-items:center; padding:0; border:0; border-radius:3px; color:#aaa; background:#242521; cursor:pointer; }
+    .identity-scale button:hover { color:#fff; background:#30312c; }
+    .output-language { display:flex; gap:2px; padding:2px; border:1px solid #3a3b36; border-radius:4px; background:#111210; }
+    .output-language button { height:25px; padding:0 7px; border:0; border-radius:3px; color:#777970; background:transparent; font-size:8px; cursor:pointer; }
+    .output-language button.active { color:#150c08; background:var(--orange); font-weight:700; }
+    .format-preset b { color: #ddd; font: 700 9px Consolas, monospace; }
+    .custom-format { position: relative; }
+    .custom-format summary { height: 32px; display: flex; align-items: center; padding: 0 10px; border: 1px solid #34352f; border-radius: 4px; color: #aaa9a3; background: #181816; font-size: 10px; list-style: none; cursor: pointer; }
+    .custom-format summary::-webkit-details-marker { display:none; }
+    .custom-format.active summary { color: #fff; border-color: #74503d; background: #2a211c; }
+    .custom-popover { position: absolute; top: 38px; left: 0; z-index: 40; width: 210px; display: grid; grid-template-columns: 1fr auto 1fr; align-items: end; gap: 7px; padding: 10px; border: 1px solid #464741; border-radius: 5px; background: #181816; box-shadow: 0 16px 46px rgba(0,0,0,.5); }
+    .custom-popover label { display: grid; gap: 5px; color: #777871; font-size: 8px; text-transform: uppercase; }
+    .custom-popover input { width: 100%; height: 30px; padding: 0 6px; border: 1px solid #393a34; border-radius: 3px; outline: 0; color: #eee; background: #0e0e0d; }
+    .custom-popover > button { grid-column: 1 / -1; height: 30px; border: 1px solid var(--orange); border-radius: 3px; color: #140d09; background: var(--orange); font-size: 9px; font-weight: 700; cursor:pointer; }
+    .dock-spacer { flex: 1; }
+    .dock-toggle { height: 32px; display: flex; align-items: center; gap: 7px; padding: 0 10px; border: 1px solid #34352f; border-radius: 4px; color: #aaa9a3; background: transparent; font-size: 10px; cursor: pointer; }
+    .dock-toggle.active { color: #cfe1ff; border-color: #4c6584; background: #192331; }
+    .export-size { color: #777871; font: 9px Consolas, monospace; }
+    .intro {
+      display: grid;
+      grid-template-columns: minmax(0, 1.4fr) minmax(260px, .6fr);
+      gap: 48px;
+      padding: 58px 22px 46px;
+      border-bottom: 1px solid var(--line);
+    }
+    .intro h1 { max-width: 950px; margin: 0; font-size: clamp(40px, 5.4vw, 82px); line-height: .92; letter-spacing: -4px; }
+    .intro h1 em { color: var(--orange); font-style: normal; }
+    .intro-copy { align-self: end; max-width: 430px; color: #a4a59f; font-size: 13px; line-height: 1.55; }
+    .intro-copy b { color: #f4f4ef; font-weight: 600; }
+    .gallery {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, var(--identity-card-width, 420px));
+      justify-content: center;
+      gap: 34px 18px;
+      padding: 22px 22px 110px;
+    }
+    .composition { min-width: 0; }
+    .composition[hidden] { display: none; }
+    .artboard-preview { position:relative; width:100%; aspect-ratio:var(--format-ratio); overflow:hidden; background:#080808; }
+    .artboard-preview-canvas { position:absolute; left:0; top:0; width:var(--identity-canonical-width,1080px); height:var(--identity-canonical-height,1350px); transform-origin:top left; }
+    .artboard-preview-canvas>.artboard { width:100%; height:100%; aspect-ratio:auto; }
+    .card-head { height: 34px; display: flex; align-items: center; gap: 7px; color: #85867f; font: 600 9px Arial, Helvetica, sans-serif; text-transform: uppercase; letter-spacing: 1px; }
+    .card-head .family { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .card-head .spacer { flex: 1; }
+    .pick-button { width: 24px; height: 24px; display: grid; place-items: center; padding: 0; border: 1px solid #353630; border-radius: 3px; color: #777871; background: transparent; cursor: pointer; }
+    .pick-button:hover { color: #fff; border-color: #6a6b64; }
+    .composition.picked .pick-button { color: #0b0907; border-color: var(--orange); background: var(--orange); }
+    .variant-nav { display: flex; align-items: center; height: 24px; border: 1px solid #34352f; border-radius: 3px; overflow: hidden; }
+    .variant-nav button { width: 24px; height: 22px; padding: 0; border: 0; color: #8e8f88; background: transparent; cursor: pointer; }
+    .variant-nav button:hover { color: #fff; background: #242420; }
+    .variant-nav span { min-width: 38px; text-align: center; color: #c3c4bd; font-size: 8px; letter-spacing: .5px; }
+    .artboard {
+      --accent: #ff5a2f;
+      --accent2: #ffb09a;
+      position: relative;
+      aspect-ratio: var(--format-ratio);
+      overflow: hidden;
+      color: #f6f6f2;
+      background: #050505;
+      isolation: isolate;
+      cursor: zoom-in;
+      container-type: inline-size;
+    }
+    .artboard::after { content: ""; position: absolute; inset: 0; border: 1px solid rgba(255,255,255,.08); pointer-events: none; z-index: 9; }
+    .artboard.show-guides::before { content: "SAFE AREA"; position: absolute; inset: var(--safe-top,5%) var(--safe-right,5%) var(--safe-bottom,5%) var(--safe-left,5%); z-index: 30; border: 1px dashed rgba(112,167,234,.9); color: rgba(188,216,250,.92); background: linear-gradient(90deg, rgba(86,139,204,.12) 1px, transparent 1px), linear-gradient(rgba(86,139,204,.12) 1px, transparent 1px); background-size: 33.333% 33.333%; font: 700 7px/1 Arial, sans-serif; letter-spacing: .8px; padding: 5px; pointer-events: none; box-shadow: 0 0 0 9999px rgba(5,13,24,.08); }
+    .artboard.is-exporting::before, .artboard.is-exporting::after { display: none; }
+    .artboard.light { color: #0a0a09; background: #eeeFEa; }
+    .artboard.orange { color: #0b0908; background: var(--accent); }
+    .artboard.orange.layout-stat .caption,
+    .artboard.orange.layout-service .service-index,
+    .artboard.orange.layout-split .copy p,
+    .artboard.orange.layout-vertical .copy p,
+    .artboard.orange.layout-index .work-item span,
+    .artboard.orange.layout-contact .email,
+    .artboard.orange.layout-type .footline { color: rgba(9, 9, 8, .72); }
+    .artboard.orange.layout-manifesto .line:nth-child(4) { color: rgba(9, 9, 8, .55); }
+    .artboard.orange.layout-ascii .ascii { color: rgba(9, 9, 8, .4); }
+    .artboard.orange.layout-stat .stat,
+    .artboard.orange.layout-focus h2 em,
+    .artboard.orange.layout-contact h2 span,
+    .artboard.orange.layout-type h2 span,
+    .artboard.orange.layout-vertical .vertical-word,
+    .artboard.orange.layout-index .work-item small,
+    .artboard.orange.layout-manifesto .line:nth-child(2) { color: #090908; }
+    .artboard.orange.layout-stat .rail { background: #090908; }
+    .artboard.orange.v5.layout-stat .stat { color: transparent; -webkit-text-stroke-color: #090908; }
+    .artboard.blue { --accent: #78aaff; --accent2: #bfffd9; }
+    .artboard.lilac { --accent: #a889ff; --accent2: #ffd2ea; }
+    .artboard.green { --accent: #a4db78; --accent2: #e6ffc9; }
+    .artboard .logo { position: absolute; width: 8%; aspect-ratio: 1; z-index: 5; }
+    .artboard:not(.light):not(.orange) .logo { filter: invert(1); }
+    .artboard .mono { font-family: Arial, Helvetica, sans-serif; font-weight: 650; letter-spacing: .08em; text-transform: uppercase; }
+    .artboard .arrow { font-size: 1.4em; line-height: 1; }
+    .artboard .project-image { width: 100%; height: 100%; object-fit: cover; display: block; }
+    .artboard .grain { position: absolute; inset: 0; opacity: .12; background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 180 180' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.8' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='.35'/%3E%3C/svg%3E"); mix-blend-mode: soft-light; pointer-events: none; z-index: 4; }
+    .brand-lockup { position: absolute; display: flex; align-items: center; gap: 3%; z-index: 5; }
+    .brand-lockup img { width: 12%; aspect-ratio: 1; }
+    .brand-lockup span { font-weight: 750; letter-spacing: -.05em; }
+    .artboard:not(.light):not(.orange) .brand-lockup img { filter: invert(1); }
+    .slabs { position: absolute; width: 115%; height: 48%; transform: rotate(-8deg); }
+    .slab { position: absolute; width: 74%; height: 28%; right: 0; border-radius: 2.2em; background: linear-gradient(115deg, color-mix(in srgb, var(--accent) 60%, #111), var(--accent2), var(--accent)); border: 1px solid color-mix(in srgb, var(--accent2) 65%, white); box-shadow: 0 1.4em 2em rgba(0,0,0,.46), inset 0 .25em .5em rgba(255,255,255,.18), inset 0 -.5em 1em rgba(0,0,0,.25); }
+    .slab:nth-child(1) { top: -2%; right: 30%; }
+    .slab:nth-child(2) { top: 25%; right: 14%; }
+    .slab:nth-child(3) { top: 52%; right: -2%; }
+    .slab img { position: absolute; right: 8%; top: 25%; width: 15%; height: 50%; }
+    .artboard:not(.orange) .slab img { opacity: .88; }
+    .layout-brand .brand-lockup { left: 9%; right: 9%; top: 50%; justify-content: center; transform: translateY(-50%); }
+    .layout-brand .brand-lockup img { width: 19%; }
+    .layout-brand .brand-lockup span { min-width: 0; font-size: 11cqw; white-space: nowrap; }
+    .layout-brand .meta-a, .layout-brand .meta-b { position: absolute; bottom: 5%; z-index: 5; font-size: 2.1cqw; }
+    .layout-brand .meta-a { left: 6%; }
+    .layout-brand .meta-b { right: 6%; color: var(--accent); }
+    .layout-focus .slabs { top: -2%; left: -8%; }
+    .layout-focus h2 { position: absolute; left: 7%; top: 48%; width: 72%; margin: 0; font-size: 13cqw; line-height: .9; letter-spacing: -.06em; z-index: 5; }
+    .layout-focus h2 em { color: var(--accent); font-style: normal; }
+    .layout-focus .brand-lockup { left: 7%; bottom: 5%; width: 34%; }
+    .layout-focus .brand-lockup span { font-size: 3cqw; }
+    .layout-focus .slide-no { position: absolute; right: 7%; bottom: 5%; color: var(--accent); font-size: 2.1cqw; }
+    .layout-service { padding: 7%; }
+    .layout-service .logo { top: 6%; left: 7%; }
+    .layout-service .kicker { position: absolute; top: 7%; right: 7%; font-size: 2.1cqw; }
+    .layout-service h2 { position: absolute; left: 7%; right: 7%; bottom: 24%; margin: 0; font-size: 11cqw; line-height: .9; letter-spacing: -.055em; }
+    .layout-service .service-index { position: absolute; left: 7%; right: 7%; bottom: 6%; padding-top: 3%; border-top: 1px solid currentColor; font-size: 2cqw; }
+    .layout-service .orb { position: absolute; top: 18%; left: 19%; width: 62%; aspect-ratio: 1; border-radius: 22%; transform: rotate(28deg); background: radial-gradient(circle at 35% 30%, var(--accent2), var(--accent) 42%, #0b0b0a 76%); box-shadow: 0 3em 5em rgba(0,0,0,.45); }
+    .layout-case .media { position: absolute; inset: 0; }
+    .layout-case .media::after { content: ""; position: absolute; inset: 40% 0 0; background: linear-gradient(transparent, rgba(0,0,0,.92)); }
+    .layout-case .case-copy { position: absolute; left: 7%; right: 7%; bottom: 7%; z-index: 5; }
+    .layout-case .case-copy .mono { display: block; margin-bottom: 3%; color: var(--accent); font-size: 2cqw; }
+    .layout-case .case-copy h2 { margin: 0 0 3%; font-size: 10cqw; line-height: .9; letter-spacing: -.055em; }
+    .layout-case .case-copy p { max-width: 78%; margin: 0; color: rgba(255,255,255,.72); font-size: 2.5cqw; line-height: 1.35; }
+    .layout-split { display: grid; grid-template-rows: 53% 47%; }
+    .layout-split .image-wrap { overflow: hidden; }
+    .layout-split .copy { position: relative; padding: 7%; }
+    .layout-split .copy h2 { max-width: 88%; margin: 10% 0 4%; font-size: 9cqw; line-height: .92; letter-spacing: -.05em; }
+    .layout-split .copy p { max-width: 75%; margin: 0; color: #76766f; font-size: 2.4cqw; line-height: 1.4; }
+    .layout-split .copy .arrow { position: absolute; right: 7%; bottom: 8%; }
+    .layout-type { padding: 7%; }
+    .layout-type .logo { left: 7%; top: 6%; }
+    .layout-type h2 { position: absolute; left: 7%; right: 7%; top: 27%; margin: 0; font-size: 14cqw; line-height: .86; letter-spacing: -.07em; }
+    .layout-type h2 span { color: var(--accent); }
+    .layout-type .footline { position: absolute; left: 7%; right: 7%; bottom: 7%; display: flex; justify-content: space-between; padding-top: 3%; border-top: 1px solid currentColor; font-size: 2cqw; }
+    .layout-stat { padding: 7%; }
+    .layout-stat .stat { position: absolute; left: 6%; top: 17%; font-size: 25cqw; font-weight: 750; line-height: .8; letter-spacing: -.09em; color: var(--accent); }
+    .layout-stat h2 { position: absolute; left: 7%; right: 18%; bottom: 20%; margin: 0; font-size: 9cqw; line-height: .95; letter-spacing: -.05em; }
+    .layout-stat .caption { position: absolute; left: 7%; bottom: 7%; width: 60%; color: #8c8d86; font-size: 2.3cqw; line-height: 1.4; }
+    .layout-stat .rail { position: absolute; right: 6%; top: 7%; bottom: 7%; width: 7%; background: var(--accent); }
+    .layout-process { padding: 7%; }
+    .layout-process h2 { margin: 4% 0 12%; font-size: 10cqw; line-height: .9; letter-spacing: -.05em; }
+    .steps { display: grid; gap: 0; border-top: 1px solid currentColor; }
+    .step { display: grid; grid-template-columns: 16% 1fr auto; align-items: center; padding: 5% 0; border-bottom: 1px solid currentColor; font-size: 3.3cqw; }
+    .step b { color: var(--accent); font: inherit; }
+    .step span:last-child { opacity: .5; }
+    .layout-index { padding: 7%; }
+    .layout-index .brand-lockup { left: 7%; top: 6%; width: 34%; }
+    .layout-index .brand-lockup span { font-size: 3cqw; }
+    .work-list { position: absolute; left: 7%; right: 7%; top: 24%; }
+    .work-item { display: grid; grid-template-columns: 12% 1fr auto; align-items: baseline; padding: 4.5% 0; border-top: 1px solid currentColor; }
+    .work-item:last-child { border-bottom: 1px solid currentColor; }
+    .work-item small { color: var(--accent); font: 650 1.8cqw Arial, Helvetica, sans-serif; }
+    .work-item strong { font-size: 4cqw; }
+    .work-item span { color: #777871; font-size: 2cqw; }
+    .layout-contact { padding: 7%; }
+    .layout-contact .logo { left: 7%; top: 6%; }
+    .layout-contact h2 { position: absolute; left: 7%; right: 7%; top: 27%; margin: 0; font-size: 14cqw; line-height: .86; letter-spacing: -.07em; }
+    .layout-contact h2 span { color: var(--accent); }
+    .layout-contact .email { position: absolute; left: 7%; bottom: 12%; padding-bottom: 3%; border-bottom: 2px solid var(--accent); font-size: 3.5cqw; }
+    .layout-grid { display: grid; grid-template-columns: 1fr 1fr; grid-template-rows: 1fr 1fr; gap: 1px; background: #272723; }
+    .layout-grid .cell { position: relative; overflow: hidden; background: #050505; }
+    .layout-grid .cell.image img { width: 100%; height: 100%; object-fit: cover; }
+    .layout-grid .cell.word { display: flex; align-items: flex-end; padding: 8%; font-size: 6cqw; font-weight: 700; line-height: .92; letter-spacing: -.05em; }
+    .layout-grid .cell.mark { display: grid; place-items: center; background: var(--accent); }
+    .layout-grid .cell.mark img { width: 38%; }
+    .layout-grid .cell.info { display: flex; flex-direction: column; justify-content: space-between; padding: 8%; }
+    .layout-grid .cell.info b { font-size: 3.6cqw; }
+    .layout-grid .cell.info span { color: #888982; font-size: 1.8cqw; line-height: 1.4; }
+    .layout-vertical { padding: 7%; }
+    .layout-vertical .vertical-word { position: absolute; left: -3%; top: 7%; writing-mode: vertical-rl; transform: rotate(180deg); font-size: 16cqw; font-weight: 750; line-height: .8; letter-spacing: -.07em; color: var(--accent); }
+    .layout-vertical .image-panel { position: absolute; left: 28%; right: 7%; top: 7%; height: 56%; overflow: hidden; }
+    .layout-vertical .copy { position: absolute; left: 28%; right: 7%; bottom: 7%; }
+    .layout-vertical .copy h2 { margin: 0 0 5%; font-size: 7cqw; line-height: .92; letter-spacing: -.05em; }
+    .layout-vertical .copy p { margin: 0; color: #85867f; font-size: 2.2cqw; line-height: 1.4; }
+    .layout-ascii { padding: 7%; }
+    .layout-ascii .ascii { position: absolute; inset: 8% 6% 31%; overflow: hidden; color: var(--accent); font: 650 2cqw/1.15 Arial, Helvetica, sans-serif; white-space: pre-wrap; word-break: break-all; opacity: .85; }
+    .layout-ascii h2 { position: absolute; left: 7%; right: 7%; bottom: 8%; margin: 0; font-size: 10cqw; line-height: .88; letter-spacing: -.06em; }
+    .layout-band { display: grid; grid-template-rows: 39% 22% 39%; }
+    .layout-band .band-image { overflow: hidden; }
+    .layout-band .band-copy { display: flex; align-items: center; justify-content: space-between; gap: 5%; padding: 4% 7%; background: var(--accent); color: #090909; }
+    .layout-band .band-copy strong { font-size: 5.8cqw; letter-spacing: -.05em; }
+    .layout-band .band-copy span { font-size: 1.8cqw; }
+    .layout-manifesto { padding: 7%; }
+    .layout-manifesto .line { font-size: 7.8cqw; font-weight: 700; line-height: .94; letter-spacing: -.055em; }
+    .layout-manifesto .line + .line { margin-top: 3%; }
+    .layout-manifesto .line:nth-child(2) { color: var(--accent); text-align: right; }
+    .layout-manifesto .line:nth-child(4) { color: #6d6e68; }
+    .layout-manifesto .brand-lockup { left: 7%; bottom: 6%; width: 34%; }
+    .layout-manifesto .brand-lockup span { font-size: 3cqw; }
+    .v1.layout-focus .slabs { left: -2%; transform: rotate(7deg) scaleX(-1); }
+    .v1.layout-focus h2 { left: auto; right: 7%; text-align: right; }
+    .v1.layout-service .orb { left: auto; right: 8%; border-radius: 50%; }
+    .v1.layout-type h2, .v1.layout-contact h2 { text-align: right; }
+    .v1.layout-case .project-image { object-position: 70% center; }
+    .v1.layout-split { grid-template-rows: 42% 58%; }
+    .v1.layout-vertical .image-panel { left: 7%; right: 28%; }
+    .v1.layout-vertical .vertical-word { left: auto; right: -3%; }
+    .v1.layout-vertical .copy { left: 7%; right: 28%; }
+    .v2.layout-brand { background: var(--accent); color: #080807; }
+    .v2.layout-brand .brand-lockup { top: 12%; bottom: 12%; flex-direction: column; align-items: flex-start; justify-content: space-between; transform: none; }
+    .v2.layout-brand .brand-lockup img { width: 28%; filter: none; }
+    .v2.layout-focus .slabs { top: 31%; transform: rotate(-18deg); }
+    .v2.layout-focus h2 { top: 9%; }
+    .v2.layout-service .orb { width: 75%; top: 14%; left: -17%; border-radius: 50%; }
+    .v2.layout-case .media { inset: 5%; }
+    .v2.layout-case .media::after { inset: 25% 0 0; }
+    .v2.layout-case .case-copy { bottom: 10%; }
+    .v2.layout-type h2 { top: 46%; }
+    .v2.layout-grid { transform: rotate(2deg) scale(1.04); }
+    .v3.layout-brand .brand-lockup { left: 7%; top: 8%; bottom: 8%; flex-direction: column; align-items: flex-start; justify-content: center; transform: none; }
+    .v3.layout-brand .brand-lockup img { width: 34%; margin-bottom: 12%; }
+    .v3.layout-focus h2 { top: 18%; }
+    .v3.layout-focus .slabs { top: 54%; left: -17%; }
+    .v3.layout-service .orb { transform: rotate(-18deg); border-radius: 3%; }
+    .v3.layout-case .project-image, .v3.layout-split .project-image, .v3.layout-vertical .project-image { filter: grayscale(1); }
+    .v3.layout-case .case-copy h2, .v3.layout-split h2, .v3.layout-vertical h2 { color: var(--accent); }
+    .v3.layout-stat .rail { width: 20%; right: -8%; transform: rotate(8deg); }
+    .v4.layout-brand .brand-lockup { top: auto; bottom: 10%; transform: none; }
+    .v4.layout-brand::before { content: ""; position: absolute; left: 0; right: 0; top: 12%; height: 22%; background: var(--accent); }
+    .v4.layout-focus .slab { border-radius: 0; }
+    .v4.layout-service .orb { top: 8%; width: 78%; border-radius: 50% 8% 50% 8%; }
+    .v4.layout-case .media::after { inset: 0; background: linear-gradient(90deg,rgba(0,0,0,.92),transparent 85%); }
+    .v4.layout-case .case-copy { top: 12%; bottom: auto; width: 58%; }
+    .v4.layout-split { grid-template-columns: 42% 58%; grid-template-rows: 1fr; }
+    .v4.layout-process .steps { transform: translateY(8%); }
+    .v5.layout-brand { box-shadow: inset 0 0 0 1.8em var(--accent); }
+    .v5.layout-focus .slabs { transform: rotate(0); left: -22%; }
+    .v5.layout-focus .slab { height: 19%; border-radius: 0; }
+    .v5.layout-service .orb { background: transparent; border: 2.6em solid var(--accent); box-shadow: none; }
+    .v5.layout-type h2, .v5.layout-contact h2 { -webkit-text-stroke: 1px currentColor; color: transparent; }
+    .v5.layout-type h2 span, .v5.layout-contact h2 span { color: var(--accent); -webkit-text-stroke: 0; }
+    .v5.layout-stat .stat { color: transparent; -webkit-text-stroke: 2px var(--accent); }
+    .v5.layout-index .work-item { grid-template-columns: 1fr auto; }
+    .v5.layout-index .work-item small { display: none; }
+    .v6.layout-brand, .v6.layout-type, .v6.layout-contact, .v6.layout-manifesto { background: linear-gradient(145deg,#050505 50%,color-mix(in srgb,var(--accent) 42%,#050505)); }
+    .artboard.orange.v6.layout-brand,
+    .artboard.orange.v6.layout-type,
+    .artboard.orange.v6.layout-contact,
+    .artboard.orange.v6.layout-manifesto { background-color: var(--accent); background-image: linear-gradient(145deg,#ffb39e 0%,var(--accent) 72%); }
+    .v6.layout-focus .slabs { left: 18%; top: -9%; transform: rotate(24deg); }
+    .v6.layout-service .orb { left: 41%; top: 10%; width: 78%; }
+    .v6.layout-case .case-copy { left: 0; right: 0; bottom: 0; padding: 7%; background: var(--accent); color: #090909; }
+    .v6.layout-case .case-copy .mono, .v6.layout-case .case-copy p { color: #090909; }
+    .v6.layout-band { grid-template-rows: 31% 38% 31%; }
+    .v7.layout-brand .brand-lockup { left: -10%; right: auto; width: 130%; transform: rotate(-7deg); }
+    .v7.layout-focus h2 { top: 38%; font-size: 18cqw; }
+    .v7.layout-focus .slabs { opacity: .5; }
+    .v7.layout-service h2 { font-size: 14cqw; }
+    .v7.layout-case .project-image { transform: scale(1.18); }
+    .v7.layout-split .image-wrap { margin: 6%; }
+    .v7.layout-stat .stat { top: 5%; left: -4%; font-size: 34cqw; }
+    .v7.layout-ascii .ascii { inset: 0; opacity: .35; transform: rotate(-8deg) scale(1.2); }
+    .artboard.layout-brand .brand-lockup { width: auto; }
+    .layout-brand.b0 .brand-lockup { left: 9%; right: 9%; top: 50%; justify-content: center; transform: translateY(-50%); }
+    .layout-brand.b1 .brand-lockup { inset: 0; justify-content: center; transform: none; }
+    .layout-brand.b1 .brand-lockup img { width: 32%; }
+    .layout-brand.b1 .brand-lockup span { display: none; }
+    .layout-brand.b2 .brand-lockup { inset: 0; justify-content: center; transform: none; }
+    .layout-brand.b2 .brand-lockup img { display: none; }
+    .layout-brand.b2 .brand-lockup span { font-size: 14cqw; }
+    .layout-brand.b3 .brand-lockup { inset: 0; flex-direction: column; justify-content: center; gap: 8%; transform: none; }
+    .layout-brand.b3 .brand-lockup img { width: 23%; }
+    .layout-brand.b3 .brand-lockup span { font-size: 11cqw; }
+    .layout-brand.b4 .brand-lockup { left: 7%; right: auto; top: 7%; transform: none; }
+    .layout-brand.b4 .brand-lockup img { width: 16%; }
+    .layout-brand.b4 .brand-lockup span { font-size: 7cqw; }
+    .layout-brand.b5 .brand-lockup { left: auto; right: 7%; top: auto; bottom: 7%; justify-content: flex-end; transform: none; }
+    .layout-brand.b5 .brand-lockup img { width: 16%; }
+    .layout-brand.b5 .brand-lockup span { font-size: 7cqw; }
+    .layout-brand.b6::before { content: ""; position: absolute; inset: 8%; border: 1.1cqw solid var(--accent); }
+    .layout-brand.b6 .brand-lockup { inset: 0; justify-content: center; transform: none; }
+    .layout-brand.b7 .brand-lockup { inset: 0; flex-direction: row; align-items: center; justify-content: center; gap: 5%; transform: none; }
+    .artboard.layout-brand.b7 .brand-lockup img { width: 22%; padding: 4.5%; border-radius: 18%; background: var(--accent); filter: none; }
+    .layout-brand.b7 .brand-lockup span { font-size: 7cqw; }
+    .layout-brand.b8 .brand-lockup { left: 7%; right: 7%; top: 50%; justify-content: space-between; transform: translateY(-50%); }
+    .layout-brand.b8 .brand-lockup img { width: 20%; }
+    .layout-brand.b9 .brand-lockup { left: 0; right: 0; top: 50%; justify-content: center; transform: translateY(-50%) rotate(-5deg); }
+    .layout-brand.b9 .brand-lockup span { font-size: 14cqw; }
+    .layout-brand.b10 .brand-lockup { left: 50%; top: 7%; bottom: 7%; flex-direction: column; justify-content: center; transform: translateX(-50%); }
+    .layout-brand.b10 .brand-lockup img { width: 38%; }
+    .layout-brand.b10 .brand-lockup span { writing-mode: vertical-rl; font-size: 8cqw; }
+    .layout-brand.b11 .brand-lockup { inset: 0; flex-direction: row; align-items: center; justify-content: center; transform: none; }
+    .layout-brand.b11 .brand-lockup img { width: 9%; }
+    .layout-brand.b11 .brand-lockup span { font-size: 5cqw; }
+    .layout-brand.b12 .brand-lockup { inset: 0; flex-direction: row; align-items: center; justify-content: center; transform: none; }
+    .layout-brand.b12 .brand-lockup img { position: absolute; width: 72%; opacity: .12; }
+    .layout-brand.b12 .brand-lockup span { position: relative; font-size: 15cqw; }
+    .layout-brand.b13 .brand-lockup { left: 8%; right: 8%; top: 50%; flex-direction: row; align-items: center; justify-content: center; padding: 9% 6%; color: #090908; background: var(--accent); transform: translateY(-50%); }
+    .layout-brand.b13 .brand-lockup img { filter: none; }
+    .layout-brand.b14 .brand-lockup { inset: 0; flex-direction: column-reverse; justify-content: center; gap: 5%; transform: none; }
+    .layout-brand.b14 .brand-lockup img { width: 12%; }
+    .layout-brand.b14 .brand-lockup span { font-size: 9cqw; letter-spacing: .08em; }
+    .selection-tray { position: fixed; left: 50%; bottom: 16px; z-index: 30; display: flex; align-items: center; gap: 12px; min-width: 320px; padding: 8px 9px 8px 14px; border: 1px solid #42433d; border-radius: 6px; background: #171715; box-shadow: 0 20px 60px rgba(0,0,0,.55); transform: translate(-50%, 120px); transition: transform .25s ease; }
+    .selection-tray.visible { transform: translate(-50%, 0); }
+    .selection-tray strong { font-size: 11px; }
+    .selection-tray span { color: var(--muted); font: 600 9px Arial, Helvetica, sans-serif; }
+    .selection-tray .spacer { flex: 1; }
+    .selection-tray button { height: 29px; padding: 0 10px; border: 1px solid #3b3c37; border-radius: 4px; background: #242421; font-size: 10px; cursor: pointer; }
+    .selection-tray button:hover { border-color: #696a62; }
+    .modal { position: fixed; inset: 0; z-index: 50; display: none; grid-template-columns: minmax(0, 1fr) 390px; grid-template-rows: minmax(0, 1fr); background: rgba(5,5,5,.94); backdrop-filter: blur(12px); }
+    .modal.open { display: grid; }
+    .modal-stage { position: relative; display: grid; place-items: center; min-width: 0; min-height: 0; overflow: hidden; padding: 28px 68px; container-type: size; }
+    .modal-artboard { position:absolute; left:50%; top:50%; width:var(--identity-canonical-width,1080px); aspect-ratio:var(--format-ratio); box-shadow:0 30px 90px rgba(0,0,0,.7); transform:translate(-50%,-50%) scale(var(--identity-preview-scale,1)); transition:transform .18s ease; }
+    .modal-artboard .artboard { width: 100%; height: 100%; aspect-ratio: auto; cursor: default; }
+    .artboard [data-edit-id].editor-hidden { display: none !important; }
+    .modal-artboard.editing .artboard [data-edit-id] { cursor: pointer; }
+    .modal-artboard.editing .artboard [data-edit-id]:hover { outline: 1px solid rgba(255,255,255,.5); outline-offset: 2px; }
+    .modal-artboard.editing .artboard [data-edit-id].editor-selected { outline: max(2px, .35cqw) solid #5fa8ff; outline-offset: max(2px, .4cqw); z-index: 20 !important; }
+    .modal-artboard.editing .artboard [data-edit-id].editor-hidden { display: none !important; }
+    .editor-added { position: absolute; left: 10%; top: 10%; z-index: 12; }
+    .editor-added-text { max-width: 72%; color: currentColor; font-size: 8cqw; font-weight: 700; line-height: .92; }
+    .editor-added-mark { width: 16%; aspect-ratio: 1; }
+    .artboard:not(.light):not(.orange) .editor-added-mark { filter: invert(1); }
+    .editor-added-shape { width: 28%; aspect-ratio: 1; background: var(--accent); }
+    .editor-added-image { width: 42%; height: 32%; object-fit: cover; }
+    .editor-added-group { overflow: visible; }
+    .modal-panel { min-width: 0; min-height: 0; display: grid; grid-template-rows: auto minmax(0,1fr) auto auto auto; padding: 16px; border-left: 1px solid var(--line); background: #11110f; overflow: hidden; }
+    .modal-panel .close { width: 32px; height: 32px; border: 1px solid #3c3d37; border-radius: 4px; background: transparent; cursor: pointer; }
+    .modal-panel .panel-head { display: grid; grid-template-columns: 1fr auto; gap: 12px; align-items: start; padding-bottom: 14px; border-bottom: 1px solid var(--line); }
+    .panel-tools { display: flex; gap: 4px; }
+    .panel-tools button:not(.close) { width: 32px; height: 32px; padding: 0; border: 1px solid #34352f; border-radius: 4px; color: #aaa9a3; background: transparent; cursor: pointer; }
+    .panel-tools button:not(.close):hover { color: #fff; border-color: #5b5c55; }
+    .panel-tools button:disabled { opacity: .35; cursor: default; }
+    .modal-panel .eyebrow { color: var(--orange); font: 650 9px Arial, Helvetica, sans-serif; letter-spacing: 1.2px; text-transform: uppercase; }
+    .modal-panel h2 { margin: 7px 0 0; font-size: 20px; letter-spacing: -.4px; }
+    .editor-scroll { min-width: 0; min-height: 0; height: 100%; overflow-y: auto; overscroll-behavior: contain; margin: 0 -8px; padding: 14px 8px 24px; scrollbar-width: thin; scrollbar-color: #42433d transparent; }
+    .editor-section + .editor-section { margin-top: 20px; padding-top: 18px; border-top: 1px solid var(--line); }
+    .editor-section-head { display: flex; align-items: center; justify-content: space-between; min-height: 28px; margin-bottom: 9px; }
+    .editor-section-head strong { font-size: 10px; letter-spacing: .9px; text-transform: uppercase; }
+    .editor-section-head span { color: #74756e; font-size: 9px; }
+    .layer-actions { display: grid; grid-template-columns: repeat(4, 1fr); gap: 5px; margin-bottom: 8px; }
+    .layer-actions button, .mini-button { height: 30px; border: 1px solid #34352f; border-radius: 3px; color: #b8b9b2; background: #1b1b18; font-size: 9px; cursor: pointer; }
+    .layer-actions button:hover, .mini-button:hover { color: #fff; border-color: #62635b; }
+    .layers { display: grid; gap: 3px; }
+    .layer-row { display: grid; grid-template-columns: 24px minmax(0,1fr) 24px; align-items: center; min-height: 32px; border: 1px solid transparent; border-radius: 3px; background: #181816; }
+    .layer-row.active { border-color: #5fa8ff; background: #1d2730; }
+    .layer-row button { height: 30px; padding: 0; border: 0; color: #85867f; background: transparent; cursor: pointer; }
+    .layer-row .layer-name { min-width: 0; overflow: hidden; text-align: left; text-overflow: ellipsis; white-space: nowrap; color: #cacbc4; font-size: 10px; }
+    .layer-row.is-hidden .layer-name { color: #62635d; text-decoration: line-through; }
+    .inspector-empty { padding: 18px 12px; border: 1px dashed #373832; color: #74756e; font-size: 10px; line-height: 1.5; text-align: center; }
+    .field-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 9px 8px; }
+    .field-grid .wide { grid-column: 1 / -1; }
+    .editor-field { min-width: 0; }
+    .editor-field label { display: block; margin-bottom: 5px; color: #777871; font-size: 8px; font-weight: 650; letter-spacing: .7px; text-transform: uppercase; }
+    .editor-field input:not([type="color"]), .editor-field select, .editor-field textarea { width: 100%; height: 32px; padding: 0 8px; border: 1px solid #363731; border-radius: 3px; color: #efefe9; background: #1a1a18; outline: 0; }
+    .editor-field textarea { height: 62px; padding: 8px; resize: vertical; line-height: 1.35; }
+    .editor-field input:focus, .editor-field select:focus, .editor-field textarea:focus { border-color: #5fa8ff; }
+    .post-fields { display: grid; gap: 9px; }
+    .post-fields textarea { width:100%; min-height:72px; padding:8px; border:1px solid #363731; border-radius:3px; outline:0; color:#efefe9; background:#1a1a18; font:10px/1.45 Arial,sans-serif; resize:vertical; }
+    .post-fields textarea:focus { border-color:#5fa8ff; }
+    .post-field-head { display:flex; justify-content:space-between; margin-bottom:5px; color:#777871; font-size:8px; font-weight:650; letter-spacing:.7px; text-transform:uppercase; }
+    .post-field-head b { color:#a9aaa3; font:8px Consolas,monospace; }
+    .copy-post { width:100%; height:32px; border:1px solid #45463f; border-radius:3px; color:#ddd; background:#22231f; font-size:9px; cursor:pointer; }
+    .color-field { display: grid; grid-template-columns: 32px 1fr; gap: 6px; }
+    .color-field input[type="color"] { width: 32px; height: 32px; padding: 2px; border: 1px solid #363731; border-radius: 3px; background: #1a1a18; cursor: pointer; }
+    .inline-actions { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 6px; margin-top: 10px; }
+    .inline-actions .danger { color: #ff8c73; }
+    .modal-panel .modal-actions { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; padding-top: 12px; border-top: 1px solid var(--line); }
+    .modal-panel .modal-actions button { height: 38px; padding: 0 8px; border: 1px solid #3d3e38; border-radius: 4px; background: #20201d; font-size: 10px; white-space: nowrap; cursor: pointer; }
+    .modal-panel .modal-actions button.primary { color: #100b08; border-color: var(--orange); background: var(--orange); font-weight: 700; }
+    .modal-nav { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; margin-top: 6px; }
+    .modal-nav button { height: 34px; border: 1px solid #33342f; border-radius: 4px; background: transparent; font-size: 10px; cursor: pointer; }
+    .export-actions { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 6px; padding-top: 6px; }
+    .export-actions button { height: 38px; border: 1px solid #4a4b44; border-radius: 4px; color: #efefe9; background: #292a26; font-size: 10px; font-weight: 700; cursor: pointer; }
+    .export-actions button:first-child { color: #120d09; border-color: var(--orange); background: var(--orange); }
+    .export-actions button:disabled { opacity: .45; cursor: wait; }
+    .toast { position: fixed; left: 50%; bottom: 18px; z-index: 100; min-width: 240px; padding: 11px 14px; border: 1px solid #4b4d46; border-radius: 5px; color: #efefe9; background: #20211e; box-shadow: 0 18px 60px rgba(0,0,0,.55); font-size: 11px; text-align: center; transform: translate(-50%, 90px); transition: transform .22s ease; }
+    .toast.visible { transform: translate(-50%,0); }
+    @media (max-width: 1180px) { .lab-brand { min-width: 170px; } }
+    @media (max-width: 980px) { .modal { grid-template-columns: minmax(0,1fr) 340px; } .modal-stage { padding: 20px; } }
+    @media (max-width: 820px) { .lab-header { position: relative; height: auto; min-height: 64px; flex-wrap: wrap; padding: 10px 14px; } .lab-brand { min-width: 0; } .filters { order: 3; width: 100%; } .format-dock { top: 0; padding: 7px 14px; overflow-x: auto; } .format-dock-label, .export-size, .identity-scale>span { display:none; } .identity-scale input { width:70px; } .format-preset span { display:none; } .intro { grid-template-columns: 1fr; padding: 38px 14px; } .gallery { grid-template-columns: repeat(auto-fit,minmax(260px,1fr)); padding: 16px 14px 100px; } .modal { grid-template-columns: 1fr; grid-template-rows: minmax(300px,48vh) minmax(0,1fr); } .modal-stage { padding: 12px; } .modal-panel { border-top: 1px solid var(--line); border-left: 0; } .editor-scroll { padding-bottom: 12px; } }
+    @media (max-width: 820px) { .carousel-builder { grid-template-columns:1fr; grid-template-rows:45vh minmax(0,1fr); } .carousel-preview { padding:10px; } .carousel-panel { border-top:1px solid var(--line); border-left:0; } }
+    @media (max-width: 520px) { .gallery { grid-template-columns: 1fr; } .counter { display: none; } .intro h1 { letter-spacing: -2px; } .modal { grid-template-rows: 42vh minmax(0,1fr); } .modal-stage { align-items: center; padding: 8px; } .modal-panel { padding: 12px; } }
+    @media (prefers-reduced-motion: reduce) { * { scroll-behavior: auto !important; transition: none !important; } }
+  </style>
+</head>
+<body>
+  <header class="lab-header">
+    <a class="lab-brand" href="/"><img src="/assets/brand/autocubes.svg" alt="" /><div><strong>Identity Lab</strong><span>60 идей / 532 варианта</span></div></a>
+    <nav class="filters" aria-label="Фильтры композиций"></nav>
+    <div class="header-spacer"></div>
+    <span class="counter"></span>
+    <button class="tool-button" id="openBrandKit">Бренд-система</button>
+    <button class="tool-button" id="shuffle">Перемешать</button>
+    <button class="tool-button accent" id="pickedOnly">Выбранное</button>
+  </header>
+  <section class="format-dock" aria-label="Формат результата">
+    <span class="format-dock-label">Формат результата</span>
+    <button class="format-preset" data-format="portrait"><b>4:5</b><span>Портрет ленты</span></button>
+    <button class="format-preset" data-format="square"><b>1:1</b><span>Квадрат</span></button>
+    <button class="format-preset" data-format="story"><b>9:16</b><span>История / Reel</span></button>
+    <button class="format-preset" data-format="landscape"><b>1.91:1</b><span>Горизонтальный</span></button>
+    <details class="custom-format" id="customFormat"><summary>Свой</summary><div class="custom-popover"><label>Ширина<input id="customWidth" type="number" min="320" max="4096" value="1080"></label><span>×</span><label>Высота<input id="customHeight" type="number" min="320" max="4096" value="1350"></label><button id="applyCustom">Применить</button></div></details>
+    <div class="identity-scale" title="Меняет только размер предпросмотра. Экспорт остаётся неизменным"><span>Масштаб</span><button id="scaleDown" aria-label="Уменьшить предпросмотр">−</button><input id="studioScale" type="range" min="60" max="120" step="5" value="100"><output id="studioScaleValue">100%</output><button id="scaleUp" aria-label="Увеличить предпросмотр">+</button></div>
+    <div class="dock-spacer"></div>
+    <span class="export-size" id="exportSize">1080 × 1350 px</span>
+    <div class="output-language"><button data-output-language="en" class="active">Результат EN</button><button data-output-language="ru">Результат RU</button></div>
+    <button class="dock-toggle" id="toggleGuides">Безопасные зоны</button>
+  </section>
+  <section class="intro">
+    <h1>Шестьдесят идей айдентики. <em>Один знак, разные системы.</em></h1>
+    <div class="intro-copy"><b>Одна карточка — одно направление.</b> Переключайте варианты, редактируйте слои и собирайте готовую карусель на английском или русском.</div>
+  </section>
+  <main class="gallery" id="gallery"></main>
+  <aside class="selection-tray" id="selectionTray"><div><strong id="selectionCount">0 выбрано</strong><span id="selectionIds">Порядок выбора станет порядком карусели</span></div><div class="spacer"></div><button id="openCarousel">Карусель</button><button id="clearSelection">Очистить</button><button id="exportSelection">JSON</button><button id="exportPack">PNG-пакет</button></aside>
+  <aside class="studio-drawer" id="brandDrawer" aria-label="Бренд-система"><div class="drawer-head"><div><span>Общий источник айдентики</span><h2>Бренд-система</h2></div><button id="closeBrandKit">×</button></div><div class="drawer-body"><label class="brand-field"><span>Название бренда</span><input id="brandName"></label><label class="brand-field"><span>Слоган English</span><input id="brandTaglineEn"></label><label class="brand-field"><span>Слоган Русский</span><input id="brandTaglineRu"></label><label class="brand-field"><span>Email</span><input id="brandEmail" type="email"></label><label class="brand-field"><span>Сайт</span><input id="brandWebsite"></label><label class="brand-field"><span>Адрес логотипа</span><input id="brandLogo" placeholder="/assets/brand/autocubes.svg"></label><div class="brand-colors"><label class="brand-field"><span>Основной цвет</span><input id="brandPrimary" type="color"></label><label class="brand-field"><span>Дополнительный</span><input id="brandSecondary" type="color"></label></div><label class="brand-toggle"><input id="brandUseColors" type="checkbox">Применить цвета ко всем идеям</label><label class="brand-field"><span>Подпись English</span><textarea id="brandCaptionEn"></textarea></label><label class="brand-field"><span>Подпись Русский</span><textarea id="brandCaptionRu"></textarea></label><label class="brand-field"><span>Хэштеги</span><textarea id="brandHashtags"></textarea></label><div class="drawer-note">Общие значения применяются первыми. Индивидуальные изменения слоёв всегда имеют больший приоритет.</div></div><div class="drawer-actions"><button id="resetBrandKit">Сбросить</button><button class="primary" id="saveBrandKit">Применить</button></div></aside>
+  <div class="carousel-builder" id="carouselBuilder"><div class="carousel-preview"><div class="carousel-strip" id="carouselStrip"></div></div><aside class="carousel-panel"><div class="drawer-head"><div><span>Последовательность Instagram</span><h2>Сборщик карусели</h2></div><button id="closeCarousel">×</button></div><div class="carousel-list" id="carouselList"></div><div class="drawer-actions"><button id="reverseCarousel">Развернуть</button><button class="primary" id="exportCarousel">Экспортировать PNG</button></div></aside></div>
+  <div class="modal" id="modal" role="dialog" aria-modal="true" aria-label="Предпросмотр композиции">
+    <div class="modal-stage"><div class="modal-artboard" id="modalArtboard"></div></div>
+    <aside class="modal-panel">
+      <div class="panel-head"><div><span class="eyebrow" id="modalEyebrow"></span><h2 id="modalTitle"></h2></div><div class="panel-tools"><button id="undoEdit" title="Отменить">↶</button><button id="redoEdit" title="Повторить">↷</button><button class="close" id="closeModal" aria-label="Закрыть">&#215;</button></div></div>
+      <div class="editor-scroll">
+        <section class="editor-section"><div class="editor-section-head"><strong>Слои</strong><span id="layerCount"></span></div><div class="layer-actions"><button id="addText">+ Текст</button><button id="addMark">+ Знак</button><button id="addShape">+ Фигура</button><button id="addImage">+ Фото</button></div><input id="imageInput" type="file" accept="image/png,image/jpeg,image/webp" hidden><div class="layers" id="layers"></div></section>
+        <section class="editor-section"><div class="editor-section-head"><strong>Свойства</strong><span id="selectedType">Холст</span></div><div id="inspector"></div></section>
+        <section class="editor-section"><div class="editor-section-head"><strong>Текст публикации</strong><span id="postLanguageHint">English output</span></div><div class="post-fields"><label><span class="post-field-head">Подпись <b id="captionCount">0</b></span><textarea id="postCaption" placeholder="Текст публикации…"></textarea></label><label><span class="post-field-head">Alt-текст <b id="altCount">0</b></span><textarea id="postAlt" placeholder="Опишите визуал для доступности…"></textarea></label><label><span class="post-field-head">Хэштеги</span><textarea id="postHashtags" placeholder="#autocubes #designstudio"></textarea></label><button class="copy-post" id="copyPost">Скопировать публикацию</button></div></section>
+      </div>
+      <div class="modal-actions"><button class="primary" id="modalPick"></button><button id="resetComposition">Сбросить изменения</button></div>
+      <div class="export-actions"><button id="exportPng">Экспорт PNG</button><button id="exportJpeg">Экспорт JPEG</button><button id="exportAllSizes">Все форматы</button></div>
+      <div class="modal-nav"><button id="prevComposition">&#8592; Вариант</button><button id="nextComposition">Вариант &#8594;</button></div>
+    </aside>
+  </div>
+  <div class="toast" id="toast" role="status"></div>
+  <script type="module">
+    import {toJpeg, toPng} from 'html-to-image';
+    import JSZip from 'jszip';
+    import {mediaPresets} from '../../packages/core/media-presets.ts';
+    const projects = [
+      {title:'Forever Estates', type:'Real estate in Dubai', image:'assets/forever-estates.webp', copy:'A lead-focused site for a Dubai real-estate consulting firm.', accent:'#ff6b45'},
+      {title:'Vicube', type:'Video production studio', image:'assets/vicube.webp', copy:'Editorial structure, cinematic media, and an edited-reel pace.', accent:'#8ec5ff'},
+      {title:'Autocubes Kit', type:'Landing page template', image:'assets/autokit.webp', copy:'A flexible block system for SaaS, startups, and agencies.', accent:'#d9c4ff'},
+      {title:'Le Cube', type:'Brand studio', image:'assets/lecube.webp', copy:'A luxury brand studio with a confident editorial voice.', accent:'#d4a36d'},
+      {title:'CubeKit Pro', type:'Brand-system platform', image:'assets/cubekit.webp', copy:'A platform for documenting and maintaining brand systems.', accent:'#8b9dff'},
+      {title:'Lanvio', type:'AI automation platform', image:'assets/lanvio.webp', copy:'A dark monochrome landing page for an AI subscription service.', accent:'#9ca7ff'},
+      {title:'Flowline', type:'Habit-tracking app', image:'assets/flowline.webp', copy:'A mobile product story arranged as self-contained selling blocks.', accent:'#ff693d'},
+      {title:'CubeHill', type:'Agri-tech company', image:'assets/cubehill.webp', copy:'Corporate clarity, full-bleed media, and real agricultural data.', accent:'#a6d783'},
+      {title:'Scientific Code', type:'Code audit and refactor', image:'assets/neutrino.webp', copy:'A C and Cython rewrite with identical numerics and a 100× speed-up.', accent:'#ffb64c'},
+      {title:'Junior Notes', type:'Frontend knowledge base', image:'assets/junior-notes.webp', copy:'1,465 frontend notes powered by a custom publishing engine.', accent:'#ff6b4a'},
+      {title:'Geometric Games', type:'Browser puzzle game', image:'assets/geometric-games.webp', copy:'Interactive geometry puzzles built around direct manipulation.', accent:'#a98aff'},
+      {title:'Poker Timer', type:'Tournament manager', image:'assets/poker-timer.webp', copy:'A focused timer and manager for live poker tournaments.', accent:'#72c7ff'}
+    ];
+    const services = [
+      {title:'Websites & landing pages', copy:'Strategy, design, build, and an SEO-ready launch.'},
+      {title:'Branding & identity', copy:'Logo, typography, colour, and a system that stays consistent.'},
+      {title:'Apps & 3D motion', copy:'Product interfaces, interactive experiences, and commercial CGI.'}
+    ];
+    const statements = ['Built to ship.','Design. Code. Motion.','From first sketch to deployed product.','Pragmatic by default.','One team, one system.','Conversion-led, not decoration.','Make the complex feel obvious.','Identity that survives production.'];
+    const stats = [
+      {value:'100×', title:'faster scientific analysis code', copy:'C and Cython refactor with identical numerical results.'},
+      {value:'1,465', title:'frontend notes in one open knowledge base', copy:'Seventeen topics, one fast publishing system.'},
+      {value:'$1M+', title:'annual client revenue after launch', copy:'Forever Estates grew through a focused lead-capture system.'},
+      {value:'3', title:'disciplines under one roof', copy:'Design, engineering, and motion move as one process.'}
+    ];
+    const families = ['All','Brand','Services','Work','Typography','Data','Process','Contact','Systems'];
+    const palettes = [
+      ['#ff5a2f','#ffb19d','dark'],['#79aaff','#c2ffe0','blue'],['#a78bff','#ffd3e8','lilac'],['#9ed776','#e2ffc4','green'],['#ff5a2f','#ffc0ad','light'],['#ff5a2f','#ff9c7d','orange']
+    ];
+    const ascii = 'AUTOCUBES  DESIGN  ENGINEERING  MOTION  BUILD  SHIP  SYSTEM  010110  GRID  TYPE  CODE  WEB  BRAND  APP  ';
+    const templateFamilies = ['Brand','Brand','Services','Work','Work','Typography','Data','Process','Work','Contact','Systems','Work','Systems','Typography','Brand'];
+    const ideaTemplates = [0,1,2,5,6,7,8,9,12,14];
+    const ideaNames = {
+      0:['Brand lockup','Centered signature','Mark and word','Wide signature','Compact lockup','Framed signature'],
+      1:['Layered identity','Stacked signal','Diagonal system','Brand ribbons','Identity rails','Layered mark'],
+      2:['Focus area','Service signal','Capability tile','Discipline cover','Offer card','Service object'],
+      5:['Type statement','Studio headline','Launch statement','Design principle','Working belief','Product sentence'],
+      6:['Proof point','Performance number','Knowledge metric','Revenue proof','Capability count','Outcome card'],
+      7:['Process map','Four-step process','Project sequence','Delivery path','Studio workflow','Launch roadmap'],
+      8:['Work index','Project register','Selected work list','Case directory','Portfolio ledger','Project menu'],
+      9:['Contact card','Project enquiry','Email poster','Start a project','Contact signal','Open brief'],
+      12:['Code field','System texture','ASCII pattern','Engineering field','Data texture','Technical poster'],
+      14:['Studio manifesto','Capability manifesto','Four principles','Studio statement','Offer manifesto','Practice summary']
+    };
+    const ideaTitleRu = {
+      'Brand lockup':'Фирменная подпись','Centered signature':'Подпись по центру','Mark and word':'Знак и слово','Wide signature':'Широкая подпись','Compact lockup':'Компактный локап','Framed signature':'Подпись в рамке',
+      'Layered identity':'Слоистая айдентика','Stacked signal':'Составной сигнал','Diagonal system':'Диагональная система','Brand ribbons':'Фирменные ленты','Identity rails':'Направляющие айдентики','Layered mark':'Слоистый знак',
+      'Focus area':'Зона фокуса','Service signal':'Сигнал услуги','Capability tile':'Карточка компетенции','Discipline cover':'Обложка направления','Offer card':'Карточка предложения','Service object':'Объект услуги',
+      'Type statement':'Типографический тезис','Studio headline':'Заголовок студии','Launch statement':'Тезис запуска','Design principle':'Принцип дизайна','Working belief':'Рабочий принцип','Product sentence':'Фраза о продукте',
+      'Proof point':'Доказательство','Performance number':'Показатель эффективности','Knowledge metric':'Метрика знаний','Revenue proof':'Подтверждение выручки','Capability count':'Количество компетенций','Outcome card':'Карточка результата',
+      'Process map':'Карта процесса','Four-step process':'Процесс из четырёх шагов','Project sequence':'Последовательность проекта','Delivery path':'Путь к результату','Studio workflow':'Процесс студии','Launch roadmap':'Карта запуска',
+      'Work index':'Индекс проектов','Project register':'Реестр проектов','Selected work list':'Список избранных работ','Case directory':'Каталог кейсов','Portfolio ledger':'Ведомость портфолио','Project menu':'Меню проектов',
+      'Contact card':'Контактная карточка','Project enquiry':'Запрос на проект','Email poster':'Постер с email','Start a project':'Начать проект','Contact signal':'Контактный сигнал','Open brief':'Открытый бриф',
+      'Code field':'Поле кода','System texture':'Системная текстура','ASCII pattern':'ASCII-паттерн','Engineering field':'Инженерное поле','Data texture':'Текстура данных','Technical poster':'Технический постер',
+      'Studio manifesto':'Манифест студии','Capability manifesto':'Манифест компетенций','Four principles':'Четыре принципа','Studio statement':'Тезис студии','Offer manifesto':'Манифест предложения','Practice summary':'Итог практики'
+    };
+    function readStored(key, fallback) {
+      try { return JSON.parse(localStorage.getItem(key) || 'null') ?? fallback; }
+      catch { localStorage.removeItem(key); return fallback; }
+    }
+    const picked = new Set(readStored('autocubes-identity-v2-picked', []));
+    const BRAND_KEY = 'autocubes-identity-brand-kit-v1';
+    const brandDefaults = {name:'autocubes', taglineEn:'Design. Code. Motion.', taglineRu:'Дизайн. Код. Моушн.', email:'contact@autocubes.site', website:'autocubes.site', logo:'/assets/brand/autocubes.svg', primary:'#ff5a2f', secondary:'#ffb19d', useColors:false, captionEn:'Built to ship.', captionRu:'Сделано, чтобы запустить.', hashtags:'#autocubes #designstudio'};
+    const storedBrandKit = readStored(BRAND_KEY, {});
+    let brandKit = {...brandDefaults, ...storedBrandKit, taglineEn:storedBrandKit.taglineEn || storedBrandKit.tagline || brandDefaults.taglineEn, captionEn:storedBrandKit.captionEn || storedBrandKit.caption || brandDefaults.captionEn};
+    let currentOutputLanguage = localStorage.getItem('autocubes-identity-output-language') === 'ru' ? 'ru' : 'en';
+    let activeFilter = 'All';
+    let pickedMode = false;
+    let currentId = null;
+    const EDITS_KEY = 'autocubes-identity-v3-edits';
+    const edits = readStored(EDITS_KEY, {});
+    const editorState = {selected:'canvas', drag:null};
+    const editHistory = [];
+    const editFuture = [];
+    const formatFromPreset = (id, presetId) => {
+      const preset = mediaPresets.find(item => item.id === presetId);
+      return {id, label:preset.label, width:preset.width, height:preset.height, ratio:`${preset.width} / ${preset.height}`, safe:preset.safeArea};
+    };
+    const formats = {
+      portrait: formatFromPreset('portrait','instagram-portrait'),
+      square: formatFromPreset('square','instagram-square'),
+      story: formatFromPreset('story','instagram-reel'),
+      landscape: formatFromPreset('landscape','instagram-landscape'),
+      custom: {id:'custom', label:'Свой холст', width:1080, height:1350, ratio:'1080 / 1350', safe:{top:5,right:5,bottom:5,left:5}}
+    };
+    try {
+      const savedCustom = readStored('autocubes-identity-custom-format', null);
+      if (savedCustom?.width && savedCustom?.height) formats.custom = {...formats.custom, ...savedCustom, ratio:`${savedCustom.width} / ${savedCustom.height}`};
+    } catch {}
+    let currentFormat = formats[localStorage.getItem('autocubes-identity-format')] || formats.portrait;
+    let guidesVisible = localStorage.getItem('autocubes-identity-guides') !== 'false';
+    let studioScale = Math.max(60, Math.min(120, Number(localStorage.getItem('autocubes-identity-studio-scale')) || 100));
+    let toastTimer = 0;
+
+    function showToast(message) {
+      const toast = document.getElementById('toast');
+      toast.textContent = message;
+      toast.classList.add('visible');
+      clearTimeout(toastTimer);
+      toastTimer = setTimeout(() => toast.classList.remove('visible'), 2400);
+    }
+
+    function applyStudioScale(value, persist = true) {
+      studioScale = Math.max(60, Math.min(120, Math.round(Number(value) / 5) * 5));
+      document.documentElement.style.setProperty('--identity-card-width', `${Math.round(420 * studioScale / 100)}px`);
+      document.getElementById('studioScale').value = String(studioScale);
+      document.getElementById('studioScaleValue').textContent = `${studioScale}%`;
+      updateEditorPreviewScale();
+      requestAnimationFrame(updateGridPreviewScales);
+      if (persist) localStorage.setItem('autocubes-identity-studio-scale', String(studioScale));
+    }
+
+    function updateEditorPreviewScale() {
+      const stage = document.querySelector('.modal-stage');
+      const shell = document.getElementById('modalArtboard');
+      if (!stage || !shell) return;
+      const canonicalWidth = currentFormat.width;
+      const canonicalHeight = canonicalWidth * currentFormat.height / currentFormat.width;
+      const fit = Math.min(Math.max(0.1, (stage.clientWidth - 40) / canonicalWidth), Math.max(0.1, (stage.clientHeight - 40) / canonicalHeight), 1);
+      shell.style.setProperty('--identity-preview-scale', String(fit * studioScale / 100));
+    }
+
+    function updateGridPreviewScales() {
+      document.querySelectorAll('.artboard-preview').forEach((preview) => {
+        const canvas = preview.querySelector('.artboard-preview-canvas');
+        if (!canvas) return;
+        canvas.style.width = `${currentFormat.width}px`;
+        canvas.style.height = `${currentFormat.height}px`;
+        canvas.style.transform = `scale(${preview.clientWidth / currentFormat.width})`;
+      });
+    }
+
+    const cloneValue = value => value == null ? null : JSON.parse(JSON.stringify(value));
+    function updateHistoryButtons() {
+      document.getElementById('undoEdit').disabled = editHistory.length === 0;
+      document.getElementById('redoEdit').disabled = editFuture.length === 0;
+    }
+    function checkpoint() {
+      editHistory.push(cloneValue(edits[currentId] || null));
+      if (editHistory.length > 80) editHistory.shift();
+      editFuture.length = 0;
+      updateHistoryButtons();
+    }
+    function restoreEdit(record) {
+      if (record) edits[currentId] = cloneValue(record);
+      else delete edits[currentId];
+      saveEdits();
+      openModal(currentId, true);
+    }
+    function undoEdit() {
+      if (!editHistory.length) return;
+      editFuture.push(cloneValue(edits[currentId] || null));
+      restoreEdit(editHistory.pop());
+      updateHistoryButtons();
+    }
+    function redoEdit() {
+      if (!editFuture.length) return;
+      editHistory.push(cloneValue(edits[currentId] || null));
+      restoreEdit(editFuture.pop());
+      updateHistoryButtons();
+    }
+
+    function applyFormat(formatId, persist = true) {
+      currentFormat = formats[formatId] || formats.portrait;
+      const root = document.documentElement;
+      root.style.setProperty('--format-ratio', currentFormat.ratio);
+      root.style.setProperty('--format-aspect', String(currentFormat.width / currentFormat.height));
+      root.style.setProperty('--identity-canonical-width', `${currentFormat.width}px`);
+      root.style.setProperty('--identity-canonical-height', `${currentFormat.height}px`);
+      root.style.setProperty('--safe-top', `${currentFormat.safe.top}%`);
+      root.style.setProperty('--safe-right', `${currentFormat.safe.right}%`);
+      root.style.setProperty('--safe-bottom', `${currentFormat.safe.bottom}%`);
+      root.style.setProperty('--safe-left', `${currentFormat.safe.left}%`);
+      document.getElementById('exportSize').textContent = `${currentFormat.width} × ${currentFormat.height} px`;
+      document.getElementById('customWidth').value = currentFormat.width;
+      document.getElementById('customHeight').value = currentFormat.height;
+      document.querySelectorAll('[data-format]').forEach(button => button.classList.toggle('active', button.dataset.format === currentFormat.id));
+      document.getElementById('customFormat').classList.toggle('active', currentFormat.id === 'custom');
+      document.querySelectorAll('.artboard').forEach(board => board.classList.toggle('show-guides', guidesVisible));
+      document.querySelectorAll('.composition .artboard').forEach(board => applyStoredEdits(board, Number(board.closest('.composition')?.dataset.id)));
+      updateGridPreviewScales();
+      if (currentId && currentBoard()) {
+        applyStoredEdits(currentBoard(), currentId);
+        if (document.getElementById('modal').classList.contains('open')) selectEditorElement(editorState.selected);
+      }
+      const guideButton = document.getElementById('toggleGuides');
+      guideButton.classList.toggle('active', guidesVisible);
+      guideButton.textContent = guidesVisible ? 'Безопасные зоны: вкл' : 'Безопасные зоны';
+      updateEditorPreviewScale();
+      if (persist) localStorage.setItem('autocubes-identity-format', currentFormat.id);
+    }
+
+    const logo = () => `<img class="logo" src="${brandKit.logo}" alt="">`;
+    const lockup = () => `<div class="brand-lockup"><img src="${brandKit.logo}" alt=""><span>${brandKit.name}</span></div>`;
+    const image = (project) => `<img class="project-image" src="${project.image}" alt="${project.title}">`;
+    const slabs = () => `<div class="slabs"><div class="slab">${logo()}</div><div class="slab">${logo()}</div><div class="slab">${logo()}</div></div>`;
+    const themeClass = (palette) => palette[2] === 'dark' ? '' : palette[2];
+
+    function artboard(ideaIndex, variantIndex, id) {
+      const index = ideaIndex;
+      const template = ideaTemplates[ideaIndex % ideaTemplates.length];
+      const project = projects[(index * 5 + Math.floor(index / 15)) % projects.length];
+      const project2 = projects[(index * 7 + 3) % projects.length];
+      const service = services[(index * 2) % services.length];
+      const palette = palettes[(variantIndex + index * 2) % palettes.length];
+      const statement = statements[(index * 5 + 1) % statements.length];
+      const stat = stats[(index + Math.floor(index / 15)) % stats.length];
+      const vars = `--accent:${palette[0]};--accent2:${palette[1]}`;
+      const ideaCycle = Math.floor(ideaIndex / ideaTemplates.length);
+      const variant = (variantIndex + ideaCycle) % 8;
+      const brandGeometry = (variantIndex + ideaCycle * 2) % 15;
+      const common = `artboard ${themeClass(palette)} v${variant} b${brandGeometry}`;
+      let html = '';
+      if (template === 0) html = `<div class="${common} layout-brand" style="${vars}">${lockup()}<div class="grain"></div></div>`;
+      if (template === 1) html = `<div class="${common} layout-focus" style="${vars}">${slabs()}<h2>What<br>we <em>do</em></h2>${lockup()}<span class="slide-no mono">01 / 05</span></div>`;
+      if (template === 2) html = `<div class="${common} layout-service" style="${vars}">${logo()}<span class="kicker mono">Focus area / ${String((index%3)+1).padStart(2,'0')}</span><div class="orb"></div><h2>${service.title}</h2><span class="service-index mono">${service.copy}</span><div class="grain"></div></div>`;
+      if (template === 3) html = `<div class="${common} layout-case" style="${vars}"><div class="media">${image(project)}</div><div class="case-copy"><span class="mono">Selected work / ${String(id).padStart(3,'0')}</span><h2>${project.title}</h2><p>${project.copy}</p></div></div>`;
+      if (template === 4) html = `<div class="${common} light layout-split" style="${vars}"><div class="image-wrap">${image(project)}</div><div class="copy"><span class="mono">${project.type}</span><h2>${project.title}</h2><p>${project.copy}</p><span class="arrow">↗</span></div></div>`;
+      if (template === 5) html = `<div class="${common} layout-type" style="${vars}">${logo()}<h2>${statement.replace(/\.$/,'')}<span>.</span></h2><div class="footline mono"><span>autocubes studio</span><span>${String(ideaIndex+1).padStart(2,'0')} / ${String(variantIndex+1).padStart(2,'0')}</span></div></div>`;
+      if (template === 6) html = `<div class="${common} light layout-stat" style="${vars}"><div class="stat">${stat.value}</div><h2>${stat.title}</h2><p class="caption">${stat.copy}</p><div class="rail"></div></div>`;
+      if (template === 7) html = `<div class="${common} layout-process" style="${vars}"><span class="mono">How we work</span><h2>From brief<br>to launch.</h2><div class="steps">${['Define','Design','Build','Launch'].map((x,i)=>`<div class="step"><b>0${i+1}</b><strong>${x}</strong><span>→</span></div>`).join('')}</div></div>`;
+      if (template === 8) html = `<div class="${common} layout-index" style="${vars}">${lockup()}<div class="work-list">${Array.from({length:5},(_,i)=>projects[(index+i*5)%projects.length]).map((x,i)=>`<div class="work-item"><small>0${i+1}</small><strong>${x.title}</strong><span>${x.type}</span></div>`).join('')}</div></div>`;
+      if (template === 9) html = `<div class="${common} layout-contact" style="${vars}">${logo()}<h2>Start a<br><span>project.</span></h2><div class="email">contact@autocubes.site</div></div>`;
+      if (template === 10) html = `<div class="${common} layout-grid" style="${vars}"><div class="cell image">${image(project)}</div><div class="cell mark">${logo()}</div><div class="cell word">${statement}</div><div class="cell info"><b>${project.title}</b><span>${project.type}<br><br>${String(id).padStart(3,'0')} / 200</span></div></div>`;
+      if (template === 11) html = `<div class="${common} layout-vertical" style="${vars}"><div class="vertical-word">WORK</div><div class="image-panel">${image(project)}</div><div class="copy"><span class="mono">${project.type}</span><h2>${project.title}</h2><p>${project.copy}</p></div></div>`;
+      if (template === 12) html = `<div class="${common} layout-ascii" style="${vars}"><div class="ascii">${ascii.repeat(24).slice(index,1600)}</div><h2>Design and engineering, in the same room.</h2></div>`;
+      if (template === 13) html = `<div class="${common} layout-band" style="${vars}"><div class="band-image">${image(project)}</div><div class="band-copy"><strong>${project.title}</strong><span class="mono">${project.type}<br>${String(id).padStart(3,'0')} / 200</span></div><div class="band-image">${image(project2)}</div></div>`;
+      if (template === 14) html = `<div class="${common} layout-manifesto" style="${vars}"><div class="line">Websites that explain.</div><div class="line">Brands that hold.</div><div class="line">Apps that work.</div><div class="line">Motion with a reason.</div>${lockup()}</div>`;
+      return {html, family: templateFamilies[template], title: ideaNames[template][Math.floor(ideaIndex / ideaTemplates.length)], project, template: ideaIndex, engine: template};
+    }
+
+    const editableSelector = [
+      '.brand-lockup', '.brand-lockup > img', '.brand-lockup > span', '.logo', '.slabs', '.slab', '.orb',
+      'h2', 'p', 'span', 'strong', 'small', 'b', '.kicker', '.service-index', '.footline', '.stat', '.caption', '.rail', '.steps', '.step',
+      '.work-list', '.work-item', '.email', '.ascii', '.line', '.vertical-word', '.image-panel', '.copy',
+      '.band-copy', '.band-image', '.cell', '.case-copy', '.media', '.editor-added'
+    ].join(',');
+
+    function editRecord(id) {
+      if (!edits[id]) edits[id] = {board:{}, nodes:{}, added:[]};
+      edits[id].board ||= {};
+      edits[id].nodes ||= {};
+      edits[id].added ||= [];
+      if (!edits[id].post) edits[id].post = {
+        en:{caption:brandKit.captionEn || '', alt:'', hashtags:brandKit.hashtags || ''},
+        ru:{caption:brandKit.captionRu || '', alt:'', hashtags:brandKit.hashtags || ''}
+      };
+      if (!edits[id].post.en || !edits[id].post.ru) {
+        const legacy = edits[id].post;
+        edits[id].post = {
+          en:legacy.en || {caption:legacy.caption || brandKit.captionEn || '', alt:legacy.alt || '', hashtags:legacy.hashtags || brandKit.hashtags || ''},
+          ru:legacy.ru || {caption:brandKit.captionRu || '', alt:'', hashtags:legacy.hashtags || brandKit.hashtags || ''}
+        };
+      }
+      return edits[id];
+    }
+
+    function renderPostFields() {
+      const post = editRecord(currentId).post[currentOutputLanguage];
+      document.getElementById('postCaption').value = post.caption || '';
+      document.getElementById('postAlt').value = post.alt || '';
+      document.getElementById('postHashtags').value = post.hashtags || '';
+      document.getElementById('captionCount').textContent = String((post.caption || '').length);
+      document.getElementById('altCount').textContent = String((post.alt || '').length);
+      document.getElementById('postLanguageHint').textContent = currentOutputLanguage === 'ru' ? 'Результат RU' : 'Результат EN';
+    }
+
+    function updatePostField(field, value) {
+      checkpoint();
+      editRecord(currentId).post[currentOutputLanguage][field] = value;
+      saveEdits();
+      if (field === 'caption') document.getElementById('captionCount').textContent = String(value.length);
+      if (field === 'alt') document.getElementById('altCount').textContent = String(value.length);
+    }
+
+    function saveEdits() {
+      try {
+        localStorage.setItem(EDITS_KEY, JSON.stringify(edits));
+      } catch (error) {
+        console.error(error);
+        showToast('Хранилище браузера заполнено. Экспортируйте проект или удалите тяжёлые изображения.');
+      }
+    }
+
+    function assignEditIds(board) {
+      [...board.querySelectorAll(editableSelector)].filter(element => !element.closest('[data-added-id]')).forEach((element, index) => {
+        element.dataset.editId = `e${index}`;
+      });
+    }
+
+    function applyNodeStyle(element, node = {}) {
+      const style = node.style || {};
+      const defaults = node.defaults || {};
+      const verticalScale = currentFormat.height / currentFormat.width;
+      const hasX = style.x !== '' && style.x != null;
+      const hasY = style.y !== '' && style.y != null;
+      const offsetX = hasX ? Number(style.x) - Number(defaults.x || 0) : 0;
+      const offsetY = hasY ? Number(style.y) - Number(defaults.y || 0) : 0;
+      element.style.translate = hasX || hasY ? `${offsetX}cqw ${offsetY * verticalScale}cqw` : '';
+      element.style.width = style.width === '' || style.width == null ? '' : `${style.width}cqw`;
+      element.style.height = style.height === '' || style.height == null ? '' : `${Number(style.height) * verticalScale}cqw`;
+      element.style.padding = style.padding === '' || style.padding == null ? '' : `${style.padding}cqw`;
+      element.style.fontSize = style.fontSize === '' || style.fontSize == null ? '' : `${style.fontSize}cqw`;
+      element.style.letterSpacing = style.letterSpacing === '' || style.letterSpacing == null ? '' : `${style.letterSpacing}em`;
+      element.style.lineHeight = style.lineHeight === '' || style.lineHeight == null ? '' : String(style.lineHeight);
+      element.style.opacity = style.opacity == null ? '' : String(style.opacity);
+      element.style.color = style.color || '';
+      element.style.backgroundColor = style.backgroundColor || '';
+      element.style.borderRadius = style.borderRadius === '' || style.borderRadius == null ? '' : `${style.borderRadius}cqw`;
+      element.style.textAlign = style.textAlign || '';
+      element.style.zIndex = style.zIndex === '' || style.zIndex == null ? '' : String(style.zIndex);
+      element.style.rotate = style.rotation === '' || style.rotation == null ? '' : `${style.rotation}deg`;
+      if (element.tagName === 'IMG') element.style.objectFit = style.objectFit || '';
+      element.classList.toggle('editor-hidden', Boolean(node.hidden));
+      if (typeof node.text === 'string' && element.children.length === 0) element.textContent = node.text;
+    }
+
+    function createAddedElement(item) {
+      let element;
+      if (item.type === 'mark' || item.type === 'image') {
+        element = document.createElement('img');
+        element.src = item.type === 'mark' ? '/assets/brand/autocubes.svg' : item.src;
+        element.alt = '';
+        element.className = `editor-added editor-added-${item.type}`;
+      } else {
+        element = document.createElement('div');
+        element.className = `editor-added editor-added-${item.type}`;
+        if (item.type === 'text') element.textContent = item.text || 'Новый текст';
+        if (item.type === 'group') element.innerHTML = item.html || '';
+      }
+      element.dataset.addedId = item.id;
+      element.dataset.editId = item.id;
+      applyNodeStyle(element, item);
+      return element;
+    }
+
+    function applyBrandKit(board) {
+      board.querySelectorAll('.brand-lockup > span').forEach(element => {element.textContent = brandKit.name;});
+      board.querySelectorAll('.brand-lockup > img, img.logo').forEach(element => {element.src = brandKit.logo;});
+      board.querySelectorAll('.footline span:first-child').forEach(element => {element.textContent = `${brandKit.name} studio`;});
+      board.querySelectorAll('.email').forEach(element => {element.textContent = brandKit.email;});
+      if (brandKit.useColors) {
+        board.style.setProperty('--accent', brandKit.primary);
+        board.style.setProperty('--accent2', brandKit.secondary);
+      }
+    }
+
+    const russianOutput = new Map(Object.entries({
+      'What we do':'Что мы делаем', 'How we work':'Как мы работаем', 'From brief to launch.':'От брифа до запуска.',
+      'Define':'Смысл', 'Design':'Дизайн', 'Build':'Сборка', 'Launch':'Запуск', 'Selected work':'Избранные проекты',
+      'Start a project.':'Начать проект.', 'Websites that explain.':'Сайты, которые объясняют.', 'Brands that hold.':'Бренды, которые держат форму.',
+      'Apps that work.':'Приложения, которые работают.', 'Motion with a reason.':'Моушн со смыслом.',
+      'Design. Code. Motion.':'Дизайн. Код. Моушн.', 'Built to ship.':'Сделано, чтобы запустить.',
+      'Websites & landing pages':'Сайты и лендинги', 'Branding & identity':'Брендинг и айдентика', 'Apps & 3D motion':'Приложения и 3D-моушн',
+      'Strategy, design, build, and an SEO-ready launch.':'Стратегия, дизайн, разработка и готовый к продвижению запуск.',
+      'Logo, typography, colour, and a system that stays consistent.':'Логотип, типографика, цвет и цельная система.',
+      'Product interfaces, interactive experiences, and commercial CGI.':'Продуктовые интерфейсы, интерактив и коммерческая графика.'
+    }));
+
+    function applyOutputLanguage(board) {
+      if (currentOutputLanguage !== 'ru') return;
+      board.querySelectorAll('h2,p,span,strong,small,b,.kicker,.caption,.line,.email').forEach(element => {
+        if (element.children.length) return;
+        const source = element.textContent.trim().replace(/\s+/g, ' ');
+        if (russianOutput.has(source)) element.textContent = russianOutput.get(source);
+      });
+    }
+
+    function applyStoredEdits(board, id) {
+      if (!board) return;
+      board.querySelectorAll('[data-added-id]').forEach(element => element.remove());
+      applyOutputLanguage(board);
+      applyBrandKit(board);
+      assignEditIds(board);
+      const record = edits[id];
+      if (!record) return;
+      Object.entries(record.board || {}).forEach(([property, value]) => {
+        if (property === 'accent') board.style.setProperty('--accent', value);
+        else if (property === 'accent2') board.style.setProperty('--accent2', value);
+        else if (property === 'backgroundColor') board.style.background = value;
+        else board.style[property] = value;
+      });
+      Object.entries(record.nodes || {}).forEach(([key, node]) => {
+        const element = board.querySelector(`[data-edit-id="${key}"]`);
+        if (element) applyNodeStyle(element, node);
+      });
+      (record.added || []).forEach(item => board.appendChild(createAddedElement(item)));
+    }
+
+    function layerLabel(element) {
+      if (element.dataset.addedId) return `Добавлен: ${element.dataset.addedId.replace(/^a\d+-/,'')}`;
+      const text = element.children.length === 0 ? element.textContent.trim().replace(/\s+/g,' ').slice(0,28) : '';
+      if (text) return text;
+      const name = [...element.classList].find(item => !['editor-selected','editor-hidden'].includes(item));
+      return name ? name.replace(/^layout-/,'').replace(/-/g,' ') : element.tagName.toLowerCase();
+    }
+
+    function escapeHTML(value) {
+      return String(value).replace(/[&<>"]/g, character => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[character]));
+    }
+
+    function currentBoard() {
+      return document.querySelector('#modalArtboard .artboard');
+    }
+
+    function currentElement() {
+      return editorState.selected === 'canvas' ? currentBoard() : currentBoard()?.querySelector(`[data-edit-id="${editorState.selected}"]`);
+    }
+
+    const rounded = (value, precision = 10) => Math.round(value * precision) / precision;
+    function measureNodeDefaults(element, node) {
+      if (!element || !node || node.defaults) return node;
+      const board = currentBoard();
+      const boardBounds = board.getBoundingClientRect();
+      const bounds = element.getBoundingClientRect();
+      const computed = getComputedStyle(element);
+      const fontSize = Number.parseFloat(computed.fontSize) || 0;
+      const currentX = rounded((bounds.left - boardBounds.left) / boardBounds.width * 100);
+      const currentY = rounded((bounds.top - boardBounds.top) / boardBounds.height * 100);
+      const legacyX = node.style?.x === '' || node.style?.x == null ? 0 : Number(node.style.x);
+      const legacyY = node.style?.y === '' || node.style?.y == null ? 0 : Number(node.style.y);
+      node.defaults = {
+        x: rounded(currentX - legacyX),
+        y: rounded(currentY - legacyY),
+        width: rounded(bounds.width / boardBounds.width * 100),
+        height: rounded(bounds.height / boardBounds.height * 100),
+        padding: rounded((Number.parseFloat(computed.paddingLeft) || 0) / boardBounds.width * 100),
+        fontSize: rounded(fontSize / boardBounds.width * 100),
+        rotation: 0,
+        letterSpacing: computed.letterSpacing === 'normal' ? 0 : rounded((Number.parseFloat(computed.letterSpacing) || 0) / Math.max(1, fontSize), 100),
+        lineHeight: computed.lineHeight === 'normal' ? 1.2 : rounded((Number.parseFloat(computed.lineHeight) || fontSize * 1.2) / Math.max(1, fontSize), 100),
+        zIndex: computed.zIndex === 'auto' ? 0 : Number(computed.zIndex) || 0,
+        opacity: Number(computed.opacity),
+        borderRadius: rounded((Number.parseFloat(computed.borderRadius) || 0) / boardBounds.width * 100),
+      };
+      // Старые x/y были дельтами. Один раз переводим их в понятные абсолютные
+      // координаты, не меняя фактическое положение элемента.
+      if (node.style?.x !== '' && node.style?.x != null) node.style.x = currentX;
+      if (node.style?.y !== '' && node.style?.y != null) node.style.y = currentY;
+      return node;
+    }
+
+    function nodeRecord(key = editorState.selected) {
+      const record = editRecord(currentId);
+      if (key.startsWith('a')) return measureNodeDefaults(currentBoard()?.querySelector(`[data-edit-id="${key}"]`), record.added.find(item => item.id === key));
+      if (!record.nodes[key]) record.nodes[key] = {style:{}};
+      return measureNodeDefaults(currentBoard()?.querySelector(`[data-edit-id="${key}"]`), record.nodes[key]);
+    }
+
+    function selectEditorElement(key) {
+      editorState.selected = key || 'canvas';
+      currentBoard()?.querySelectorAll('.editor-selected').forEach(element => element.classList.remove('editor-selected'));
+      if (editorState.selected !== 'canvas') currentElement()?.classList.add('editor-selected');
+      renderLayers();
+      renderInspector();
+    }
+
+    function renderLayers() {
+      const board = currentBoard();
+      if (!board) return;
+      const elements = [...board.querySelectorAll('[data-edit-id]')];
+      document.getElementById('layerCount').textContent = `${elements.length + 1}`;
+      const rows = [{key:'canvas', label:'Холст', hidden:false}, ...elements.map(element => ({
+        key:element.dataset.editId,
+        label:layerLabel(element),
+        hidden:element.classList.contains('editor-hidden')
+      }))];
+      document.getElementById('layers').innerHTML = rows.map(row => `<div class="layer-row ${row.key === editorState.selected ? 'active' : ''} ${row.hidden ? 'is-hidden' : ''}" data-layer="${row.key}"><button class="layer-visibility" title="${row.hidden ? 'Показать' : 'Скрыть'}">${row.key === 'canvas' ? '◆' : row.hidden ? '○' : '●'}</button><button class="layer-name">${escapeHTML(row.label)}</button><button class="layer-remove" title="Удалить" ${row.key === 'canvas' ? 'disabled' : ''}>×</button></div>`).join('');
+      document.querySelectorAll('.layer-row').forEach(row => {
+        row.querySelector('.layer-name').onclick = () => selectEditorElement(row.dataset.layer);
+        row.querySelector('.layer-visibility').onclick = () => row.dataset.layer !== 'canvas' && toggleLayer(row.dataset.layer);
+        row.querySelector('.layer-remove').onclick = () => row.dataset.layer !== 'canvas' && removeLayer(row.dataset.layer);
+      });
+    }
+
+    function rgbToHex(value, fallback = '#000000') {
+      if (!value || value === 'transparent' || value === 'rgba(0, 0, 0, 0)') return fallback;
+      if (value.startsWith('#')) return value.slice(0,7);
+      const values = value.match(/[\d.]+/g);
+      if (!values || values.length < 3) return fallback;
+      return `#${values.slice(0,3).map(number => Math.round(Number(number)).toString(16).padStart(2,'0')).join('')}`;
+    }
+
+    function colorField(label, prop, value) {
+      const hex = rgbToHex(value);
+      return `<div class="editor-field"><label>${label}</label><div class="color-field"><input type="color" data-prop="${prop}" value="${hex}"><input data-prop="${prop}" value="${hex}"></div></div>`;
+    }
+
+    function numberField(label, prop, value, options = '') {
+      return `<div class="editor-field"><label>${label}</label><input type="number" step="0.5" data-prop="${prop}" value="${value ?? ''}" ${options}></div>`;
+    }
+
+    function renderInspector() {
+      const inspector = document.getElementById('inspector');
+      const element = currentElement();
+      if (!element) {
+        inspector.innerHTML = '<div class="inspector-empty">Выберите слой на холсте.</div>';
+        return;
+      }
+      if (editorState.selected === 'canvas') {
+        const computed = getComputedStyle(element);
+        document.getElementById('selectedType').textContent = 'Холст';
+        inspector.innerHTML = `<div class="field-grid">${colorField('Фон','backgroundColor',computed.backgroundColor)}${colorField('Текст','color',computed.color)}${colorField('Акцент A','accent',computed.getPropertyValue('--accent').trim())}${colorField('Акцент B','accent2',computed.getPropertyValue('--accent2').trim())}</div>`;
+      } else {
+        const node = nodeRecord();
+        const style = node.style || (node.style = {});
+        const defaults = node.defaults || {};
+        const valueOf = property => style[property] ?? defaults[property] ?? '';
+        const computed = getComputedStyle(element);
+        const editableText = element.children.length === 0 && element.tagName !== 'IMG';
+        document.getElementById('selectedType').textContent = layerLabel(element);
+        inspector.innerHTML = `<div class="field-grid">
+          ${editableText ? `<div class="editor-field wide"><label>Содержимое</label><textarea data-prop="text">${escapeHTML(element.textContent)}</textarea></div>` : ''}
+          ${numberField('Положение X %','x',valueOf('x'))}${numberField('Положение Y %','y',valueOf('y'))}
+          ${numberField('Ширина %','width',valueOf('width'))}${numberField('Высота %','height',valueOf('height'))}
+          ${numberField('Отступ %','padding',valueOf('padding'))}${numberField('Размер текста','fontSize',valueOf('fontSize'))}
+          ${numberField('Поворот °','rotation',valueOf('rotation'))}${numberField('Трекинг','letterSpacing',valueOf('letterSpacing'))}
+          ${numberField('Интерлиньяж','lineHeight',valueOf('lineHeight'),'min="0.5" max="3" step="0.05"')}${numberField('Слой','zIndex',valueOf('zIndex'))}
+          ${numberField('Прозрачность %','opacity',Math.round(Number(valueOf('opacity') || 1) * 100),'min="0" max="100"')}${numberField('Радиус %','borderRadius',valueOf('borderRadius'))}
+          ${colorField('Текст', 'color', style.color || computed.color)}${colorField('Заливка','backgroundColor',style.backgroundColor || computed.backgroundColor)}
+          <div class="editor-field"><label>Выравнивание</label><select data-prop="textAlign"><option value="">Авто</option><option value="left">Слева</option><option value="center">По центру</option><option value="right">Справа</option></select></div>
+          ${element.tagName === 'IMG' ? '<div class="editor-field"><label>Вписывание</label><select data-prop="objectFit"><option value="">Авто</option><option value="cover">Заполнить</option><option value="contain">Вместить</option><option value="fill">Растянуть</option></select></div>' : ''}
+        </div><div class="inline-actions"><button class="mini-button" id="duplicateSelected">Дублировать</button><button class="mini-button" id="toggleSelected">${node.hidden ? 'Показать слой' : 'Скрыть слой'}</button><button class="mini-button danger" id="removeSelected">Удалить</button></div>`;
+        const align = inspector.querySelector('[data-prop="textAlign"]');
+        if (align) align.value = style.textAlign || '';
+        const objectFit = inspector.querySelector('[data-prop="objectFit"]');
+        if (objectFit) objectFit.value = style.objectFit || '';
+        document.getElementById('duplicateSelected').onclick = duplicateSelectedLayer;
+        document.getElementById('toggleSelected').onclick = () => toggleLayer(editorState.selected);
+        document.getElementById('removeSelected').onclick = () => removeLayer(editorState.selected);
+      }
+      inspector.querySelectorAll('[data-prop]').forEach(input => {
+        input.oninput = () => updateProperty(input.dataset.prop, input.value, input);
+      });
+    }
+
+    function updateProperty(property, value, source) {
+      checkpoint();
+      const board = currentBoard();
+      if (editorState.selected === 'canvas') {
+        const record = editRecord(currentId);
+        record.board[property] = value;
+        if (property === 'accent') board.style.setProperty('--accent', value);
+        else if (property === 'accent2') board.style.setProperty('--accent2', value);
+        else if (property === 'backgroundColor') board.style.background = value;
+        else board.style[property] = value;
+      } else {
+        const node = nodeRecord();
+        if (property === 'text') node.text = value;
+        else if (property === 'opacity') node.style.opacity = Math.max(0, Math.min(100, Number(value))) / 100;
+        else if (['color','backgroundColor','textAlign','objectFit'].includes(property)) node.style[property] = value;
+        else node.style[property] = value === '' ? '' : Number(value);
+        applyNodeStyle(currentElement(), node);
+      }
+      if (source?.type === 'color') {
+        const peer = source.parentElement.querySelector('input:not([type="color"])');
+        if (peer) peer.value = value;
+      } else if (source?.parentElement?.classList.contains('color-field')) {
+        const peer = source.parentElement.querySelector('input[type="color"]');
+        if (peer && /^#[0-9a-f]{6}$/i.test(value)) peer.value = value;
+      }
+      saveEdits();
+    }
+
+    function toggleLayer(key) {
+      checkpoint();
+      const node = nodeRecord(key);
+      node.hidden = !node.hidden;
+      applyNodeStyle(currentBoard().querySelector(`[data-edit-id="${key}"]`), node);
+      saveEdits();
+      renderLayers();
+      renderInspector();
+    }
+
+    function removeLayer(key) {
+      checkpoint();
+      const record = editRecord(currentId);
+      if (key.startsWith('a')) {
+        record.added = record.added.filter(item => item.id !== key);
+        currentBoard().querySelector(`[data-edit-id="${key}"]`)?.remove();
+      } else {
+        const node = nodeRecord(key);
+        node.hidden = true;
+        applyNodeStyle(currentBoard().querySelector(`[data-edit-id="${key}"]`), node);
+      }
+      saveEdits();
+      const previousSelection = editorState.selected;
+      selectEditorElement(previousSelection !== 'canvas' && currentBoard()?.querySelector(`[data-edit-id="${previousSelection}"]`) ? previousSelection : 'canvas');
+    }
+
+    function addElement(type, source = '') {
+      checkpoint();
+      const record = editRecord(currentId);
+      const item = {id:`a${Date.now()}-${type}`, type, text:type === 'text' ? 'Новый текст' : '', src:source, style:{x:0,y:0,zIndex:12}};
+      record.added.push(item);
+      currentBoard().appendChild(createAddedElement(item));
+      saveEdits();
+      selectEditorElement(item.id);
+    }
+
+    function duplicateSelectedLayer() {
+      const element = currentElement();
+      if (!element || editorState.selected === 'canvas') return;
+      checkpoint();
+      const sourceNode = nodeRecord();
+      const bounds = element.getBoundingClientRect();
+      const boardBounds = currentBoard().getBoundingClientRect();
+      const isImage = element.tagName === 'IMG';
+      const isText = !isImage && element.children.length === 0 && element.textContent.trim();
+      const type = isImage ? 'image' : isText ? 'text' : 'group';
+      const currentZ = Number(sourceNode.style?.zIndex ?? getComputedStyle(element).zIndex);
+      const item = {
+        id:`a${Date.now()}-${type}`,
+        type,
+        text:isText ? element.textContent : '',
+        html:type === 'group' ? element.outerHTML.replace(/ data-(?:edit|added)-id="[^"]*"/g,'').replace(/ class="([^"]*)editor-selected([^"]*)"/,' class="$1$2"') : '',
+        src:isImage ? element.src : '',
+        defaults:{x:10,y:10},
+        style:{...cloneValue(sourceNode.style || {}), x:Number(sourceNode.style?.x ?? sourceNode.defaults?.x ?? 0)+2, y:Number(sourceNode.style?.y ?? sourceNode.defaults?.y ?? 0)+2, width:sourceNode.style?.width ?? bounds.width / boardBounds.width * 100, height:sourceNode.style?.height ?? bounds.height / boardBounds.height * 100, zIndex:Number.isFinite(currentZ) ? currentZ + 1 : 13}
+      };
+      editRecord(currentId).added.push(item);
+      currentBoard().appendChild(createAddedElement(item));
+      saveEdits();
+      selectEditorElement(item.id);
+    }
+
+    function beginCanvasEditing() {
+      const shell = document.getElementById('modalArtboard');
+      const board = currentBoard();
+      shell.classList.add('editing');
+      board.addEventListener('pointerdown', event => {
+        const target = event.target.closest('[data-edit-id]');
+        if (!target || !board.contains(target)) {
+          selectEditorElement('canvas');
+          return;
+        }
+        event.preventDefault();
+        selectEditorElement(target.dataset.editId);
+        checkpoint();
+        const node = nodeRecord();
+        const style = node.style || {};
+        editorState.drag = {pointer:event.pointerId, startX:event.clientX, startY:event.clientY, x:Number(style.x ?? node.defaults?.x ?? 0), y:Number(style.y ?? node.defaults?.y ?? 0)};
+        target.setPointerCapture(event.pointerId);
+      });
+      board.addEventListener('pointermove', event => {
+        if (!editorState.drag || editorState.drag.pointer !== event.pointerId || editorState.selected === 'canvas') return;
+        const rect = board.getBoundingClientRect();
+        const node = nodeRecord();
+        node.style.x = Math.round((editorState.drag.x + (event.clientX - editorState.drag.startX) / rect.width * 100) * 10) / 10;
+        node.style.y = Math.round((editorState.drag.y + (event.clientY - editorState.drag.startY) / rect.height * 100) * 10) / 10;
+        applyNodeStyle(currentElement(), node);
+        const x = document.querySelector('[data-prop="x"]');
+        const y = document.querySelector('[data-prop="y"]');
+        if (x) x.value = node.style.x;
+        if (y) y.value = node.style.y;
+      });
+      board.addEventListener('pointerup', event => {
+        if (editorState.drag?.pointer === event.pointerId) {
+          editorState.drag = null;
+          saveEdits();
+        }
+      });
+      const previousSelection = editorState.selected;
+      selectEditorElement(previousSelection !== 'canvas' && board.querySelector(`[data-edit-id="${previousSelection}"]`) ? previousSelection : 'canvas');
+    }
+
+    function templateName(template) {
+      return ['Brand lockup','Layered identity','Focus area','Case cover','Editorial case','Type statement','Proof point','Process map','Work index','Contact card','Identity grid','Vertical case','Code field','Media band','Studio manifesto'][template];
+    }
+
+    let studyId = 1;
+    const groups = Array.from({length:60}, (_,ideaIndex) => {
+      const engine = ideaTemplates[ideaIndex % ideaTemplates.length];
+      const variantCount = ideaIndex === 0 ? 60 : 8;
+      const studies = Array.from({length:variantCount}, (_,variantIndex) => {
+        const id = studyId++;
+        return {id, ...artboard(ideaIndex, variantIndex, id)};
+      });
+      return {template:ideaIndex, engine, family:templateFamilies[engine], title:ideaNames[engine][Math.floor(ideaIndex / ideaTemplates.length)], studies};
+    });
+    const studies = groups.flatMap(group => group.studies);
+    const storedPositions = readStored('autocubes-identity-v2-positions', {});
+    const positions = Object.fromEntries(groups.map(group => [group.template, Math.min(Number(storedPositions[group.template] || 0), group.studies.length - 1)]));
+    let groupOrder = [...groups];
+    const gallery = document.getElementById('gallery');
+    const filters = document.querySelector('.filters');
+    const counter = document.querySelector('.counter');
+
+    const familyLabels = {All:'Все', Brand:'Бренд', Services:'Услуги', Work:'Проекты', Typography:'Типографика', Data:'Данные', Process:'Процесс', Contact:'Контакты', Systems:'Системы'};
+    families.forEach(family => {
+      const button = document.createElement('button');
+      button.className = `filter ${family === 'All' ? 'active' : ''}`;
+      button.textContent = familyLabels[family] || family;
+      button.onclick = () => { activeFilter = family; pickedMode = false; document.getElementById('pickedOnly').classList.remove('active'); document.querySelectorAll('.filter').forEach(x=>x.classList.toggle('active',x===button)); applyFilters(); };
+      filters.appendChild(button);
+    });
+
+    function activeStudy(group) { return group.studies[positions[group.template] || 0]; }
+
+    function cardMarkup(group) {
+      const study = activeStudy(group);
+      const variant = (positions[group.template] || 0) + 1;
+      return `<article class="composition ${picked.has(study.id) ? 'picked' : ''}" data-id="${study.id}" data-template="${group.template}" data-family="${group.family}"><div class="card-head"><span>Идея ${String(group.template + 1).padStart(2,'0')}</span><span class="family">${familyLabels[group.family] || group.family} / ${ideaTitleRu[group.title] || group.title}</span><span class="spacer"></span><button class="mutate-button" title="Создать другую контролируемую вариацию">Вариант</button><div class="variant-nav"><button data-delta="-1" title="Предыдущий вариант">&#8592;</button><span>${String(variant).padStart(2,'0')} / ${String(group.studies.length).padStart(2,'0')}</span><button data-delta="1" title="Следующий вариант">&#8594;</button></div><button class="pick-button" title="Добавить в выбранное" aria-label="Добавить в выбранное">&#10003;</button></div><div class="artboard-preview"><div class="artboard-preview-canvas">${study.html}</div></div></article>`;
+    }
+
+    function hydrateCard(card) {
+      const board = card.querySelector('.artboard');
+      applyStoredEdits(board, Number(card.dataset.id));
+      board.classList.toggle('show-guides', guidesVisible);
+      board.onclick = () => openModal(Number(card.dataset.id));
+      card.querySelector('.pick-button').onclick = () => togglePick(Number(card.dataset.id));
+      card.querySelector('.mutate-button').onclick = () => mutateVariant(Number(card.dataset.template));
+      card.querySelectorAll('.variant-nav button').forEach(button => button.onclick = () => cycleVariant(Number(card.dataset.template), Number(button.dataset.delta)));
+    }
+
+    function updateGroupCard(template) {
+      const previous = gallery.querySelector(`.composition[data-template="${template}"]`);
+      if (!previous) return;
+      const holder = document.createElement('div');
+      holder.innerHTML = cardMarkup(groups[template]);
+      const next = holder.firstElementChild;
+      previous.replaceWith(next);
+      hydrateCard(next);
+      updateGridPreviewScales();
+      applyFilters();
+    }
+
+    function renderGallery(order = groupOrder) {
+      gallery.innerHTML = order.map(cardMarkup).join('');
+      gallery.querySelectorAll('.composition').forEach(hydrateCard);
+      updateGridPreviewScales();
+      applyFilters();
+    }
+
+    function cycleVariant(template, delta) {
+      const group = groups[template];
+      positions[template] = (positions[template] + delta + group.studies.length) % group.studies.length;
+      localStorage.setItem('autocubes-identity-v2-positions', JSON.stringify(positions));
+      updateGroupCard(template);
+    }
+
+    function mutateVariant(template) {
+      const group = groups[template];
+      const current = positions[template] || 0;
+      let next = current;
+      while (next === current && group.studies.length > 1) next = Math.floor(Math.random() * group.studies.length);
+      positions[template] = next;
+      localStorage.setItem('autocubes-identity-v2-positions', JSON.stringify(positions));
+      updateGroupCard(template);
+      showToast(`Идея ${String(template + 1).padStart(2,'0')} · вариант ${next + 1}`);
+    }
+
+    function applyFilters() {
+      let visible = 0;
+      gallery.querySelectorAll('.composition').forEach(card => {
+        const showFamily = activeFilter === 'All' || card.dataset.family === activeFilter;
+        const group = groups[Number(card.dataset.template)];
+        const showPicked = !pickedMode || group.studies.some(study => picked.has(study.id));
+        card.hidden = !(showFamily && showPicked);
+        if (!card.hidden) visible++;
+      });
+      counter.textContent = `${visible} / 60 идей · ${studies.length} вариантов`;
+    }
+
+    function togglePick(id) {
+      picked.has(id) ? picked.delete(id) : picked.add(id);
+      localStorage.setItem('autocubes-identity-v2-picked', JSON.stringify([...picked]));
+      if (currentId === id) updateModalPick();
+      updateTray();
+      const study = studies[id - 1];
+      if (study) updateGroupCard(study.template);
+    }
+
+    function updateTray() {
+      const ids = [...picked];
+      document.getElementById('selectionTray').classList.toggle('visible', ids.length > 0);
+      document.getElementById('selectionCount').textContent = `${ids.length} выбрано`;
+      document.getElementById('selectionIds').textContent = ids.length ? ids.map((x,index)=>`${index + 1}. ${String(x).padStart(3,'0')}`).join(' · ') : 'Порядок выбора станет порядком карусели';
+    }
+
+    function syncBrandFields() {
+      document.getElementById('brandName').value = brandKit.name;
+      document.getElementById('brandTaglineEn').value = brandKit.taglineEn;
+      document.getElementById('brandTaglineRu').value = brandKit.taglineRu;
+      document.getElementById('brandEmail').value = brandKit.email;
+      document.getElementById('brandWebsite').value = brandKit.website;
+      document.getElementById('brandLogo').value = brandKit.logo;
+      document.getElementById('brandPrimary').value = brandKit.primary;
+      document.getElementById('brandSecondary').value = brandKit.secondary;
+      document.getElementById('brandUseColors').checked = brandKit.useColors;
+      document.getElementById('brandCaptionEn').value = brandKit.captionEn;
+      document.getElementById('brandCaptionRu').value = brandKit.captionRu;
+      document.getElementById('brandHashtags').value = brandKit.hashtags;
+    }
+
+    function saveBrandKit() {
+      brandKit = {
+        name:document.getElementById('brandName').value.trim() || brandDefaults.name,
+        taglineEn:document.getElementById('brandTaglineEn').value.trim(),
+        taglineRu:document.getElementById('brandTaglineRu').value.trim(),
+        email:document.getElementById('brandEmail').value.trim(),
+        website:document.getElementById('brandWebsite').value.trim(),
+        logo:document.getElementById('brandLogo').value.trim() || brandDefaults.logo,
+        primary:document.getElementById('brandPrimary').value,
+        secondary:document.getElementById('brandSecondary').value,
+        useColors:document.getElementById('brandUseColors').checked,
+        captionEn:document.getElementById('brandCaptionEn').value.trim(),
+        captionRu:document.getElementById('brandCaptionRu').value.trim(),
+        hashtags:document.getElementById('brandHashtags').value.trim(),
+      };
+      localStorage.setItem(BRAND_KEY, JSON.stringify(brandKit));
+      renderGallery(groupOrder);
+      if (currentId && document.getElementById('modal').classList.contains('open')) openModal(currentId, true);
+      document.getElementById('brandDrawer').classList.remove('open');
+      showToast('Бренд-система применена ко всем идеям');
+    }
+
+    function setPickedOrder(ids) {
+      picked.clear();
+      ids.forEach(id => picked.add(id));
+      localStorage.setItem('autocubes-identity-v2-picked', JSON.stringify(ids));
+      updateTray();
+      renderCarouselBuilder();
+    }
+
+    function renderCarouselBuilder() {
+      const ids = [...picked].filter(id => studies[id - 1]);
+      const list = document.getElementById('carouselList');
+      const strip = document.getElementById('carouselStrip');
+      list.innerHTML = ids.map((id,index) => `<div class="carousel-item" data-id="${id}"><span>${String(index + 1).padStart(2,'0')}</span><div class="mini-art">${studies[id - 1].html}</div><strong>${ideaTitleRu[studies[id - 1].title] || studies[id - 1].title}</strong><div><button data-move="-1" title="Переместить раньше">↑</button><button data-move="1" title="Переместить позже">↓</button><button data-remove title="Удалить">×</button></div></div>`).join('') || '<div class="drawer-note">Выберите хотя бы две композиции для Instagram-карусели.</div>';
+      strip.innerHTML = ids.map((id,index) => `<div class="carousel-slide" data-id="${id}">${studies[id - 1].html}<span class="carousel-number">${index + 1} / ${ids.length}</span></div>`).join('');
+      [...list.querySelectorAll('.carousel-item')].forEach((item,index) => {
+        const id = Number(item.dataset.id);
+        applyStoredEdits(item.querySelector('.artboard'), id);
+        item.querySelectorAll('[data-move]').forEach(button => button.onclick = () => {
+          const next = Math.max(0, Math.min(ids.length - 1, index + Number(button.dataset.move)));
+          if (next === index) return;
+          const reordered = [...ids];
+          reordered.splice(next, 0, reordered.splice(index, 1)[0]);
+          setPickedOrder(reordered);
+        });
+        item.querySelector('[data-remove]').onclick = () => setPickedOrder(ids.filter(value => value !== id));
+      });
+      [...strip.querySelectorAll('.carousel-slide')].forEach(slide => applyStoredEdits(slide.querySelector('.artboard'), Number(slide.dataset.id)));
+    }
+
+    function openModal(id, preserveHistory = false) {
+      currentId = Math.max(1, Math.min(studies.length,id));
+      if (!preserveHistory) { editHistory.length = 0; editFuture.length = 0; editorState.selected = 'canvas'; }
+      const study = studies[currentId-1];
+      const group = groups[study.template];
+      const variant = group.studies.findIndex(item => item.id === study.id) + 1;
+      document.getElementById('modalArtboard').innerHTML = study.html;
+      applyStoredEdits(currentBoard(), currentId);
+      currentBoard().classList.toggle('show-guides', guidesVisible);
+      document.getElementById('modalEyebrow').textContent = `Идея ${String(study.template + 1).padStart(2,'0')} · Вариант ${String(variant).padStart(2,'0')} / ${String(group.studies.length).padStart(2,'0')} · ${familyLabels[study.family] || study.family}`;
+      document.getElementById('modalTitle').textContent = ideaTitleRu[study.title] || study.title;
+      document.getElementById('modal').classList.add('open');
+      document.body.style.overflow = 'hidden';
+      requestAnimationFrame(updateEditorPreviewScale);
+      updateModalPick();
+      beginCanvasEditing();
+      renderPostFields();
+      updateHistoryButtons();
+    }
+
+    function closeModal() {
+      const study = currentId ? studies[currentId - 1] : null;
+      document.getElementById('modal').classList.remove('open');
+      document.body.style.overflow = '';
+      if (study) updateGroupCard(study.template);
+    }
+    function updateModalPick() { document.getElementById('modalPick').textContent = picked.has(currentId) ? 'Убрать из выбранного' : 'Выбрать композицию'; }
+    function cycleModal(delta) {
+      const study = studies[currentId - 1];
+      const group = groups[study.template];
+      const index = group.studies.findIndex(item => item.id === currentId);
+      const nextIndex = (index + delta + group.studies.length) % group.studies.length;
+      positions[group.template] = nextIndex;
+      localStorage.setItem('autocubes-identity-v2-positions', JSON.stringify(positions));
+      openModal(group.studies[nextIndex].id);
+    }
+
+    document.getElementById('closeModal').onclick = closeModal;
+    document.getElementById('undoEdit').onclick = undoEdit;
+    document.getElementById('redoEdit').onclick = redoEdit;
+    document.getElementById('postCaption').oninput = event => updatePostField('caption', event.target.value);
+    document.getElementById('postAlt').oninput = event => updatePostField('alt', event.target.value);
+    document.getElementById('postHashtags').oninput = event => updatePostField('hashtags', event.target.value);
+    document.getElementById('copyPost').onclick = async () => {
+      const post = editRecord(currentId).post[currentOutputLanguage];
+      const copy = [post.caption, post.hashtags].filter(Boolean).join('\n\n');
+      if (!copy) { showToast('Сначала добавьте подпись или хэштеги'); return; }
+      try { await navigator.clipboard.writeText(copy); showToast('Текст публикации скопирован'); }
+      catch { showToast('Буфер обмена недоступен в этом браузере'); }
+    };
+    document.getElementById('modal').onclick = e => { if (e.target.id === 'modal') closeModal(); };
+    document.getElementById('modalPick').onclick = () => togglePick(currentId);
+    document.getElementById('prevComposition').onclick = () => cycleModal(-1);
+    document.getElementById('nextComposition').onclick = () => cycleModal(1);
+    document.getElementById('addText').onclick = () => addElement('text');
+    document.getElementById('addMark').onclick = () => addElement('mark');
+    document.getElementById('addShape').onclick = () => addElement('shape');
+    document.getElementById('addImage').onclick = () => document.getElementById('imageInput').click();
+    document.getElementById('imageInput').onchange = event => {
+      const file = event.target.files?.[0];
+      if (!file) return;
+      if (file.size > 3 * 1024 * 1024) { showToast('Выберите изображение до 3 МБ'); event.target.value = ''; return; }
+      const reader = new FileReader();
+      reader.onload = () => { addElement('image', String(reader.result)); showToast('Изображение добавлено на холст'); };
+      reader.readAsDataURL(file);
+      event.target.value = '';
+    };
+    document.getElementById('resetComposition').onclick = () => {
+      checkpoint();
+      delete edits[currentId];
+      saveEdits();
+      openModal(currentId, true);
+    };
+    document.getElementById('shuffle').onclick = () => { groupOrder = [...groups].sort(()=>Math.random()-.5); renderGallery(groupOrder); };
+    document.getElementById('pickedOnly').onclick = e => {
+      pickedMode = !pickedMode;
+      if (pickedMode) groups.forEach(group => {
+        const pickedIndex = group.studies.findIndex(study => picked.has(study.id));
+        if (pickedIndex >= 0) positions[group.template] = pickedIndex;
+      });
+      e.currentTarget.classList.toggle('active',pickedMode);
+      renderGallery(groupOrder);
+    };
+    document.getElementById('clearSelection').onclick = () => { picked.clear(); localStorage.removeItem('autocubes-identity-v2-picked'); updateTray(); renderGallery(groupOrder); };
+    document.getElementById('openBrandKit').onclick = () => {syncBrandFields(); document.getElementById('brandDrawer').classList.add('open');};
+    document.getElementById('closeBrandKit').onclick = () => document.getElementById('brandDrawer').classList.remove('open');
+    document.getElementById('saveBrandKit').onclick = saveBrandKit;
+    document.getElementById('resetBrandKit').onclick = () => {brandKit = {...brandDefaults}; syncBrandFields();};
+    document.getElementById('openCarousel').onclick = () => {renderCarouselBuilder(); document.getElementById('carouselBuilder').classList.add('open');};
+    document.getElementById('closeCarousel').onclick = () => document.getElementById('carouselBuilder').classList.remove('open');
+    document.getElementById('reverseCarousel').onclick = () => setPickedOrder([...picked].reverse());
+    document.getElementById('exportCarousel').onclick = () => {document.getElementById('carouselBuilder').classList.remove('open'); document.getElementById('exportPack').click();};
+
+    async function canonicalDataUrl(id, kind = 'png', format = currentFormat) {
+      const study = studies[id - 1];
+      if (!study) throw new Error(`Unknown composition ${id}`);
+      const previousFormat = currentFormat;
+      currentFormat = format;
+      const host = document.createElement('div');
+      const pageZoom = Number.parseFloat(getComputedStyle(document.documentElement).zoom) || 1;
+      host.setAttribute('aria-hidden', 'true');
+      host.style.cssText = `position:fixed;left:-20000px;top:0;width:${format.width}px;height:${format.height}px;overflow:hidden;pointer-events:none;contain:strict;zoom:${1 / pageZoom};`;
+      host.innerHTML = study.html;
+      document.documentElement.appendChild(host);
+      const board = host.querySelector('.artboard');
+      board.style.width = `${format.width}px`;
+      board.style.height = `${format.height}px`;
+      board.style.aspectRatio = 'auto';
+      board.classList.add('is-exporting');
+      applyStoredEdits(board, id);
+      try {
+        await document.fonts.ready;
+        await Promise.all([...board.querySelectorAll('img')].map((image) => image.decode?.().catch(() => undefined)));
+        await new Promise((resolve) => requestAnimationFrame(() => requestAnimationFrame(resolve)));
+        const options = {width:format.width, height:format.height, canvasWidth:format.width, canvasHeight:format.height, pixelRatio:1, cacheBust:true, backgroundColor:getComputedStyle(board).backgroundColor};
+        return kind === 'png' ? await toPng(board, options) : await toJpeg(board, {...options, quality:.94});
+      } finally {
+        host.remove();
+        currentFormat = previousFormat;
+      }
+    }
+
+    document.getElementById('exportSelection').onclick = () => {
+      const ids = [...picked];
+      const blob = new Blob([JSON.stringify({project:'autocubes identity lab',outputLanguage:currentOutputLanguage,selected:ids.map(id=>({id:`AC-${String(id).padStart(3,'0')}`,family:studies[id-1].family,title:studies[id-1].title,edits:edits[id] || null}))},null,2)],{type:'application/json'});
+      const link = document.createElement('a'); link.href = URL.createObjectURL(blob); link.download = 'autocubes-identity-selection.json'; link.click(); setTimeout(() => URL.revokeObjectURL(link.href), 1000);
+    };
+    document.getElementById('exportPack').onclick = async event => {
+      const ids = [...picked];
+      if (!ids.length) return;
+      if (ids.length > 20) { showToast('За один раз можно экспортировать до 20 композиций'); return; }
+      const button = event.currentTarget;
+      button.disabled = true;
+      const zip = new JSZip();
+      try {
+        for (let index = 0; index < ids.length; index++) {
+          const id = ids[index];
+          showToast(`Рендер ${index + 1} из ${ids.length}…`);
+          const dataUrl = await canonicalDataUrl(id, 'png', currentFormat);
+          zip.file(`AC-${String(id).padStart(3,'0')}-${currentFormat.id}.png`, dataUrl.split(',')[1], {base64:true});
+        }
+        zip.file('manifest.json', JSON.stringify({format:currentFormat, outputLanguage:currentOutputLanguage, compositions:ids.map(id => ({id, family:studies[id-1].family, title:studies[id-1].title, post:edits[id]?.post || null}))}, null, 2));
+        const blob = await zip.generateAsync({type:'blob', compression:'DEFLATE', compressionOptions:{level:6}});
+        const url = URL.createObjectURL(blob);
+        const link = document.createElement('a'); link.href = url; link.download = `autocubes-${currentFormat.id}-${ids.length}-compositions.zip`; link.click();
+        setTimeout(() => URL.revokeObjectURL(url), 1000);
+        showToast(`${ids.length} композиций экспортировано в ZIP`);
+      } catch (error) {
+        console.error(error);
+        showToast('Не удалось собрать PNG-пакет');
+      } finally {
+        button.disabled = false;
+      }
+    };
+    async function exportComposition(kind) {
+      if (!currentBoard() || !currentId) return;
+      const buttons = [document.getElementById('exportPng'), document.getElementById('exportJpeg'), document.getElementById('exportAllSizes')];
+      buttons.forEach(button => button.disabled = true);
+      try {
+        const dataUrl = await canonicalDataUrl(currentId, kind, currentFormat);
+        const link = document.createElement('a');
+        link.href = dataUrl;
+        link.download = `autocubes-${String(currentId).padStart(3,'0')}-${currentFormat.id}.${kind === 'png' ? 'png' : 'jpg'}`;
+        link.click();
+        showToast(`${currentFormat.width} × ${currentFormat.height} ${kind.toUpperCase()} экспортирован`);
+      } catch (error) {
+        console.error(error);
+        showToast('Экспорт не удался. Проверьте изображения и повторите попытку.');
+      } finally {
+        buttons.forEach(button => button.disabled = false);
+      }
+    }
+    document.getElementById('exportPng').onclick = () => exportComposition('png');
+    document.getElementById('exportJpeg').onclick = () => exportComposition('jpeg');
+    document.getElementById('exportAllSizes').onclick = async event => {
+      if (!currentBoard() || !currentId) return;
+      const button = event.currentTarget;
+      button.disabled = true;
+      const zip = new JSZip();
+      try {
+        for (const formatId of ['portrait','square','story','landscape']) {
+          const format = formats[formatId];
+          const dataUrl = await canonicalDataUrl(currentId, 'png', format);
+          zip.file(`AC-${String(currentId).padStart(3,'0')}-${formatId}.png`, dataUrl.split(',')[1], {base64:true});
+          showToast(`Рендер: ${format.label}…`);
+        }
+        zip.file('manifest.json', JSON.stringify({composition:currentId, outputLanguage:currentOutputLanguage, formats:['portrait','square','story','landscape'], post:edits[currentId]?.post || null}, null, 2));
+        const blob = await zip.generateAsync({type:'blob', compression:'DEFLATE', compressionOptions:{level:6}});
+        const url = URL.createObjectURL(blob);
+        const link = document.createElement('a'); link.href = url; link.download = `autocubes-${String(currentId).padStart(3,'0')}-instagram-formats.zip`; link.click();
+        setTimeout(() => URL.revokeObjectURL(url), 1000);
+        showToast('Четыре формата Instagram экспортированы');
+      } catch (error) {
+        console.error(error);
+        showToast('Не удалось экспортировать все форматы');
+      } finally {
+        button.disabled = false;
+      }
+    };
+    function setOutputLanguage(language) {
+      currentOutputLanguage = language === 'ru' ? 'ru' : 'en';
+      localStorage.setItem('autocubes-identity-output-language', currentOutputLanguage);
+      document.querySelectorAll('[data-output-language]').forEach(button => button.classList.toggle('active', button.dataset.outputLanguage === currentOutputLanguage));
+      renderGallery(groupOrder);
+      if (currentId && document.getElementById('modal').classList.contains('open')) openModal(currentId, true);
+      if (document.getElementById('carouselBuilder').classList.contains('open')) renderCarouselBuilder();
+      showToast(currentOutputLanguage === 'ru' ? 'Результат переключён на русский' : 'Результат переключён на английский');
+    }
+    document.querySelectorAll('[data-output-language]').forEach(button => button.onclick = () => setOutputLanguage(button.dataset.outputLanguage));
+    document.getElementById('studioScale').oninput = event => applyStudioScale(event.target.value);
+    document.getElementById('scaleDown').onclick = () => applyStudioScale(studioScale - 5);
+    document.getElementById('scaleUp').onclick = () => applyStudioScale(studioScale + 5);
+    window.addEventListener('resize', () => {updateEditorPreviewScale(); updateGridPreviewScales();});
+    document.querySelectorAll('[data-format]').forEach(button => button.onclick = () => {
+      applyFormat(button.dataset.format);
+      showToast(`${currentFormat.label} · ${currentFormat.width} × ${currentFormat.height}`);
+    });
+    document.getElementById('toggleGuides').onclick = () => {
+      guidesVisible = !guidesVisible;
+      localStorage.setItem('autocubes-identity-guides', String(guidesVisible));
+      applyFormat(currentFormat.id, false);
+    };
+    document.getElementById('applyCustom').onclick = () => {
+      const width = Math.max(320, Math.min(4096, Number(document.getElementById('customWidth').value) || 1080));
+      const height = Math.max(320, Math.min(4096, Number(document.getElementById('customHeight').value) || 1350));
+      formats.custom = {...formats.custom, width, height, ratio:`${width} / ${height}`};
+      localStorage.setItem('autocubes-identity-custom-format', JSON.stringify({width,height}));
+      applyFormat('custom');
+      document.getElementById('customFormat').removeAttribute('open');
+      showToast(`Свой холст · ${width} × ${height}`);
+    };
+    document.addEventListener('keydown', event => {
+      if (!document.getElementById('modal').classList.contains('open')) return;
+      const isField = ['INPUT','TEXTAREA','SELECT'].includes(event.target.tagName);
+      if (event.key === 'Escape') closeModal();
+      if ((event.ctrlKey || event.metaKey) && event.key.toLowerCase() === 'z') { event.preventDefault(); event.shiftKey ? redoEdit() : undoEdit(); return; }
+      if ((event.ctrlKey || event.metaKey) && event.key.toLowerCase() === 'y') { event.preventDefault(); redoEdit(); return; }
+      if ((event.ctrlKey || event.metaKey) && event.key.toLowerCase() === 'e') { event.preventDefault(); exportComposition('png'); return; }
+      if (!isField && event.key.toLowerCase() === 'g') document.getElementById('toggleGuides').click();
+      if (!isField && editorState.selected !== 'canvas' && event.key.startsWith('Arrow')) {
+        event.preventDefault();
+        const node = nodeRecord();
+        const distance = event.shiftKey ? 2 : .5;
+        if (event.key === 'ArrowLeft') node.style.x = Number(node.style.x ?? node.defaults?.x ?? 0) - distance;
+        if (event.key === 'ArrowRight') node.style.x = Number(node.style.x ?? node.defaults?.x ?? 0) + distance;
+        if (event.key === 'ArrowUp') node.style.y = Number(node.style.y ?? node.defaults?.y ?? 0) - distance;
+        if (event.key === 'ArrowDown') node.style.y = Number(node.style.y ?? node.defaults?.y ?? 0) + distance;
+        applyNodeStyle(currentElement(), node);
+        saveEdits();
+        renderInspector();
+      } else if (!isField && event.key === 'ArrowLeft') cycleModal(-1);
+      else if (!isField && event.key === 'ArrowRight') cycleModal(1);
+      if (!isField && ['Delete','Backspace'].includes(event.key) && editorState.selected !== 'canvas') removeLayer(editorState.selected);
+      if (!isField && event.key.toLowerCase() === 'f') togglePick(currentId);
+    });
+    applyStudioScale(studioScale, false);
+    applyFormat(currentFormat.id, false);
+    document.querySelectorAll('[data-output-language]').forEach(button => button.classList.toggle('active', button.dataset.outputLanguage === currentOutputLanguage));
+    renderGallery();
+    applyFormat(currentFormat.id, false);
+    updateTray();
+  </script>
+</body>
+</html>
