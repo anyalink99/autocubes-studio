@@ -8,6 +8,7 @@
     "prestudio": "npm run runtime:ensure",
     "preeditor": "npm run runtime:ensure",
     "prebuild": "npm run runtime:ensure",
+    "pretypecheck": "npm run runtime:ensure",
     "precapture:editor": "npm run runtime:ensure",
     "prevideo:check": "npm run runtime:ensure",
     "sfx:generate": "tsx tooling/scripts/generate-sfx.ts",
