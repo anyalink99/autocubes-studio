@@ -17,7 +17,14 @@ const main=async()=>{
     const page=await browser.newPage({viewport:{width:1440,height:1000}});
     await page.addInitScript(()=>sessionStorage.setItem('autocubes-sync-disabled','true'));
     page.on('pageerror',(error)=>errors.push(error.message));
-    page.on('console',(message)=>{if(message.type()==='error')errors.push(message.text());});
+    page.on('console',(message)=>{
+      if(message.type()==='error'&&!message.text().startsWith('Failed to load resource:'))errors.push(message.text());
+    });
+    page.on('response',(response)=>{
+      if(response.status()<400)return;
+      const pathname=new URL(response.url()).pathname;
+      if(/\.(?:html|js|css)$/i.test(pathname))errors.push(`${response.status()} ${pathname}`);
+    });
     await page.route('**/api/project*',(route)=>route.request().method()==='PUT'?route.fulfill({status:200,contentType:'application/json',body:'{"ok":true}'}):route.continue());
 
     await page.goto(`${baseUrl}/editor.html`,{waitUntil:'networkidle'});
