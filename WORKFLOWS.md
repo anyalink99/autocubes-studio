@@ -18,10 +18,11 @@ Useful keys inside the editor: arrow keys nudge a layer, `Shift` increases the n
 2. Open Capture Director, enter the browser URL, and run the fast analysis. This creates the page atlas without waiting for video capture.
 3. Select semantic page sections and only the cursor targets that support the product story, then build the scenario without recording.
 4. Refine scenes on Page Map and the timeline. Page Position accepts pixels, percentages, `top`, `center`, and `bottom`.
-5. Record only after the scenario reads correctly; a failed recording cannot destroy the last successful capture.
-6. Add or adjust cursor actions, transitions, captions/SRT, overlays, music, voice, and SFX at the playhead.
-7. Check the storyboard preview, pointer path, safe areas, clip overlaps, missing frames, audio fades, and out-of-range events.
-8. Save the project, choose Export MP4, and keep Motion Desk open while the local job runs.
+5. Reopen **Проверить захват**. The review screen uses the current timeline scenes, not the original analysis: select a scene and drag or scroll the full-page copy inside the exact recording viewport.
+6. Choose **Записать показанное** only after every viewport reads correctly; a failed recording cannot destroy the last successful capture.
+7. Add or adjust cursor actions, transitions, captions/SRT, overlays, music, voice, and SFX at the playhead.
+8. Check the storyboard preview, pointer path, safe areas, clip overlaps, missing frames, audio fades, and out-of-range events.
+9. Save the project, choose Export MP4, and keep Motion Desk open while the local job runs.
 
 Press `?` for the shortcut map. The main keys are `Space` for playback, `L` for loop, `C` for a caption, `S` to split, arrows for frame stepping, `Cmd/Ctrl+C` and `Cmd/Ctrl+V` for clips, and `Cmd/Ctrl+D` for duplication.
 

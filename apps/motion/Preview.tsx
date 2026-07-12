@@ -117,14 +117,14 @@ export const Preview = ({project, currentTime, playing, mode, selection, onModeC
   return (
     <section className="preview-panel">
       <div className="preview-toolbar">
-        <div className="segmented-control" aria-label="Preview mode">
+        <div className="segmented-control" aria-label="Режим превью">
           <button className={mode === 'storyboard' ? 'active' : ''} onClick={() => onModeChange('storyboard')}><ImageIcon size={15}/>Сценарий</button>
-          <button className={mode === 'capture' ? 'active' : ''} onClick={() => onModeChange('capture')}><Film size={15}/>Запись</button>
+          <button className={mode === 'capture' ? 'active' : ''} onClick={() => onModeChange('capture')}><Film size={15}/>Последняя запись</button>
         </div>
         <div className="preview-readout">
           {selection.track === 'pointer' ? <><Crosshair size={14}/>Нажмите на превью, чтобы поставить курсор</> : `${project.viewport.width} × ${project.viewport.height} · ${preset?.shortLabel ?? formatRatio(project.viewport.width, project.viewport.height)}`}
         </div>
-        <select className="preview-format" aria-label="Output format" value={preset?.id ?? 'custom'} onChange={(event) => {const next = mediaPresets.find((item) => item.id === event.target.value); if (next) onChangeViewport({width: next.width, height: next.height});}}>
+        <select className="preview-format" aria-label="Формат результата" value={preset?.id ?? 'custom'} onChange={(event) => {const next = mediaPresets.find((item) => item.id === event.target.value); if (next) onChangeViewport({width: next.width, height: next.height});}}>
           {mediaPresets.map((item) => <option key={item.id} value={item.id}>{item.shortLabel} · {({'instagram-reel':'История / Reel','instagram-portrait':'Портрет ленты','instagram-square':'Квадрат','instagram-landscape':'Горизонтальный'} as Record<string,string>)[item.id]??item.label}</option>)}
           {!preset ? <option value="custom">Свой формат</option> : null}
         </select>
