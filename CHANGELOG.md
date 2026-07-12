@@ -1,5 +1,26 @@
 # Changelog
 
+## 0.5.0 — Capture director and Russian studio
+
+### Motion Desk
+
+- Replaced the opaque capture action with a four-step Capture Director: source, fast page analysis, semantic scene plan, and final recording.
+- Added full-page analysis images, discovered sections, real interactive targets, selector-aware cursor actions, click effects, and scene generation before recording.
+- Reframed the timeline around scenes, cursor actions, text, graphics, scene changes, and sound; added richer scene clips and a substantially larger preview mode.
+- Made recording transactional: the last successful capture stays available until the staged replacement is fully complete.
+- Added English/Russian output fields for captions and graphics while keeping English as the Motion default.
+
+### Identity Lab and Documents
+
+- Localized the complete studio interface into Russian without changing the established visual language.
+- Added English/Russian Identity output switching, bilingual Brand Kit fields, per-language post copy, translated artboards, and language-aware export manifests.
+- Made Documents Russian-first with independent RU/EN snapshots and one bilingual ZIP containing HTML and Markdown in both languages plus shared JSON.
+
+### Quality
+
+- Added browser coverage for page analysis, Identity language switching, and bilingual document packages.
+- Updated compact desktop behavior so the complete Motion toolbar remains usable at 1100 px.
+
 ## 0.4.0 — Studio production system
 
 ### Motion Desk

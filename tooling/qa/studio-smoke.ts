@@ -94,9 +94,9 @@ const main = async () => {
       ? route.fulfill({status: 200, contentType: 'application/json', body: '{"ok":true}'})
       : route.continue());
     await page.goto(`${baseUrl}/editor.html`, {waitUntil: 'networkidle'});
-    if (!await page.getByRole('button', {name: 'Export MP4'}).isVisible()) throw new Error('Motion toolbar is not visible');
+    if (!await page.getByRole('button', {name: 'Экспорт MP4'}).isVisible()) throw new Error('Motion toolbar is not visible');
     const projectDownloadPromise = page.waitForEvent('download');
-    await page.getByTitle('Export project JSON').click();
+    await page.getByTitle('Экспорт JSON проекта').click();
     const projectDownload = await projectDownloadPromise;
     const projectExportPath = path.resolve('out/qa/project.editor.json');
     await projectDownload.saveAs(projectExportPath);
@@ -106,11 +106,11 @@ const main = async () => {
     const stageRatio = await page.locator('.stage').evaluate((element) => getComputedStyle(element).aspectRatio);
     if (!stageRatio.includes('1080') || !stageRatio.includes('1350')) throw new Error(`Motion format did not change: ${stageRatio}`);
     if (!await page.locator('.safe-zone-overlay').isVisible()) throw new Error('Motion safe zone is not visible');
-    await page.getByTitle('Add Captions at playhead').click();
-    await page.locator('.inspector textarea').fill('Built to ship.');
+    await page.getByTitle('Добавить: Текст').click();
+    await page.locator('.inspector textarea').first().fill('Built to ship.');
     if (await page.locator('.preview-caption').textContent() !== 'Built to ship.') throw new Error('Motion caption preview did not update');
     const coverPromise = page.waitForEvent('download');
-    await page.getByTitle('Export current frame as PNG').click();
+    await page.getByTitle('Экспортировать текущий кадр PNG').click();
     const cover = await coverPromise;
     const coverPath = path.resolve('out/qa/motion-cover.png');
     await cover.saveAs(coverPath);
@@ -119,7 +119,7 @@ const main = async () => {
     if (coverPng.readUInt32BE(16) !== 1080 || coverPng.readUInt32BE(20) !== 1350) throw new Error('Motion cover export dimensions are incorrect');
     await page.screenshot({path: path.resolve('out/qa/motion-editor.png')});
     await page.setViewportSize({width: 1100, height: 800});
-    const exportButtonBounds = await page.getByRole('button', {name: 'Export MP4'}).boundingBox();
+    const exportButtonBounds = await page.getByRole('button', {name: 'Экспорт MP4'}).boundingBox();
     if (!exportButtonBounds || exportButtonBounds.x + exportButtonBounds.width > 1100) throw new Error('Motion toolbar overflows a compact desktop');
     await page.screenshot({path: path.resolve('out/qa/motion-compact.png')});
 

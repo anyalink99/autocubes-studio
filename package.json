@@ -1,6 +1,6 @@
 {
   "name": "autocubes-studio",
-  "version": "0.4.0",
+  "version": "0.5.0",
   "private": true,
   "scripts": {
     "sfx:generate": "tsx tooling/scripts/generate-sfx.ts",

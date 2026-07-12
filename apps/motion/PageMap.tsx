@@ -34,8 +34,8 @@ export const PageMap = ({project, selectedId, currentScrollY, onSelect, onChange
     onSelect(id);
   };
 
-  return <section className="page-map-panel" aria-label="Page map">
-    <div className="page-map-heading"><span><Map size={13}/>Page map</span><strong>{Math.round(project.pageHeight)} px</strong></div>
+  return <section className="page-map-panel" aria-label="Карта страницы">
+    <div className="page-map-heading"><span><Map size={13}/>Карта страницы</span><strong>{Math.round(project.pageHeight)} px</strong></div>
     <div
       className={`page-map ${dragging ? 'is-dragging' : ''}`}
       ref={railRef}
@@ -62,8 +62,8 @@ export const PageMap = ({project, selectedId, currentScrollY, onSelect, onChange
         ><span>{String(index + 1).padStart(2, '0')}</span><b>{Math.round(scrollPercent(project, frame.scrollY) * 100)}%</b></button>;
       })}
       <div className="page-map-current" style={{top: `${scrollPercent(project, currentScrollY) * (1 - viewportRatio) * 100}%`, height: `${viewportRatio * 100}%`}}><Crosshair size={11}/></div>
-      <button className="page-map-add" onClick={() => onAdd(currentScrollY)} title="Add a shot at the current page position"><Plus size={12}/></button>
+      <button className="page-map-add" onClick={() => onAdd(currentScrollY)} title="Добавить сцену в текущем положении"><Plus size={12}/></button>
     </div>
-    <div className="page-map-legend"><span><i/>Viewport</span><span>Double-click to add</span></div>
+    <div className="page-map-legend"><span><i/>Окно камеры</span><span>Двойной клик добавляет сцену</span></div>
   </section>;
 };

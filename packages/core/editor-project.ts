@@ -1,6 +1,19 @@
 export type EasingName = 'linear' | 'easeIn' | 'easeOut' | 'easeInOut' | 'spring';
 export type TransitionKind = 'cut' | 'fade' | 'blur' | 'dipBlack' | 'dipWhite' | 'wipe' | 'slide' | 'zoomBlur' | 'flash';
 export type PointerKind = 'move' | 'click' | 'hover';
+export type OutputLanguage = 'en' | 'ru';
+
+export type CaptureSection = {id:string; label:string; selector:string; scrollY:number; level:number};
+export type CaptureTarget = {id:string; label:string; selector:string; role:string; x:number; y:number; pageY:number; width:number; height:number};
+export type CaptureAnalysis = {
+  url:string;
+  title:string;
+  pageHeight:number;
+  analyzedAt:string;
+  fullPageImage:string;
+  sections:CaptureSection[];
+  targets:CaptureTarget[];
+};
 export type TimeDisplay = 'timecode' | 'seconds' | 'frames';
 export type CaptionAnimation = 'none' | 'fade' | 'rise' | 'scale' | 'words';
 export type OverlayKind = 'logo' | 'progress' | 'label' | 'cta' | 'frame' | 'grain';
@@ -27,6 +40,8 @@ export type PointerEvent = {
   selector?: string;
   easing: EasingName;
   visible: boolean;
+  targetLabel?: string;
+  clickEffect?: 'pulse' | 'ring' | 'none';
 };
 
 export type TransitionEvent = {
@@ -60,6 +75,8 @@ export type CaptionEvent = {
   id: string;
   label: string;
   text: string;
+  textEn?: string;
+  textRu?: string;
   at: number;
   duration: number;
   position: 'top' | 'center' | 'bottom';
@@ -80,6 +97,8 @@ export type OverlayEvent = {
   id: string;
   label: string;
   text: string;
+  textEn?: string;
+  textRu?: string;
   at: number;
   duration: number;
   kind: OverlayKind;
@@ -106,6 +125,8 @@ export type EditorProject = {
   playbackRate?: number;
   masterVolume?: number;
   exportRange?: {in: number; out: number};
+  outputLanguage?: OutputLanguage;
+  captureAnalysis?: CaptureAnalysis;
   pageHeight: number;
   previewVideo?: string;
   videoOffset?: number;

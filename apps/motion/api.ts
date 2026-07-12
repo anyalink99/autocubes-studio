@@ -1,4 +1,4 @@
-import {AssetLibrary, EditorProject, JobState, ProjectSummary} from '../../packages/core/editor-project';
+import {AssetLibrary, CaptureAnalysis, EditorProject, JobState, ProjectSummary} from '../../packages/core/editor-project';
 import {migrateEditorProject} from '../../packages/core/editor-operations';
 
 const json = async <T>(response: Response): Promise<T> => {
@@ -40,6 +40,12 @@ export const captureFrame = (project: EditorProject, frameId: string, scrollY: n
     headers: {'content-type': 'application/json'},
     body: JSON.stringify({project, frameId, scrollY}),
   }).then((response) => json<{thumbnail: string; pageHeight: number}>(response));
+
+export const analyzePage = (project: EditorProject) => fetch('/api/capture/analyze', {
+  method:'POST',
+  headers:{'content-type':'application/json'},
+  body:JSON.stringify({project}),
+}).then((response)=>json<CaptureAnalysis>(response));
 
 export const startJob = (kind: 'capture' | 'render', projectId: string) =>
   fetch('/api/jobs', {

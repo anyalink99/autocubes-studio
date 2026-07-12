@@ -41,6 +41,7 @@ export const migrateEditorProject = (source: EditorProject): EditorProject => {
     timeDisplay: source.timeDisplay ?? 'timecode',
     playbackRate: clamp(source.playbackRate ?? 1, .25, 2),
     masterVolume: clamp(source.masterVolume ?? 1, 0, 1.5),
+    outputLanguage: source.outputLanguage ?? 'en',
     frames: source.frames ?? [],
     pointer: source.pointer ?? [],
     transitions: source.transitions ?? [],
@@ -56,7 +57,7 @@ export const migrateEditorProject = (source: EditorProject): EditorProject => {
   project.frames = project.frames.map((item) => ({...item, at: clamp(item.at, 0, duration), scrollY: clamp(item.scrollY, 0, maxScroll(project)), duration: Math.max(0, item.duration), hold: Math.max(0, item.hold)}));
   project.pointer = project.pointer.map((item) => ({...item, at: clamp(item.at, 0, duration), duration: Math.max(.01, item.duration), x: clamp(item.x, 0, viewport.width), y: clamp(item.y, 0, viewport.height)}));
   project.transitions = project.transitions.map((item) => ({...item, at: clamp(item.at, 0, duration), duration: Math.max(.01, item.duration), strength: clamp(item.strength, 0, 1)}));
-  project.captions = project.captions.map((item) => ({...item, at: clamp(item.at, 0, duration), duration: Math.max(.1, item.duration), align: item.align ?? 'center', maxWidth: item.maxWidth ?? 86, lineHeight: item.lineHeight ?? 1.08, letterSpacing: item.letterSpacing ?? -2.5, animation: item.animation ?? 'none'}));
+  project.captions = project.captions.map((item) => ({...item, textEn:item.textEn ?? item.text, textRu:item.textRu ?? item.text, at: clamp(item.at, 0, duration), duration: Math.max(.1, item.duration), align: item.align ?? 'center', maxWidth: item.maxWidth ?? 86, lineHeight: item.lineHeight ?? 1.08, letterSpacing: item.letterSpacing ?? -2.5, animation: item.animation ?? 'none'}));
   project.audio = project.audio.map((item) => ({...item, at: clamp(item.at, 0, duration), duration: Math.max(.01, item.duration), fadeIn: Math.max(0, item.fadeIn ?? 0), fadeOut: Math.max(0, item.fadeOut ?? 0), category:item.category ?? (item.label.toLowerCase().includes('voice')?'voice':item.duration>4?'music':'sfx'), beatInterval:Math.max(0,item.beatInterval??0)}));
   return project;
 };
@@ -104,7 +105,7 @@ export const applyRecipe = (project: EditorProject, recipe: MotionRecipeId) => {
   };
   const selected = recipes[recipe];
   project.frames = selected.positions.map((position, index) => ({id: `frame-${Date.now()}-${index}`, label: index === 0 ? 'Opening' : index === selected.positions.length - 1 ? 'Closing' : `Scene ${index + 1}`, at: 0, scrollY: Math.round(maximum * position), duration: 1, hold: 1, easing: 'easeInOut'}));
-  project.captions = selected.caption ? [{id: `caption-${Date.now()}`, label: 'Opening caption', text: selected.caption, at: .35, duration: 2.4, position: 'bottom', style: 'boxed', size: 54, align: 'center', animation: 'rise'}] : [];
+  project.captions = selected.caption ? [{id: `caption-${Date.now()}`, label: 'Начальный текст', text: selected.caption, textEn:selected.caption, textRu:'Шоукейс продукта.', at: .35, duration: 2.4, position: 'bottom', style: 'boxed', size: 54, align: 'center', animation: 'rise'}] : [];
   return arrangeFrames(project, selected.pace);
 };
 

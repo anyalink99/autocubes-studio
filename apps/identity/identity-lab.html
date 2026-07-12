@@ -103,6 +103,9 @@
     .format-preset { height: 32px; display: flex; align-items: center; gap: 7px; padding: 0 10px; border: 1px solid #34352f; border-radius: 4px; color: #aaa9a3; background: #181816; font-size: 10px; cursor: pointer; }
     .format-preset:hover { color: #fff; border-color: #5b5c55; }
     .format-preset.active { color: #fff; border-color: #74503d; background: #2a211c; box-shadow: inset 0 0 0 1px rgba(255,90,47,.15); }
+    .output-language { display:flex; gap:2px; padding:2px; border:1px solid #3a3b36; border-radius:4px; background:#111210; }
+    .output-language button { height:25px; padding:0 7px; border:0; border-radius:3px; color:#777970; background:transparent; font-size:8px; cursor:pointer; }
+    .output-language button.active { color:#150c08; background:var(--orange); font-weight:700; }
     .format-preset b { color: #ddd; font: 700 9px Consolas, monospace; }
     .custom-format { position: relative; }
     .custom-format summary { height: 32px; display: flex; align-items: center; padding: 0 10px; border: 1px solid #34352f; border-radius: 4px; color: #aaa9a3; background: #181816; font-size: 10px; list-style: none; cursor: pointer; }
@@ -479,45 +482,46 @@
 </head>
 <body>
   <header class="lab-header">
-    <a class="lab-brand" href="/"><img src="/assets/brand/autocubes.svg" alt="" /><div><strong>Identity Lab</strong><span>60 ideas / 532 variants</span></div></a>
-    <nav class="filters" aria-label="Composition filters"></nav>
+    <a class="lab-brand" href="/"><img src="/assets/brand/autocubes.svg" alt="" /><div><strong>Identity Lab</strong><span>60 идей / 532 варианта</span></div></a>
+    <nav class="filters" aria-label="Фильтры композиций"></nav>
     <div class="header-spacer"></div>
     <span class="counter"></span>
-    <button class="tool-button" id="openBrandKit">Brand Kit</button>
-    <button class="tool-button" id="shuffle">Shuffle</button>
-    <button class="tool-button accent" id="pickedOnly">Picked</button>
+    <button class="tool-button" id="openBrandKit">Бренд-система</button>
+    <button class="tool-button" id="shuffle">Перемешать</button>
+    <button class="tool-button accent" id="pickedOnly">Выбранное</button>
   </header>
-  <section class="format-dock" aria-label="Output format">
-    <span class="format-dock-label">Instagram format</span>
-    <button class="format-preset" data-format="portrait"><b>4:5</b><span>Feed portrait</span></button>
-    <button class="format-preset" data-format="square"><b>1:1</b><span>Square</span></button>
-    <button class="format-preset" data-format="story"><b>9:16</b><span>Story / Reel</span></button>
-    <button class="format-preset" data-format="landscape"><b>1.91:1</b><span>Landscape</span></button>
-    <details class="custom-format" id="customFormat"><summary>Custom</summary><div class="custom-popover"><label>Width<input id="customWidth" type="number" min="320" max="4096" value="1080"></label><span>×</span><label>Height<input id="customHeight" type="number" min="320" max="4096" value="1350"></label><button id="applyCustom">Apply canvas</button></div></details>
+  <section class="format-dock" aria-label="Формат результата">
+    <span class="format-dock-label">Формат результата</span>
+    <button class="format-preset" data-format="portrait"><b>4:5</b><span>Портрет ленты</span></button>
+    <button class="format-preset" data-format="square"><b>1:1</b><span>Квадрат</span></button>
+    <button class="format-preset" data-format="story"><b>9:16</b><span>История / Reel</span></button>
+    <button class="format-preset" data-format="landscape"><b>1.91:1</b><span>Горизонтальный</span></button>
+    <details class="custom-format" id="customFormat"><summary>Свой</summary><div class="custom-popover"><label>Ширина<input id="customWidth" type="number" min="320" max="4096" value="1080"></label><span>×</span><label>Высота<input id="customHeight" type="number" min="320" max="4096" value="1350"></label><button id="applyCustom">Применить</button></div></details>
     <div class="dock-spacer"></div>
     <span class="export-size" id="exportSize">1080 × 1350 px</span>
-    <button class="dock-toggle" id="toggleGuides">Safe zones</button>
+    <div class="output-language"><button data-output-language="en" class="active">Результат EN</button><button data-output-language="ru">Результат RU</button></div>
+    <button class="dock-toggle" id="toggleGuides">Безопасные зоны</button>
   </section>
   <section class="intro">
-    <h1>Sixty identity ideas. <em>One mark, many systems.</em></h1>
-    <div class="intro-copy"><b>One card is one idea.</b> Switch variants in place, then open any version to edit its layers, spacing, type, and colour before exporting the final shortlist.</div>
+    <h1>Шестьдесят идей айдентики. <em>Один знак, разные системы.</em></h1>
+    <div class="intro-copy"><b>Одна карточка — одно направление.</b> Переключайте варианты, редактируйте слои и собирайте готовую карусель на английском или русском.</div>
   </section>
   <main class="gallery" id="gallery"></main>
-  <aside class="selection-tray" id="selectionTray"><div><strong id="selectionCount">0 picked</strong><span id="selectionIds">Pick order becomes carousel order</span></div><div class="spacer"></div><button id="openCarousel">Carousel</button><button id="clearSelection">Clear</button><button id="exportSelection">Export JSON</button><button id="exportPack">PNG pack</button></aside>
-  <aside class="studio-drawer" id="brandDrawer" aria-label="Brand Kit"><div class="drawer-head"><div><span>Shared identity source</span><h2>Brand Kit</h2></div><button id="closeBrandKit">×</button></div><div class="drawer-body"><label class="brand-field"><span>Brand name</span><input id="brandName"></label><label class="brand-field"><span>Studio line</span><input id="brandTagline"></label><label class="brand-field"><span>Email</span><input id="brandEmail" type="email"></label><label class="brand-field"><span>Website</span><input id="brandWebsite"></label><label class="brand-field"><span>Logo URL</span><input id="brandLogo" placeholder="/assets/brand/autocubes.svg"></label><div class="brand-colors"><label class="brand-field"><span>Primary</span><input id="brandPrimary" type="color"></label><label class="brand-field"><span>Secondary</span><input id="brandSecondary" type="color"></label></div><label class="brand-toggle"><input id="brandUseColors" type="checkbox">Apply Brand Kit colours to every idea</label><label class="brand-field"><span>Default social caption</span><textarea id="brandCaption"></textarea></label><label class="brand-field"><span>Default hashtags</span><textarea id="brandHashtags"></textarea></label><div class="drawer-note">Brand Kit updates shared names, lockups, contact details and optional colours. Individual layer edits remain stronger than the kit.</div></div><div class="drawer-actions"><button id="resetBrandKit">Reset</button><button class="primary" id="saveBrandKit">Apply to ideas</button></div></aside>
-  <div class="carousel-builder" id="carouselBuilder"><div class="carousel-preview"><div class="carousel-strip" id="carouselStrip"></div></div><aside class="carousel-panel"><div class="drawer-head"><div><span>Instagram sequence</span><h2>Carousel Builder</h2></div><button id="closeCarousel">×</button></div><div class="carousel-list" id="carouselList"></div><div class="drawer-actions"><button id="reverseCarousel">Reverse</button><button class="primary" id="exportCarousel">Export PNG pack</button></div></aside></div>
-  <div class="modal" id="modal" role="dialog" aria-modal="true" aria-label="Composition preview">
+  <aside class="selection-tray" id="selectionTray"><div><strong id="selectionCount">0 выбрано</strong><span id="selectionIds">Порядок выбора станет порядком карусели</span></div><div class="spacer"></div><button id="openCarousel">Карусель</button><button id="clearSelection">Очистить</button><button id="exportSelection">JSON</button><button id="exportPack">PNG-пакет</button></aside>
+  <aside class="studio-drawer" id="brandDrawer" aria-label="Бренд-система"><div class="drawer-head"><div><span>Общий источник айдентики</span><h2>Бренд-система</h2></div><button id="closeBrandKit">×</button></div><div class="drawer-body"><label class="brand-field"><span>Название бренда</span><input id="brandName"></label><label class="brand-field"><span>Слоган English</span><input id="brandTaglineEn"></label><label class="brand-field"><span>Слоган Русский</span><input id="brandTaglineRu"></label><label class="brand-field"><span>Email</span><input id="brandEmail" type="email"></label><label class="brand-field"><span>Сайт</span><input id="brandWebsite"></label><label class="brand-field"><span>Адрес логотипа</span><input id="brandLogo" placeholder="/assets/brand/autocubes.svg"></label><div class="brand-colors"><label class="brand-field"><span>Основной цвет</span><input id="brandPrimary" type="color"></label><label class="brand-field"><span>Дополнительный</span><input id="brandSecondary" type="color"></label></div><label class="brand-toggle"><input id="brandUseColors" type="checkbox">Применить цвета ко всем идеям</label><label class="brand-field"><span>Подпись English</span><textarea id="brandCaptionEn"></textarea></label><label class="brand-field"><span>Подпись Русский</span><textarea id="brandCaptionRu"></textarea></label><label class="brand-field"><span>Хэштеги</span><textarea id="brandHashtags"></textarea></label><div class="drawer-note">Общие значения применяются первыми. Индивидуальные изменения слоёв всегда имеют больший приоритет.</div></div><div class="drawer-actions"><button id="resetBrandKit">Сбросить</button><button class="primary" id="saveBrandKit">Применить</button></div></aside>
+  <div class="carousel-builder" id="carouselBuilder"><div class="carousel-preview"><div class="carousel-strip" id="carouselStrip"></div></div><aside class="carousel-panel"><div class="drawer-head"><div><span>Последовательность Instagram</span><h2>Сборщик карусели</h2></div><button id="closeCarousel">×</button></div><div class="carousel-list" id="carouselList"></div><div class="drawer-actions"><button id="reverseCarousel">Развернуть</button><button class="primary" id="exportCarousel">Экспортировать PNG</button></div></aside></div>
+  <div class="modal" id="modal" role="dialog" aria-modal="true" aria-label="Предпросмотр композиции">
     <div class="modal-stage"><div class="modal-artboard" id="modalArtboard"></div></div>
     <aside class="modal-panel">
-      <div class="panel-head"><div><span class="eyebrow" id="modalEyebrow"></span><h2 id="modalTitle"></h2></div><div class="panel-tools"><button id="undoEdit" title="Undo">↶</button><button id="redoEdit" title="Redo">↷</button><button class="close" id="closeModal" aria-label="Close">&#215;</button></div></div>
+      <div class="panel-head"><div><span class="eyebrow" id="modalEyebrow"></span><h2 id="modalTitle"></h2></div><div class="panel-tools"><button id="undoEdit" title="Отменить">↶</button><button id="redoEdit" title="Повторить">↷</button><button class="close" id="closeModal" aria-label="Закрыть">&#215;</button></div></div>
       <div class="editor-scroll">
-        <section class="editor-section"><div class="editor-section-head"><strong>Layers</strong><span id="layerCount"></span></div><div class="layer-actions"><button id="addText">+ Text</button><button id="addMark">+ Mark</button><button id="addShape">+ Shape</button><button id="addImage">+ Image</button></div><input id="imageInput" type="file" accept="image/png,image/jpeg,image/webp" hidden><div class="layers" id="layers"></div></section>
-        <section class="editor-section"><div class="editor-section-head"><strong>Properties</strong><span id="selectedType">Canvas</span></div><div id="inspector"></div></section>
-        <section class="editor-section"><div class="editor-section-head"><strong>Post copy</strong><span>Saved with composition</span></div><div class="post-fields"><label><span class="post-field-head">Caption <b id="captionCount">0</b></span><textarea id="postCaption" placeholder="Write the post caption…"></textarea></label><label><span class="post-field-head">Alt text <b id="altCount">0</b></span><textarea id="postAlt" placeholder="Describe the visual for accessibility…"></textarea></label><label><span class="post-field-head">Hashtags</span><textarea id="postHashtags" placeholder="#autocubes #designstudio"></textarea></label><button class="copy-post" id="copyPost">Copy complete post</button></div></section>
+        <section class="editor-section"><div class="editor-section-head"><strong>Слои</strong><span id="layerCount"></span></div><div class="layer-actions"><button id="addText">+ Текст</button><button id="addMark">+ Знак</button><button id="addShape">+ Фигура</button><button id="addImage">+ Фото</button></div><input id="imageInput" type="file" accept="image/png,image/jpeg,image/webp" hidden><div class="layers" id="layers"></div></section>
+        <section class="editor-section"><div class="editor-section-head"><strong>Свойства</strong><span id="selectedType">Холст</span></div><div id="inspector"></div></section>
+        <section class="editor-section"><div class="editor-section-head"><strong>Текст публикации</strong><span id="postLanguageHint">English output</span></div><div class="post-fields"><label><span class="post-field-head">Подпись <b id="captionCount">0</b></span><textarea id="postCaption" placeholder="Текст публикации…"></textarea></label><label><span class="post-field-head">Alt-текст <b id="altCount">0</b></span><textarea id="postAlt" placeholder="Опишите визуал для доступности…"></textarea></label><label><span class="post-field-head">Хэштеги</span><textarea id="postHashtags" placeholder="#autocubes #designstudio"></textarea></label><button class="copy-post" id="copyPost">Скопировать публикацию</button></div></section>
       </div>
-      <div class="modal-actions"><button class="primary" id="modalPick"></button><button id="resetComposition">Reset edits</button></div>
-      <div class="export-actions"><button id="exportPng">Export PNG</button><button id="exportJpeg">Export JPEG</button><button id="exportAllSizes">All formats</button></div>
-      <div class="modal-nav"><button id="prevComposition">&#8592; Variant</button><button id="nextComposition">Variant &#8594;</button></div>
+      <div class="modal-actions"><button class="primary" id="modalPick"></button><button id="resetComposition">Сбросить изменения</button></div>
+      <div class="export-actions"><button id="exportPng">Экспорт PNG</button><button id="exportJpeg">Экспорт JPEG</button><button id="exportAllSizes">Все форматы</button></div>
+      <div class="modal-nav"><button id="prevComposition">&#8592; Вариант</button><button id="nextComposition">Вариант &#8594;</button></div>
     </aside>
   </div>
   <div class="toast" id="toast" role="status"></div>
@@ -570,14 +574,28 @@
       12:['Code field','System texture','ASCII pattern','Engineering field','Data texture','Technical poster'],
       14:['Studio manifesto','Capability manifesto','Four principles','Studio statement','Offer manifesto','Practice summary']
     };
+    const ideaTitleRu = {
+      'Brand lockup':'Фирменная подпись','Centered signature':'Подпись по центру','Mark and word':'Знак и слово','Wide signature':'Широкая подпись','Compact lockup':'Компактный локап','Framed signature':'Подпись в рамке',
+      'Layered identity':'Слоистая айдентика','Stacked signal':'Составной сигнал','Diagonal system':'Диагональная система','Brand ribbons':'Фирменные ленты','Identity rails':'Направляющие айдентики','Layered mark':'Слоистый знак',
+      'Focus area':'Зона фокуса','Service signal':'Сигнал услуги','Capability tile':'Карточка компетенции','Discipline cover':'Обложка направления','Offer card':'Карточка предложения','Service object':'Объект услуги',
+      'Type statement':'Типографический тезис','Studio headline':'Заголовок студии','Launch statement':'Тезис запуска','Design principle':'Принцип дизайна','Working belief':'Рабочий принцип','Product sentence':'Фраза о продукте',
+      'Proof point':'Доказательство','Performance number':'Показатель эффективности','Knowledge metric':'Метрика знаний','Revenue proof':'Подтверждение выручки','Capability count':'Количество компетенций','Outcome card':'Карточка результата',
+      'Process map':'Карта процесса','Four-step process':'Процесс из четырёх шагов','Project sequence':'Последовательность проекта','Delivery path':'Путь к результату','Studio workflow':'Процесс студии','Launch roadmap':'Карта запуска',
+      'Work index':'Индекс проектов','Project register':'Реестр проектов','Selected work list':'Список избранных работ','Case directory':'Каталог кейсов','Portfolio ledger':'Ведомость портфолио','Project menu':'Меню проектов',
+      'Contact card':'Контактная карточка','Project enquiry':'Запрос на проект','Email poster':'Постер с email','Start a project':'Начать проект','Contact signal':'Контактный сигнал','Open brief':'Открытый бриф',
+      'Code field':'Поле кода','System texture':'Системная текстура','ASCII pattern':'ASCII-паттерн','Engineering field':'Инженерное поле','Data texture':'Текстура данных','Technical poster':'Технический постер',
+      'Studio manifesto':'Манифест студии','Capability manifesto':'Манифест компетенций','Four principles':'Четыре принципа','Studio statement':'Тезис студии','Offer manifesto':'Манифест предложения','Practice summary':'Итог практики'
+    };
     function readStored(key, fallback) {
       try { return JSON.parse(localStorage.getItem(key) || 'null') ?? fallback; }
       catch { localStorage.removeItem(key); return fallback; }
     }
     const picked = new Set(readStored('autocubes-identity-v2-picked', []));
     const BRAND_KEY = 'autocubes-identity-brand-kit-v1';
-    const brandDefaults = {name:'autocubes', tagline:'Design. Code. Motion.', email:'contact@autocubes.site', website:'autocubes.site', logo:'/assets/brand/autocubes.svg', primary:'#ff5a2f', secondary:'#ffb19d', useColors:false, caption:'Built to ship.', hashtags:'#autocubes #designstudio'};
-    let brandKit = {...brandDefaults, ...readStored(BRAND_KEY, {})};
+    const brandDefaults = {name:'autocubes', taglineEn:'Design. Code. Motion.', taglineRu:'Дизайн. Код. Моушн.', email:'contact@autocubes.site', website:'autocubes.site', logo:'/assets/brand/autocubes.svg', primary:'#ff5a2f', secondary:'#ffb19d', useColors:false, captionEn:'Built to ship.', captionRu:'Сделано, чтобы запустить.', hashtags:'#autocubes #designstudio'};
+    const storedBrandKit = readStored(BRAND_KEY, {});
+    let brandKit = {...brandDefaults, ...storedBrandKit, taglineEn:storedBrandKit.taglineEn || storedBrandKit.tagline || brandDefaults.taglineEn, captionEn:storedBrandKit.captionEn || storedBrandKit.caption || brandDefaults.captionEn};
+    let currentOutputLanguage = localStorage.getItem('autocubes-identity-output-language') === 'ru' ? 'ru' : 'en';
     let activeFilter = 'All';
     let pickedMode = false;
     let currentId = null;
@@ -595,7 +613,7 @@
       square: formatFromPreset('square','instagram-square'),
       story: formatFromPreset('story','instagram-reel'),
       landscape: formatFromPreset('landscape','instagram-landscape'),
-      custom: {id:'custom', label:'Custom canvas', width:1080, height:1350, ratio:'1080 / 1350', safe:{top:5,right:5,bottom:5,left:5}}
+      custom: {id:'custom', label:'Свой холст', width:1080, height:1350, ratio:'1080 / 1350', safe:{top:5,right:5,bottom:5,left:5}}
     };
     try {
       const savedCustom = readStored('autocubes-identity-custom-format', null);
@@ -665,7 +683,7 @@
       }
       const guideButton = document.getElementById('toggleGuides');
       guideButton.classList.toggle('active', guidesVisible);
-      guideButton.textContent = guidesVisible ? 'Safe zones on' : 'Safe zones';
+      guideButton.textContent = guidesVisible ? 'Безопасные зоны: вкл' : 'Безопасные зоны';
       if (persist) localStorage.setItem('autocubes-identity-format', currentFormat.id);
     }
 
@@ -720,22 +738,33 @@
       edits[id].board ||= {};
       edits[id].nodes ||= {};
       edits[id].added ||= [];
-      if (!edits[id].post) edits[id].post = {caption:brandKit.caption || '', alt:'', hashtags:brandKit.hashtags || ''};
+      if (!edits[id].post) edits[id].post = {
+        en:{caption:brandKit.captionEn || '', alt:'', hashtags:brandKit.hashtags || ''},
+        ru:{caption:brandKit.captionRu || '', alt:'', hashtags:brandKit.hashtags || ''}
+      };
+      if (!edits[id].post.en || !edits[id].post.ru) {
+        const legacy = edits[id].post;
+        edits[id].post = {
+          en:legacy.en || {caption:legacy.caption || brandKit.captionEn || '', alt:legacy.alt || '', hashtags:legacy.hashtags || brandKit.hashtags || ''},
+          ru:legacy.ru || {caption:brandKit.captionRu || '', alt:'', hashtags:legacy.hashtags || brandKit.hashtags || ''}
+        };
+      }
       return edits[id];
     }
 
     function renderPostFields() {
-      const post = editRecord(currentId).post;
+      const post = editRecord(currentId).post[currentOutputLanguage];
       document.getElementById('postCaption').value = post.caption || '';
       document.getElementById('postAlt').value = post.alt || '';
       document.getElementById('postHashtags').value = post.hashtags || '';
       document.getElementById('captionCount').textContent = String((post.caption || '').length);
       document.getElementById('altCount').textContent = String((post.alt || '').length);
+      document.getElementById('postLanguageHint').textContent = currentOutputLanguage === 'ru' ? 'Результат RU' : 'Результат EN';
     }
 
     function updatePostField(field, value) {
       checkpoint();
-      editRecord(currentId).post[field] = value;
+      editRecord(currentId).post[currentOutputLanguage][field] = value;
       saveEdits();
       if (field === 'caption') document.getElementById('captionCount').textContent = String(value.length);
       if (field === 'alt') document.getElementById('altCount').textContent = String(value.length);
@@ -746,7 +775,7 @@
         localStorage.setItem(EDITS_KEY, JSON.stringify(edits));
       } catch (error) {
         console.error(error);
-        showToast('Browser storage is full. Export or remove large image layers.');
+        showToast('Хранилище браузера заполнено. Экспортируйте проект или удалите тяжёлые изображения.');
       }
     }
 
@@ -788,7 +817,7 @@
       } else {
         element = document.createElement('div');
         element.className = `editor-added editor-added-${item.type}`;
-        if (item.type === 'text') element.textContent = item.text || 'New text';
+        if (item.type === 'text') element.textContent = item.text || 'Новый текст';
         if (item.type === 'group') element.innerHTML = item.html || '';
       }
       element.dataset.addedId = item.id;
@@ -808,9 +837,31 @@
       }
     }
 
+    const russianOutput = new Map(Object.entries({
+      'What we do':'Что мы делаем', 'How we work':'Как мы работаем', 'From brief to launch.':'От брифа до запуска.',
+      'Define':'Смысл', 'Design':'Дизайн', 'Build':'Сборка', 'Launch':'Запуск', 'Selected work':'Избранные проекты',
+      'Start a project.':'Начать проект.', 'Websites that explain.':'Сайты, которые объясняют.', 'Brands that hold.':'Бренды, которые держат форму.',
+      'Apps that work.':'Приложения, которые работают.', 'Motion with a reason.':'Моушн со смыслом.',
+      'Design. Code. Motion.':'Дизайн. Код. Моушн.', 'Built to ship.':'Сделано, чтобы запустить.',
+      'Websites & landing pages':'Сайты и лендинги', 'Branding & identity':'Брендинг и айдентика', 'Apps & 3D motion':'Приложения и 3D-моушн',
+      'Strategy, design, build, and an SEO-ready launch.':'Стратегия, дизайн, разработка и готовый к продвижению запуск.',
+      'Logo, typography, colour, and a system that stays consistent.':'Логотип, типографика, цвет и цельная система.',
+      'Product interfaces, interactive experiences, and commercial CGI.':'Продуктовые интерфейсы, интерактив и коммерческая графика.'
+    }));
+
+    function applyOutputLanguage(board) {
+      if (currentOutputLanguage !== 'ru') return;
+      board.querySelectorAll('h2,p,span,strong,small,b,.kicker,.caption,.line,.email').forEach(element => {
+        if (element.children.length) return;
+        const source = element.textContent.trim().replace(/\s+/g, ' ');
+        if (russianOutput.has(source)) element.textContent = russianOutput.get(source);
+      });
+    }
+
     function applyStoredEdits(board, id) {
       if (!board) return;
       board.querySelectorAll('[data-added-id]').forEach(element => element.remove());
+      applyOutputLanguage(board);
       applyBrandKit(board);
       assignEditIds(board);
       const record = edits[id];
@@ -829,7 +880,7 @@
     }
 
     function layerLabel(element) {
-      if (element.dataset.addedId) return `Added ${element.dataset.addedId.replace(/^a\d+-/,'')}`;
+      if (element.dataset.addedId) return `Добавлен: ${element.dataset.addedId.replace(/^a\d+-/,'')}`;
       const text = element.children.length === 0 ? element.textContent.trim().replace(/\s+/g,' ').slice(0,28) : '';
       if (text) return text;
       const name = [...element.classList].find(item => !['editor-selected','editor-hidden'].includes(item));
@@ -868,12 +919,12 @@
       if (!board) return;
       const elements = [...board.querySelectorAll('[data-edit-id]')];
       document.getElementById('layerCount').textContent = `${elements.length + 1}`;
-      const rows = [{key:'canvas', label:'Canvas', hidden:false}, ...elements.map(element => ({
+      const rows = [{key:'canvas', label:'Холст', hidden:false}, ...elements.map(element => ({
         key:element.dataset.editId,
         label:layerLabel(element),
         hidden:element.classList.contains('editor-hidden')
       }))];
-      document.getElementById('layers').innerHTML = rows.map(row => `<div class="layer-row ${row.key === editorState.selected ? 'active' : ''} ${row.hidden ? 'is-hidden' : ''}" data-layer="${row.key}"><button class="layer-visibility" title="${row.hidden ? 'Show' : 'Hide'}">${row.key === 'canvas' ? '◆' : row.hidden ? '○' : '●'}</button><button class="layer-name">${escapeHTML(row.label)}</button><button class="layer-remove" title="Remove" ${row.key === 'canvas' ? 'disabled' : ''}>×</button></div>`).join('');
+      document.getElementById('layers').innerHTML = rows.map(row => `<div class="layer-row ${row.key === editorState.selected ? 'active' : ''} ${row.hidden ? 'is-hidden' : ''}" data-layer="${row.key}"><button class="layer-visibility" title="${row.hidden ? 'Показать' : 'Скрыть'}">${row.key === 'canvas' ? '◆' : row.hidden ? '○' : '●'}</button><button class="layer-name">${escapeHTML(row.label)}</button><button class="layer-remove" title="Удалить" ${row.key === 'canvas' ? 'disabled' : ''}>×</button></div>`).join('');
       document.querySelectorAll('.layer-row').forEach(row => {
         row.querySelector('.layer-name').onclick = () => selectEditorElement(row.dataset.layer);
         row.querySelector('.layer-visibility').onclick = () => row.dataset.layer !== 'canvas' && toggleLayer(row.dataset.layer);
@@ -902,13 +953,13 @@
       const inspector = document.getElementById('inspector');
       const element = currentElement();
       if (!element) {
-        inspector.innerHTML = '<div class="inspector-empty">Select a layer on the canvas.</div>';
+        inspector.innerHTML = '<div class="inspector-empty">Выберите слой на холсте.</div>';
         return;
       }
       if (editorState.selected === 'canvas') {
         const computed = getComputedStyle(element);
-        document.getElementById('selectedType').textContent = 'Canvas';
-        inspector.innerHTML = `<div class="field-grid">${colorField('Background','backgroundColor',computed.backgroundColor)}${colorField('Text','color',computed.color)}${colorField('Accent A','accent',computed.getPropertyValue('--accent').trim())}${colorField('Accent B','accent2',computed.getPropertyValue('--accent2').trim())}</div>`;
+        document.getElementById('selectedType').textContent = 'Холст';
+        inspector.innerHTML = `<div class="field-grid">${colorField('Фон','backgroundColor',computed.backgroundColor)}${colorField('Текст','color',computed.color)}${colorField('Акцент A','accent',computed.getPropertyValue('--accent').trim())}${colorField('Акцент B','accent2',computed.getPropertyValue('--accent2').trim())}</div>`;
       } else {
         const node = nodeRecord();
         const style = node.style || (node.style = {});
@@ -916,17 +967,17 @@
         const editableText = element.children.length === 0 && element.tagName !== 'IMG';
         document.getElementById('selectedType').textContent = layerLabel(element);
         inspector.innerHTML = `<div class="field-grid">
-          ${editableText ? `<div class="editor-field wide"><label>Content</label><textarea data-prop="text">${escapeHTML(element.textContent)}</textarea></div>` : ''}
-          ${numberField('Offset X','x',style.x ?? 0)}${numberField('Offset Y','y',style.y ?? 0)}
-          ${numberField('Width %','width',style.width)}${numberField('Height %','height',style.height)}
-          ${numberField('Padding %','padding',style.padding)}${numberField('Type size','fontSize',style.fontSize)}
-          ${numberField('Rotation °','rotation',style.rotation)}${numberField('Letter space','letterSpacing',style.letterSpacing)}
-          ${numberField('Line height','lineHeight',style.lineHeight,'min="0.5" max="3" step="0.05"')}${numberField('Layer','zIndex',style.zIndex)}
-          ${numberField('Opacity %','opacity',style.opacity == null ? 100 : Math.round(style.opacity * 100),'min="0" max="100"')}${numberField('Radius %','borderRadius',style.borderRadius)}
-          ${colorField('Text', 'color', style.color || computed.color)}${colorField('Fill','backgroundColor',style.backgroundColor || computed.backgroundColor)}
-          <div class="editor-field"><label>Align</label><select data-prop="textAlign"><option value="">Auto</option><option value="left">Left</option><option value="center">Center</option><option value="right">Right</option></select></div>
-          ${element.tagName === 'IMG' ? '<div class="editor-field"><label>Image fit</label><select data-prop="objectFit"><option value="">Auto</option><option value="cover">Cover</option><option value="contain">Contain</option><option value="fill">Stretch</option></select></div>' : ''}
-        </div><div class="inline-actions"><button class="mini-button" id="duplicateSelected">Duplicate</button><button class="mini-button" id="toggleSelected">${node.hidden ? 'Show layer' : 'Hide layer'}</button><button class="mini-button danger" id="removeSelected">Remove</button></div>`;
+          ${editableText ? `<div class="editor-field wide"><label>Содержимое</label><textarea data-prop="text">${escapeHTML(element.textContent)}</textarea></div>` : ''}
+          ${numberField('Смещение X','x',style.x ?? 0)}${numberField('Смещение Y','y',style.y ?? 0)}
+          ${numberField('Ширина %','width',style.width)}${numberField('Высота %','height',style.height)}
+          ${numberField('Отступ %','padding',style.padding)}${numberField('Размер текста','fontSize',style.fontSize)}
+          ${numberField('Поворот °','rotation',style.rotation)}${numberField('Трекинг','letterSpacing',style.letterSpacing)}
+          ${numberField('Интерлиньяж','lineHeight',style.lineHeight,'min="0.5" max="3" step="0.05"')}${numberField('Слой','zIndex',style.zIndex)}
+          ${numberField('Прозрачность %','opacity',style.opacity == null ? 100 : Math.round(style.opacity * 100),'min="0" max="100"')}${numberField('Радиус %','borderRadius',style.borderRadius)}
+          ${colorField('Текст', 'color', style.color || computed.color)}${colorField('Заливка','backgroundColor',style.backgroundColor || computed.backgroundColor)}
+          <div class="editor-field"><label>Выравнивание</label><select data-prop="textAlign"><option value="">Авто</option><option value="left">Слева</option><option value="center">По центру</option><option value="right">Справа</option></select></div>
+          ${element.tagName === 'IMG' ? '<div class="editor-field"><label>Вписывание</label><select data-prop="objectFit"><option value="">Авто</option><option value="cover">Заполнить</option><option value="contain">Вместить</option><option value="fill">Растянуть</option></select></div>' : ''}
+        </div><div class="inline-actions"><button class="mini-button" id="duplicateSelected">Дублировать</button><button class="mini-button" id="toggleSelected">${node.hidden ? 'Показать слой' : 'Скрыть слой'}</button><button class="mini-button danger" id="removeSelected">Удалить</button></div>`;
         const align = inspector.querySelector('[data-prop="textAlign"]');
         if (align) align.value = style.textAlign || '';
         const objectFit = inspector.querySelector('[data-prop="objectFit"]');
@@ -997,7 +1048,7 @@
     function addElement(type, source = '') {
       checkpoint();
       const record = editRecord(currentId);
-      const item = {id:`a${Date.now()}-${type}`, type, text:type === 'text' ? 'New text' : '', src:source, style:{x:0,y:0,zIndex:12}};
+      const item = {id:`a${Date.now()}-${type}`, type, text:type === 'text' ? 'Новый текст' : '', src:source, style:{x:0,y:0,zIndex:12}};
       record.added.push(item);
       currentBoard().appendChild(createAddedElement(item));
       saveEdits();
@@ -1090,10 +1141,11 @@
     const filters = document.querySelector('.filters');
     const counter = document.querySelector('.counter');
 
+    const familyLabels = {All:'Все', Brand:'Бренд', Services:'Услуги', Work:'Проекты', Typography:'Типографика', Data:'Данные', Process:'Процесс', Contact:'Контакты', Systems:'Системы'};
     families.forEach(family => {
       const button = document.createElement('button');
       button.className = `filter ${family === 'All' ? 'active' : ''}`;
-      button.textContent = family;
+      button.textContent = familyLabels[family] || family;
       button.onclick = () => { activeFilter = family; pickedMode = false; document.getElementById('pickedOnly').classList.remove('active'); document.querySelectorAll('.filter').forEach(x=>x.classList.toggle('active',x===button)); applyFilters(); };
       filters.appendChild(button);
     });
@@ -1103,7 +1155,7 @@
     function cardMarkup(group) {
       const study = activeStudy(group);
       const variant = (positions[group.template] || 0) + 1;
-      return `<article class="composition ${picked.has(study.id) ? 'picked' : ''}" data-id="${study.id}" data-template="${group.template}" data-family="${group.family}"><div class="card-head"><span>Idea ${String(group.template + 1).padStart(2,'0')}</span><span class="family">${group.family} / ${group.title}</span><span class="spacer"></span><button class="mutate-button" title="Generate a different controlled variation">Mutate</button><div class="variant-nav"><button data-delta="-1" title="Previous variant">&#8592;</button><span>${String(variant).padStart(2,'0')} / ${String(group.studies.length).padStart(2,'0')}</span><button data-delta="1" title="Next variant">&#8594;</button></div><button class="pick-button" title="Pick variant" aria-label="Pick variant">&#10003;</button></div>${study.html}</article>`;
+      return `<article class="composition ${picked.has(study.id) ? 'picked' : ''}" data-id="${study.id}" data-template="${group.template}" data-family="${group.family}"><div class="card-head"><span>Идея ${String(group.template + 1).padStart(2,'0')}</span><span class="family">${familyLabels[group.family] || group.family} / ${ideaTitleRu[group.title] || group.title}</span><span class="spacer"></span><button class="mutate-button" title="Создать другую контролируемую вариацию">Вариант</button><div class="variant-nav"><button data-delta="-1" title="Предыдущий вариант">&#8592;</button><span>${String(variant).padStart(2,'0')} / ${String(group.studies.length).padStart(2,'0')}</span><button data-delta="1" title="Следующий вариант">&#8594;</button></div><button class="pick-button" title="Добавить в выбранное" aria-label="Добавить в выбранное">&#10003;</button></div>${study.html}</article>`;
     }
 
     function hydrateCard(card) {
@@ -1148,7 +1200,7 @@
       positions[template] = next;
       localStorage.setItem('autocubes-identity-v2-positions', JSON.stringify(positions));
       updateGroupCard(template);
-      showToast(`Idea ${String(template + 1).padStart(2,'0')} mutated · variant ${next + 1}`);
+      showToast(`Идея ${String(template + 1).padStart(2,'0')} · вариант ${next + 1}`);
     }
 
     function applyFilters() {
@@ -1160,7 +1212,7 @@
         card.hidden = !(showFamily && showPicked);
         if (!card.hidden) visible++;
       });
-      counter.textContent = `${visible} / 60 ideas · ${studies.length} variants`;
+      counter.textContent = `${visible} / 60 идей · ${studies.length} вариантов`;
     }
 
     function togglePick(id) {
@@ -1175,41 +1227,45 @@
     function updateTray() {
       const ids = [...picked];
       document.getElementById('selectionTray').classList.toggle('visible', ids.length > 0);
-      document.getElementById('selectionCount').textContent = `${ids.length} picked`;
-      document.getElementById('selectionIds').textContent = ids.length ? ids.map((x,index)=>`${index + 1}. ${String(x).padStart(3,'0')}`).join(' · ') : 'Pick order becomes carousel order';
+      document.getElementById('selectionCount').textContent = `${ids.length} выбрано`;
+      document.getElementById('selectionIds').textContent = ids.length ? ids.map((x,index)=>`${index + 1}. ${String(x).padStart(3,'0')}`).join(' · ') : 'Порядок выбора станет порядком карусели';
     }
 
     function syncBrandFields() {
       document.getElementById('brandName').value = brandKit.name;
-      document.getElementById('brandTagline').value = brandKit.tagline;
+      document.getElementById('brandTaglineEn').value = brandKit.taglineEn;
+      document.getElementById('brandTaglineRu').value = brandKit.taglineRu;
       document.getElementById('brandEmail').value = brandKit.email;
       document.getElementById('brandWebsite').value = brandKit.website;
       document.getElementById('brandLogo').value = brandKit.logo;
       document.getElementById('brandPrimary').value = brandKit.primary;
       document.getElementById('brandSecondary').value = brandKit.secondary;
       document.getElementById('brandUseColors').checked = brandKit.useColors;
-      document.getElementById('brandCaption').value = brandKit.caption;
+      document.getElementById('brandCaptionEn').value = brandKit.captionEn;
+      document.getElementById('brandCaptionRu').value = brandKit.captionRu;
       document.getElementById('brandHashtags').value = brandKit.hashtags;
     }
 
     function saveBrandKit() {
       brandKit = {
         name:document.getElementById('brandName').value.trim() || brandDefaults.name,
-        tagline:document.getElementById('brandTagline').value.trim(),
+        taglineEn:document.getElementById('brandTaglineEn').value.trim(),
+        taglineRu:document.getElementById('brandTaglineRu').value.trim(),
         email:document.getElementById('brandEmail').value.trim(),
         website:document.getElementById('brandWebsite').value.trim(),
         logo:document.getElementById('brandLogo').value.trim() || brandDefaults.logo,
         primary:document.getElementById('brandPrimary').value,
         secondary:document.getElementById('brandSecondary').value,
         useColors:document.getElementById('brandUseColors').checked,
-        caption:document.getElementById('brandCaption').value.trim(),
+        captionEn:document.getElementById('brandCaptionEn').value.trim(),
+        captionRu:document.getElementById('brandCaptionRu').value.trim(),
         hashtags:document.getElementById('brandHashtags').value.trim(),
       };
       localStorage.setItem(BRAND_KEY, JSON.stringify(brandKit));
       renderGallery(groupOrder);
       if (currentId && document.getElementById('modal').classList.contains('open')) openModal(currentId, true);
       document.getElementById('brandDrawer').classList.remove('open');
-      showToast('Brand Kit applied across Identity Lab');
+      showToast('Бренд-система применена ко всем идеям');
     }
 
     function setPickedOrder(ids) {
@@ -1224,7 +1280,7 @@
       const ids = [...picked].filter(id => studies[id - 1]);
       const list = document.getElementById('carouselList');
       const strip = document.getElementById('carouselStrip');
-      list.innerHTML = ids.map((id,index) => `<div class="carousel-item" data-id="${id}"><span>${String(index + 1).padStart(2,'0')}</span><div class="mini-art">${studies[id - 1].html}</div><strong>${studies[id - 1].title}</strong><div><button data-move="-1" title="Move earlier">↑</button><button data-move="1" title="Move later">↓</button><button data-remove title="Remove">×</button></div></div>`).join('') || '<div class="drawer-note">Pick at least two compositions to build an Instagram carousel.</div>';
+      list.innerHTML = ids.map((id,index) => `<div class="carousel-item" data-id="${id}"><span>${String(index + 1).padStart(2,'0')}</span><div class="mini-art">${studies[id - 1].html}</div><strong>${ideaTitleRu[studies[id - 1].title] || studies[id - 1].title}</strong><div><button data-move="-1" title="Переместить раньше">↑</button><button data-move="1" title="Переместить позже">↓</button><button data-remove title="Удалить">×</button></div></div>`).join('') || '<div class="drawer-note">Выберите хотя бы две композиции для Instagram-карусели.</div>';
       strip.innerHTML = ids.map((id,index) => `<div class="carousel-slide" data-id="${id}">${studies[id - 1].html}<span class="carousel-number">${index + 1} / ${ids.length}</span></div>`).join('');
       [...list.querySelectorAll('.carousel-item')].forEach((item,index) => {
         const id = Number(item.dataset.id);
@@ -1250,8 +1306,8 @@
       document.getElementById('modalArtboard').innerHTML = study.html;
       applyStoredEdits(currentBoard(), currentId);
       currentBoard().classList.toggle('show-guides', guidesVisible);
-      document.getElementById('modalEyebrow').textContent = `Idea ${String(study.template + 1).padStart(2,'0')} · Variant ${String(variant).padStart(2,'0')} / ${String(group.studies.length).padStart(2,'0')} · ${study.family}`;
-      document.getElementById('modalTitle').textContent = study.title;
+      document.getElementById('modalEyebrow').textContent = `Идея ${String(study.template + 1).padStart(2,'0')} · Вариант ${String(variant).padStart(2,'0')} / ${String(group.studies.length).padStart(2,'0')} · ${familyLabels[study.family] || study.family}`;
+      document.getElementById('modalTitle').textContent = ideaTitleRu[study.title] || study.title;
       document.getElementById('modal').classList.add('open');
       document.body.style.overflow = 'hidden';
       updateModalPick();
@@ -1266,7 +1322,7 @@
       document.body.style.overflow = '';
       if (study) updateGroupCard(study.template);
     }
-    function updateModalPick() { document.getElementById('modalPick').textContent = picked.has(currentId) ? 'Remove from picked' : 'Pick this composition'; }
+    function updateModalPick() { document.getElementById('modalPick').textContent = picked.has(currentId) ? 'Убрать из выбранного' : 'Выбрать композицию'; }
     function cycleModal(delta) {
       const study = studies[currentId - 1];
       const group = groups[study.template];
@@ -1284,11 +1340,11 @@
     document.getElementById('postAlt').oninput = event => updatePostField('alt', event.target.value);
     document.getElementById('postHashtags').oninput = event => updatePostField('hashtags', event.target.value);
     document.getElementById('copyPost').onclick = async () => {
-      const post = editRecord(currentId).post;
+      const post = editRecord(currentId).post[currentOutputLanguage];
       const copy = [post.caption, post.hashtags].filter(Boolean).join('\n\n');
-      if (!copy) { showToast('Add a caption or hashtags first'); return; }
-      try { await navigator.clipboard.writeText(copy); showToast('Post copy copied'); }
-      catch { showToast('Clipboard access is unavailable in this browser'); }
+      if (!copy) { showToast('Сначала добавьте подпись или хэштеги'); return; }
+      try { await navigator.clipboard.writeText(copy); showToast('Текст публикации скопирован'); }
+      catch { showToast('Буфер обмена недоступен в этом браузере'); }
     };
     document.getElementById('modal').onclick = e => { if (e.target.id === 'modal') closeModal(); };
     document.getElementById('modalPick').onclick = () => togglePick(currentId);
@@ -1301,9 +1357,9 @@
     document.getElementById('imageInput').onchange = event => {
       const file = event.target.files?.[0];
       if (!file) return;
-      if (file.size > 3 * 1024 * 1024) { showToast('Choose an image under 3 MB for browser storage'); event.target.value = ''; return; }
+      if (file.size > 3 * 1024 * 1024) { showToast('Выберите изображение до 3 МБ'); event.target.value = ''; return; }
       const reader = new FileReader();
-      reader.onload = () => { addElement('image', String(reader.result)); showToast('Image added to the canvas'); };
+      reader.onload = () => { addElement('image', String(reader.result)); showToast('Изображение добавлено на холст'); };
       reader.readAsDataURL(file);
       event.target.value = '';
     };
@@ -1334,13 +1390,13 @@
     document.getElementById('exportCarousel').onclick = () => {document.getElementById('carouselBuilder').classList.remove('open'); document.getElementById('exportPack').click();};
     document.getElementById('exportSelection').onclick = () => {
       const ids = [...picked];
-      const blob = new Blob([JSON.stringify({project:'autocubes identity lab',selected:ids.map(id=>({id:`AC-${String(id).padStart(3,'0')}`,family:studies[id-1].family,title:studies[id-1].title,edits:edits[id] || null}))},null,2)],{type:'application/json'});
+      const blob = new Blob([JSON.stringify({project:'autocubes identity lab',outputLanguage:currentOutputLanguage,selected:ids.map(id=>({id:`AC-${String(id).padStart(3,'0')}`,family:studies[id-1].family,title:studies[id-1].title,edits:edits[id] || null}))},null,2)],{type:'application/json'});
       const link = document.createElement('a'); link.href = URL.createObjectURL(blob); link.download = 'autocubes-identity-selection.json'; link.click(); setTimeout(() => URL.revokeObjectURL(link.href), 1000);
     };
     document.getElementById('exportPack').onclick = async event => {
       const ids = [...picked];
       if (!ids.length) return;
-      if (ids.length > 20) { showToast('Export up to 20 picked compositions at once'); return; }
+      if (ids.length > 20) { showToast('За один раз можно экспортировать до 20 композиций'); return; }
       const button = event.currentTarget;
       button.disabled = true;
       const zip = new JSZip();
@@ -1357,19 +1413,19 @@
           board.style.width = '100%'; board.style.height = '100%'; board.style.aspectRatio = 'auto';
           board.classList.add('is-exporting');
           applyStoredEdits(board, id);
-          showToast(`Rendering ${index + 1} of ${ids.length}…`);
+          showToast(`Рендер ${index + 1} из ${ids.length}…`);
           const dataUrl = await toPng(board, {canvasWidth:currentFormat.width, canvasHeight:currentFormat.height, pixelRatio:1, cacheBust:true, backgroundColor:getComputedStyle(board).backgroundColor});
           zip.file(`AC-${String(id).padStart(3,'0')}-${currentFormat.id}.png`, dataUrl.split(',')[1], {base64:true});
         }
-        zip.file('manifest.json', JSON.stringify({format:currentFormat, compositions:ids.map(id => ({id, family:studies[id-1].family, title:studies[id-1].title, post:edits[id]?.post || null}))}, null, 2));
+        zip.file('manifest.json', JSON.stringify({format:currentFormat, outputLanguage:currentOutputLanguage, compositions:ids.map(id => ({id, family:studies[id-1].family, title:studies[id-1].title, post:edits[id]?.post || null}))}, null, 2));
         const blob = await zip.generateAsync({type:'blob', compression:'DEFLATE', compressionOptions:{level:6}});
         const url = URL.createObjectURL(blob);
         const link = document.createElement('a'); link.href = url; link.download = `autocubes-${currentFormat.id}-${ids.length}-compositions.zip`; link.click();
         setTimeout(() => URL.revokeObjectURL(url), 1000);
-        showToast(`${ids.length} compositions exported as a ZIP pack`);
+        showToast(`${ids.length} композиций экспортировано в ZIP`);
       } catch (error) {
         console.error(error);
-        showToast('Could not build the PNG pack');
+        showToast('Не удалось собрать PNG-пакет');
       } finally {
         host.remove();
         button.disabled = false;
@@ -1394,10 +1450,10 @@
         link.href = dataUrl;
         link.download = `autocubes-${String(currentId).padStart(3,'0')}-${currentFormat.id}.${kind === 'png' ? 'png' : 'jpg'}`;
         link.click();
-        showToast(`${currentFormat.width} × ${currentFormat.height} ${kind.toUpperCase()} exported`);
+        showToast(`${currentFormat.width} × ${currentFormat.height} ${kind.toUpperCase()} экспортирован`);
       } catch (error) {
         console.error(error);
-        showToast('Export failed. Check image assets and try again.');
+        showToast('Экспорт не удался. Проверьте изображения и повторите попытку.');
       } finally {
         shell.classList.add('editing');
         board.classList.remove('is-exporting');
@@ -1428,17 +1484,17 @@
           activeBoard.classList.add('is-exporting');
           const dataUrl = await toPng(activeBoard, {canvasWidth:currentFormat.width, canvasHeight:currentFormat.height, pixelRatio:1, cacheBust:true, backgroundColor:getComputedStyle(activeBoard).backgroundColor});
           zip.file(`AC-${String(currentId).padStart(3,'0')}-${formatId}.png`, dataUrl.split(',')[1], {base64:true});
-          showToast(`Rendering ${currentFormat.label}…`);
+          showToast(`Рендер: ${currentFormat.label}…`);
         }
-        zip.file('manifest.json', JSON.stringify({composition:currentId, formats:['portrait','square','story','landscape'], post:edits[currentId]?.post || null}, null, 2));
+        zip.file('manifest.json', JSON.stringify({composition:currentId, outputLanguage:currentOutputLanguage, formats:['portrait','square','story','landscape'], post:edits[currentId]?.post || null}, null, 2));
         const blob = await zip.generateAsync({type:'blob', compression:'DEFLATE', compressionOptions:{level:6}});
         const url = URL.createObjectURL(blob);
         const link = document.createElement('a'); link.href = url; link.download = `autocubes-${String(currentId).padStart(3,'0')}-instagram-formats.zip`; link.click();
         setTimeout(() => URL.revokeObjectURL(url), 1000);
-        showToast('Four Instagram formats exported');
+        showToast('Четыре формата Instagram экспортированы');
       } catch (error) {
         console.error(error);
-        showToast('Could not export all formats');
+        showToast('Не удалось экспортировать все форматы');
       } finally {
         applyFormat(originalFormat, false);
         currentBoard()?.classList.remove('is-exporting');
@@ -1448,6 +1504,16 @@
         button.disabled = false;
       }
     };
+    function setOutputLanguage(language) {
+      currentOutputLanguage = language === 'ru' ? 'ru' : 'en';
+      localStorage.setItem('autocubes-identity-output-language', currentOutputLanguage);
+      document.querySelectorAll('[data-output-language]').forEach(button => button.classList.toggle('active', button.dataset.outputLanguage === currentOutputLanguage));
+      renderGallery(groupOrder);
+      if (currentId && document.getElementById('modal').classList.contains('open')) openModal(currentId, true);
+      if (document.getElementById('carouselBuilder').classList.contains('open')) renderCarouselBuilder();
+      showToast(currentOutputLanguage === 'ru' ? 'Результат переключён на русский' : 'Результат переключён на английский');
+    }
+    document.querySelectorAll('[data-output-language]').forEach(button => button.onclick = () => setOutputLanguage(button.dataset.outputLanguage));
     document.querySelectorAll('[data-format]').forEach(button => button.onclick = () => {
       applyFormat(button.dataset.format);
       showToast(`${currentFormat.label} · ${currentFormat.width} × ${currentFormat.height}`);
@@ -1464,7 +1530,7 @@
       localStorage.setItem('autocubes-identity-custom-format', JSON.stringify({width,height}));
       applyFormat('custom');
       document.getElementById('customFormat').removeAttribute('open');
-      showToast(`Custom canvas · ${width} × ${height}`);
+      showToast(`Свой холст · ${width} × ${height}`);
     };
     document.addEventListener('keydown', event => {
       if (!document.getElementById('modal').classList.contains('open')) return;
@@ -1491,6 +1557,7 @@
       if (!isField && event.key.toLowerCase() === 'f') togglePick(currentId);
     });
     applyFormat(currentFormat.id, false);
+    document.querySelectorAll('[data-output-language]').forEach(button => button.classList.toggle('active', button.dataset.outputLanguage === currentOutputLanguage));
     renderGallery();
     applyFormat(currentFormat.id, false);
     updateTray();

@@ -2,6 +2,7 @@ import fs from 'node:fs/promises';
 import path from 'node:path';
 import {chromium, Page} from 'playwright';
 import {EditorProject, EasingName, PointerEvent, ScrollFrame} from '../../packages/core/editor-project';
+import {migrateEditorProject} from '../../packages/core/editor-operations';
 import {ensureCleanDir, sleep} from './utils';
 
 const projectPath = path.resolve(process.argv[2] ?? 'data/projects/flowline.editor.json');
@@ -36,19 +37,23 @@ const scrollTo = async (page: Page, y: number, duration: number, easing: EasingN
 const pointerTarget = async (page: Page, action: PointerEvent) => {
   if (action.selector) {
     const locator = page.locator(action.selector).first();
-    const box = await locator.boundingBox();
+    await locator.waitFor({state: 'visible', timeout: 2500}).catch(() => undefined);
+    const box = await locator.boundingBox().catch(() => null);
     if (box) return {x: box.x + box.width / 2, y: box.y + box.height / 2};
   }
   return {x: action.x, y: action.y};
 };
 
 const main = async () => {
-  const project = JSON.parse(await fs.readFile(projectPath, 'utf8')) as EditorProject;
+  const project = migrateEditorProject(JSON.parse(await fs.readFile(projectPath, 'utf8')) as EditorProject);
   const captureId = `editor-${project.id}`;
   const output = path.resolve('public', 'captures', captureId);
-  const videoDirectory = path.join(output, 'raw-video');
-  const stillDirectory = path.join(output, 'stills');
-  await ensureCleanDir(output);
+  const captureRoot = path.dirname(output);
+  const staging = path.join(captureRoot, `.${captureId}-next`);
+  const backup = path.join(captureRoot, `.${captureId}-previous`);
+  const videoDirectory = path.join(staging, 'raw-video');
+  const stillDirectory = path.join(staging, 'stills');
+  await ensureCleanDir(staging);
   await fs.mkdir(videoDirectory, {recursive: true});
   await fs.mkdir(stillDirectory, {recursive: true});
 
@@ -59,7 +64,9 @@ const main = async () => {
   });
   const page = await context.newPage();
   const videoStarted = Date.now();
-  await page.goto(project.url, {waitUntil: 'networkidle', timeout: 60000});
+  console.log(`Подготовка страницы: ${project.url}`);
+  await page.goto(project.url, {waitUntil: 'domcontentloaded', timeout: 60000});
+  await page.waitForLoadState('networkidle', {timeout: 8000}).catch(() => undefined);
   await page.addStyleTag({content: '* { cursor: none !important; } html { scroll-behavior: auto !important; }'});
   await page.evaluate(() => window.scrollTo(0, 0));
   await sleep(500);
@@ -79,14 +86,20 @@ const main = async () => {
     if (event.type === 'frame') {
       const frame = event.value;
       await scrollTo(page, Math.min(frame.scrollY, Math.max(0, pageHeight - project.viewport.height)), frame.duration, frame.easing);
+      await sleep(Math.min(180, Math.max(60, frame.hold * 80)));
       await page.screenshot({path: path.join(stillDirectory, `${frame.id}.png`)});
-      console.log(`[${event.at.toFixed(2)}s] scroll ${frame.label} -> ${frame.scrollY}px`);
+      console.log(`[${event.at.toFixed(2)}с] сцена «${frame.label}» → ${frame.scrollY}px`);
     } else {
       const action = event.value;
       const target = await pointerTarget(page, action);
       await page.mouse.move(target.x, target.y, {steps: Math.max(3, Math.round(action.duration * 35))});
-      if (action.kind === 'click') await page.mouse.click(target.x, target.y, {delay: 45});
-      console.log(`[${event.at.toFixed(2)}s] ${action.kind} ${action.label} -> ${Math.round(target.x)}, ${Math.round(target.y)}`);
+      if (action.kind === 'click') {
+        await page.mouse.down();
+        await sleep(70);
+        await page.mouse.up();
+        await sleep(120);
+      }
+      console.log(`[${event.at.toFixed(2)}с] ${action.kind === 'click' ? 'клик' : action.kind === 'hover' ? 'наведение' : 'движение'} «${action.targetLabel || action.label}» → ${Math.round(target.x)}, ${Math.round(target.y)}`);
     }
   }
 
@@ -99,8 +112,20 @@ const main = async () => {
   await browser.close();
 
   if (!recordedPath) throw new Error('Playwright did not produce a video');
-  await fs.copyFile(recordedPath, path.join(output, 'capture.webm'));
+  await fs.copyFile(recordedPath, path.join(staging, 'capture.webm'));
   await fs.rm(videoDirectory, {recursive: true, force: true});
+
+  // Новая запись заменяет предыдущую только после полного успешного завершения.
+  await fs.rm(backup, {recursive: true, force: true});
+  const previousExists = await fs.access(output).then(() => true).catch(() => false);
+  if (previousExists) await fs.rename(output, backup);
+  try {
+    await fs.rename(staging, output);
+    await fs.rm(backup, {recursive: true, force: true});
+  } catch (error) {
+    if (previousExists) await fs.rename(backup, output).catch(() => undefined);
+    throw error;
+  }
 
   project.pageHeight = pageHeight;
   project.videoOffset = videoOffset;
@@ -108,7 +133,7 @@ const main = async () => {
   project.frames = project.frames.map((frame) => ({...frame, thumbnail: `/captures/${captureId}/stills/${frame.id}.png?v=${Date.now()}`}));
   await fs.writeFile(projectPath, `${JSON.stringify(project, null, 2)}\n`, 'utf8');
   await fs.writeFile(path.resolve('data/generated/editor-project.json'), `${JSON.stringify(project, null, 2)}\n`, 'utf8');
-  console.log(`Capture ready: ${project.previewVideo}`);
+  console.log(`Захват готов: ${project.previewVideo}`);
 };
 
 main().catch((error) => {

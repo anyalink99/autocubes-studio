@@ -56,7 +56,7 @@ export const Preview = ({project, currentTime, playing, mode, selection, onModeC
 
   const pointer = useMemo(() => {
     const events = [...project.pointer].filter((event) => event.visible).sort((a, b) => a.at - b.at);
-    let position = {x: project.viewport.width * 0.86, y: project.viewport.height * 0.86, visible: false, click: false};
+    let position = {x: project.viewport.width * 0.86, y: project.viewport.height * 0.86, visible: false, click: false, effect:'ring'};
     for (let index = 0; index < events.length; index += 1) {
       const event = events[index];
       const previous = events[index - 1];
@@ -66,9 +66,9 @@ export const Preview = ({project, currentTime, playing, mode, selection, onModeC
       const fromY = previous?.y ?? position.y;
       if (currentTime <= end) {
         const amount = ease(Math.max(0, Math.min(1, (currentTime - event.at) / (end - event.at))));
-        return {x: fromX + (event.x - fromX) * amount, y: fromY + (event.y - fromY) * amount, visible: true, click: event.kind === 'click' && currentTime > end - 0.14};
+        return {x: fromX + (event.x - fromX) * amount, y: fromY + (event.y - fromY) * amount, visible: true, click: event.kind === 'click' && currentTime > end - 0.14, effect:event.clickEffect ?? 'ring'};
       }
-      position = {x: event.x, y: event.y, visible: true, click: false};
+      position = {x: event.x, y: event.y, visible: true, click: false, effect:event.clickEffect ?? 'ring'};
     }
     return position;
   }, [currentTime, project.pointer, project.viewport.height, project.viewport.width]);
@@ -118,22 +118,22 @@ export const Preview = ({project, currentTime, playing, mode, selection, onModeC
     <section className="preview-panel">
       <div className="preview-toolbar">
         <div className="segmented-control" aria-label="Preview mode">
-          <button className={mode === 'storyboard' ? 'active' : ''} onClick={() => onModeChange('storyboard')}><ImageIcon size={15}/>Storyboard</button>
-          <button className={mode === 'capture' ? 'active' : ''} onClick={() => onModeChange('capture')}><Film size={15}/>Capture</button>
+          <button className={mode === 'storyboard' ? 'active' : ''} onClick={() => onModeChange('storyboard')}><ImageIcon size={15}/>Сценарий</button>
+          <button className={mode === 'capture' ? 'active' : ''} onClick={() => onModeChange('capture')}><Film size={15}/>Запись</button>
         </div>
         <div className="preview-readout">
-          {selection.track === 'pointer' ? <><Crosshair size={14}/>Click preview to set target</> : `${project.viewport.width} × ${project.viewport.height} · ${preset?.shortLabel ?? formatRatio(project.viewport.width, project.viewport.height)}`}
+          {selection.track === 'pointer' ? <><Crosshair size={14}/>Нажмите на превью, чтобы поставить курсор</> : `${project.viewport.width} × ${project.viewport.height} · ${preset?.shortLabel ?? formatRatio(project.viewport.width, project.viewport.height)}`}
         </div>
         <select className="preview-format" aria-label="Output format" value={preset?.id ?? 'custom'} onChange={(event) => {const next = mediaPresets.find((item) => item.id === event.target.value); if (next) onChangeViewport({width: next.width, height: next.height});}}>
-          {mediaPresets.map((item) => <option key={item.id} value={item.id}>{item.shortLabel} · {item.label}</option>)}
-          {!preset ? <option value="custom">Custom</option> : null}
+          {mediaPresets.map((item) => <option key={item.id} value={item.id}>{item.shortLabel} · {({'instagram-reel':'История / Reel','instagram-portrait':'Портрет ленты','instagram-square':'Квадрат','instagram-landscape':'Горизонтальный'} as Record<string,string>)[item.id]??item.label}</option>)}
+          {!preset ? <option value="custom">Свой формат</option> : null}
         </select>
-        <button className={`icon-button ${project.guides !== false ? 'is-active' : ''}`} title="Toggle safe zones" onClick={onToggleGuides}><LayoutGrid size={16}/></button>
-        <button className="icon-button" disabled={mode === 'capture' || exportingFrame} title={mode === 'capture' ? 'Switch to Storyboard to export a cover' : 'Export current frame as PNG'} onClick={() => void exportFrame()}><Download size={16}/></button>
-        <button className="icon-button" title="Zoom out" onClick={() => setCanvasZoom((value) => Math.max(40,value - 10))}><ZoomOut size={15}/></button>
-        <button className="preview-zoom-readout" onClick={() => setCanvasZoom(100)} title="Reset preview zoom">{canvasZoom}%</button>
-        <button className="icon-button" title="Zoom in" onClick={() => setCanvasZoom((value) => Math.min(180,value + 10))}><ZoomIn size={15}/></button>
-        <button className="icon-button" title="Open fullscreen preview" onClick={() => {setCanvasZoom(100);void stageShellRef.current?.requestFullscreen();}}><Maximize2 size={16}/></button>
+        <button className={`icon-button ${project.guides !== false ? 'is-active' : ''}`} title="Безопасные зоны" onClick={onToggleGuides}><LayoutGrid size={16}/></button>
+        <button className="icon-button" disabled={mode === 'capture' || exportingFrame} title={mode === 'capture' ? 'Переключитесь на сценарий для экспорта обложки' : 'Экспортировать текущий кадр PNG'} onClick={() => void exportFrame()}><Download size={16}/></button>
+        <button className="icon-button" title="Уменьшить" onClick={() => setCanvasZoom((value) => Math.max(40,value - 10))}><ZoomOut size={15}/></button>
+        <button className="preview-zoom-readout" onClick={() => setCanvasZoom(100)} title="Масштаб 100%">{canvasZoom}%</button>
+        <button className="icon-button" title="Увеличить" onClick={() => setCanvasZoom((value) => Math.min(180,value + 10))}><ZoomIn size={15}/></button>
+        <button className="icon-button" title="Полноэкранное превью" onClick={() => {setCanvasZoom(100);void stageShellRef.current?.requestFullscreen();}}><Maximize2 size={16}/></button>
       </div>
 
       <div className="stage-shell" ref={stageShellRef}>
@@ -141,21 +141,21 @@ export const Preview = ({project, currentTime, playing, mode, selection, onModeC
           {mode === 'capture' && project.previewVideo ? <video ref={videoRef} src={project.previewVideo} muted playsInline/> : (
             <>
               {frameState.previous?.thumbnail ? <img src={frameState.previous.thumbnail} alt="" style={{opacity: 1 - frameState.blend}}/> : null}
-              {frameState.current?.thumbnail ? <img src={frameState.current.thumbnail} alt="" style={{opacity: frameState.blend}}/> : <div className="stage-empty">Capture a frame to start the storyboard</div>}
+              {frameState.current?.thumbnail ? <img src={frameState.current.thumbnail} alt="" style={{opacity: frameState.blend}}/> : <div className="stage-empty">Сначала разберите страницу или обновите снимок сцены</div>}
             </>
           )}
           {selection.track==='pointer'&&project.pointer.length?<svg className="pointer-path" viewBox={`0 0 ${project.viewport.width} ${project.viewport.height}`} preserveAspectRatio="none" aria-hidden="true"><polyline points={[...project.pointer].sort((a,b)=>a.at-b.at).map((item)=>`${item.x},${item.y}`).join(' ')}/>{project.pointer.map((item)=><circle key={item.id} cx={item.x} cy={item.y} r={item.id===selection.id?18:11} className={item.id===selection.id?'selected':''}/>)}</svg>:null}
-          {pointer.visible ? <div className={`preview-cursor ${pointer.click ? 'clicking' : ''}`} style={{left: `${(pointer.x / project.viewport.width) * 100}%`, top: `${(pointer.y / project.viewport.height) * 100}%`}}><svg viewBox="0 0 34 40" aria-hidden="true"><path d="M4 3L29 26L18 28L14 38L4 3Z"/></svg></div> : null}
+          {pointer.visible ? <div className={`preview-cursor effect-${pointer.effect} ${pointer.click ? 'clicking' : ''}`} style={{left: `${(pointer.x / project.viewport.width) * 100}%`, top: `${(pointer.y / project.viewport.height) * 100}%`}}><svg viewBox="0 0 34 40" aria-hidden="true"><path d="M4 3L29 26L18 28L14 38L4 3Z"/></svg></div> : null}
           {transition ? <div className={`transition-preview transition-${transition.kind} direction-${transition.direction ?? 'left'}`} style={{opacity: transitionOpacity, backgroundColor:transition.color, backdropFilter: transition.kind === 'blur' || transition.kind === 'zoomBlur' ? `blur(${transitionOpacity * 14}px)` : undefined, clipPath:transition.kind === 'wipe' ? `inset(0 ${100 - transitionProgress * 100}% 0 0)` : undefined, transform:transition.kind === 'slide' ? `translateX(${(1-transitionProgress) * (transition.direction === 'right' ? -100 : 100)}%)` : transition.kind === 'zoomBlur' ? `scale(${1 + transitionOpacity * .08})` : undefined}}/> : null}
-          {caption ? <div className={`preview-caption position-${caption.position} style-${caption.style} animation-${caption.animation ?? 'none'} ${selection.id === caption.id ? 'is-selected' : ''}`} style={{fontSize:`${caption.size / project.viewport.width * 100}cqw`, textAlign:caption.align ?? 'center', maxWidth:`${caption.maxWidth ?? 86}%`, lineHeight:caption.lineHeight ?? 1.08, letterSpacing:`${(caption.letterSpacing ?? -2.5) / 100}em`, color:caption.color, backgroundColor:caption.background}}>{caption.text}</div> : null}
-          {overlay ? <div className={`preview-overlay overlay-${overlay.kind} ${selection.id === overlay.id ? 'is-selected' : ''}`} style={{left:`${overlay.x}%`,top:`${overlay.y}%`,opacity:overlay.opacity,transform:`scale(${overlay.scale})`,color:overlay.color}}>{overlay.kind === 'progress' ? <i style={{width:`${currentTime / project.duration * 100}%`}}/> : overlay.text}</div> : null}
+          {caption ? <div className={`preview-caption position-${caption.position} style-${caption.style} animation-${caption.animation ?? 'none'} ${selection.id === caption.id ? 'is-selected' : ''}`} style={{fontSize:`${caption.size / project.viewport.width * 100}cqw`, textAlign:caption.align ?? 'center', maxWidth:`${caption.maxWidth ?? 86}%`, lineHeight:caption.lineHeight ?? 1.08, letterSpacing:`${(caption.letterSpacing ?? -2.5) / 100}em`, color:caption.color, backgroundColor:caption.background}}>{project.outputLanguage==='ru'?(caption.textRu??caption.text):(caption.textEn??caption.text)}</div> : null}
+          {overlay ? <div className={`preview-overlay overlay-${overlay.kind} ${selection.id === overlay.id ? 'is-selected' : ''}`} style={{left:`${overlay.x}%`,top:`${overlay.y}%`,opacity:overlay.opacity,transform:`scale(${overlay.scale})`,color:overlay.color}}>{overlay.kind === 'progress' ? <i style={{width:`${currentTime / project.duration * 100}%`}}/> : project.outputLanguage==='ru'?(overlay.textRu??overlay.text):(overlay.textEn??overlay.text)}</div> : null}
           {project.guides !== false ? <div className="safe-zone-overlay" style={{inset: `${safeArea.top}% ${safeArea.right}% ${safeArea.bottom}% ${safeArea.left}%`}}><span>safe area</span></div> : null}
         </div>
         {selectedFrame ? <aside className="preview-position-rail">
           <span>{Math.round(scrollPercent(project, selectedFrame.scrollY) * 100)}%</span>
           <input type="range" min={0} max={maxScroll(project)} step={1} value={selectedFrame.scrollY} onChange={(event) => onChangeFramePosition(Number(event.target.value))}/>
           <strong>{Math.round(selectedFrame.scrollY)}px</strong>
-          <small>Page position</small>
+          <small>Положение страницы</small>
         </aside> : null}
       </div>
     </section>

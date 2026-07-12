@@ -10,6 +10,7 @@ import {
   FolderOpen,
   Keyboard,
   LoaderCircle,
+  Maximize2,
   Pause,
   Play,
   Plus,
@@ -25,14 +26,15 @@ import {
   Volume2,
   X,
 } from 'lucide-react';
-import {captureFrame, createProject, deleteAudio, deleteProject as deleteProjectRequest, getJob, listProjects, loadAssets, loadProject, saveProject, startJob, uploadAudio} from './api';
+import {analyzePage, captureFrame, createProject, deleteAudio, deleteProject as deleteProjectRequest, getJob, listProjects, loadAssets, loadProject, saveProject, startJob, uploadAudio} from './api';
 import {Inspector} from './Inspector';
 import {Preview} from './Preview';
 import {Timeline} from './Timeline';
 import {ShotLibrary} from './ShotLibrary';
 import {CaptionLibrary} from './CaptionLibrary';
-import {AssetLibrary, EditorProject, JobState, ProjectSummary, Selection} from '../../packages/core/editor-project';
-import {applyRecipe, arrangeFrames, duplicateTimelineItem, formatEditorTime, migrateEditorProject, MotionRecipeId} from '../../packages/core/editor-operations';
+import {CaptureDirector} from './CaptureDirector';
+import {AssetLibrary, CaptureSection, CaptureTarget, EditorProject, JobState, ProjectSummary, Selection} from '../../packages/core/editor-project';
+import {applyRecipe, arrangeFrames, clamp, duplicateTimelineItem, formatEditorTime, migrateEditorProject, MotionRecipeId} from '../../packages/core/editor-operations';
 
 const emptyAssets: AssetLibrary = {audio: [], images: [], videos: []};
 const clone = <T,>(value: T): T => structuredClone(value);
@@ -49,7 +51,8 @@ export const App = () => {
   const [looping, setLooping] = useState(false);
   const [previewMode, setPreviewMode] = useState<'storyboard' | 'capture'>('storyboard');
   const [zoom, setZoom] = useState(72);
-  const [timelineHeight, setTimelineHeight] = useState(() => Math.max(250, Math.min(560, Number(localStorage.getItem('motion-desk-timeline-height')) || 368)));
+  const [timelineHeight, setTimelineHeight] = useState(() => Math.max(250, Math.min(560, Number(localStorage.getItem('motion-desk-timeline-height')) || 290)));
+  const [previewFocus,setPreviewFocus]=useState(false);
   const [dirty, setDirty] = useState(false);
   const [saving, setSaving] = useState(false);
   const [capturingFrame, setCapturingFrame] = useState(false);
@@ -60,6 +63,8 @@ export const App = () => {
   const [lastSavedAt, setLastSavedAt] = useState<number | null>(null);
   const [showShortcuts, setShowShortcuts] = useState(false);
   const [uploadingAudio, setUploadingAudio] = useState(false);
+  const [showCaptureDirector, setShowCaptureDirector] = useState(false);
+  const [analyzingPage, setAnalyzingPage] = useState(false);
   const history = useRef<EditorProject[]>([]);
   const future = useRef<EditorProject[]>([]);
   const playbackStart = useRef({clock: 0, time: 0});
@@ -80,7 +85,7 @@ export const App = () => {
       setAssets(loadedAssets);
       setProjects(loadedProjects);
       localStorage.setItem('motion-desk-project', loadedProject.id);
-    }).catch((error) => setLoadError(error instanceof Error ? error.message : 'Could not load Motion Desk'));
+    }).catch((error) => setLoadError(error instanceof Error ? error.message : 'Не удалось открыть Motion Desk'));
   }, []);
 
   const commit = useCallback((updater: (current: EditorProject) => EditorProject, coalesceKey?: string) => {
@@ -135,11 +140,11 @@ export const App = () => {
       setProjects(await listProjects());
       if (savingRevision === revision.current) setDirty(false);
       setLastSavedAt(Date.now());
-      setNotice({tone: 'ok', message: savingRevision === revision.current ? 'Project saved' : 'New edits are queued for autosave'});
+      setNotice({tone: 'ok', message: savingRevision === revision.current ? 'Проект сохранён' : 'Новые изменения ожидают автосохранения'});
       return savingRevision === revision.current;
     } catch (error) {
       saveFailed.current = true;
-      setNotice({tone: 'error', message: error instanceof Error ? error.message : 'Could not save project'});
+      setNotice({tone: 'error', message: error instanceof Error ? error.message : 'Не удалось сохранить проект'});
       return false;
     } finally {
       setSaving(false);
@@ -257,7 +262,7 @@ export const App = () => {
         setJob(next);
         if (next.status !== 'running') {
           window.clearInterval(timer);
-          setNotice({tone: next.status === 'complete' ? 'ok' : 'error', message: next.status === 'complete' ? `${next.kind === 'render' ? 'MP4 render' : 'Browser capture'} complete` : `${next.kind} failed — open the job log`});
+          setNotice({tone: next.status === 'complete' ? 'ok' : 'error', message: next.status === 'complete' ? `${next.kind === 'render' ? 'MP4' : 'Запись браузера'} готова` : 'Задача завершилась ошибкой — откройте журнал'});
         }
       });
     }, 900);
@@ -293,14 +298,14 @@ export const App = () => {
     const id = uid(track);
     commit((draft) => {
       if (track === 'frames') draft.frames.push({id, label: 'New frame', at: currentTime, scrollY: 0, duration: 1, hold: 1, easing: 'easeInOut', thumbnail: draft.frames[0]?.thumbnail});
-      if (track === 'pointer') draft.pointer.push({id, label: 'Pointer action', at: currentTime, duration: 0.55, kind: 'move', x: draft.viewport.width / 2, y: draft.viewport.height / 2, easing: 'easeOut', visible: true});
-      if (track === 'transitions') draft.transitions.push({id, label: 'Transition', at: currentTime, duration: 0.6, kind: 'fade', strength: 0.7});
-      if (track === 'captions') draft.captions.push({id, label: 'Caption', text: 'Your message', at: currentTime, duration: 2.5, position: 'bottom', style: 'boxed', size: 54});
+      if (track === 'pointer') draft.pointer.push({id, label: 'Действие курсора', at: currentTime, duration: 0.55, kind: 'move', x: draft.viewport.width / 2, y: draft.viewport.height / 2, easing: 'easeOut', visible: true});
+      if (track === 'transitions') draft.transitions.push({id, label: 'Смена сцены', at: currentTime, duration: 0.6, kind: 'fade', strength: 0.7});
+      if (track === 'captions') draft.captions.push({id, label: 'Текст', text: draft.outputLanguage==='ru'?'Ваше сообщение':'Your message', textEn:'Your message', textRu:'Ваше сообщение', at: currentTime, duration: 2.5, position: 'bottom', style: 'boxed', size: 54});
       if (track === 'audio') {
         const asset = selectedAsset ?? assets.audio[0] ?? '';
-        draft.audio.push({id, label: asset.split('/').pop()?.replace(/\.[^.]+$/, '') || 'Audio cue', at: currentTime, duration: 1, asset, volume: 0.3, enabled: true, fadeIn:0, fadeOut:0, category:'sfx', beatInterval:0});
+        draft.audio.push({id, label: asset.split('/').pop()?.replace(/\.[^.]+$/, '') || 'Звуковой акцент', at: currentTime, duration: 1, asset, volume: 0.3, enabled: true, fadeIn:0, fadeOut:0, category:'sfx', beatInterval:0});
       }
-      if (track === 'overlays') draft.overlays?.push({id, label: 'Studio label', text: 'AUTOCUBES', at: currentTime, duration: 2.5, kind: 'label', x: 8, y: 8, scale: 1, opacity: 1, color: '#ffffff'});
+      if (track === 'overlays') draft.overlays?.push({id, label: 'Метка студии', text: 'AUTOCUBES', textEn:'AUTOCUBES', textRu:'АВТОКУБЫ', at: currentTime, duration: 2.5, kind: 'label', x: 8, y: 8, scale: 1, opacity: 1, color: '#ffffff'});
       return draft;
     });
     setSelection({track, id});
@@ -312,22 +317,22 @@ export const App = () => {
       const uploaded = await uploadAudio(file);
       setAssets(await loadAssets());
       addItem('audio', uploaded.path);
-      setNotice({tone: 'ok', message: `${file.name} added at the playhead`});
+      setNotice({tone: 'ok', message: `${file.name} добавлен в текущий момент`});
     } catch (error) {
-      setNotice({tone: 'error', message: error instanceof Error ? error.message : 'Could not import audio'});
+      setNotice({tone: 'error', message: error instanceof Error ? error.message : 'Не удалось импортировать звук'});
     } finally {
       setUploadingAudio(false);
     }
   }, [addItem]);
 
   const removeImportedAudio = useCallback(async (asset: string) => {
-    if (!window.confirm(`Remove ${asset.split('/').pop()}?`)) return;
+    if (!window.confirm(`Удалить ${asset.split('/').pop()}?`)) return;
     try {
       await deleteAudio(asset);
       setAssets(await loadAssets());
-      setNotice({tone: 'ok', message: 'Imported audio removed'});
+      setNotice({tone: 'ok', message: 'Импортированный звук удалён'});
     } catch (error) {
-      setNotice({tone: 'error', message: error instanceof Error ? error.message : 'Could not remove audio'});
+      setNotice({tone: 'error', message: error instanceof Error ? error.message : 'Не удалось удалить звук'});
     }
   }, []);
 
@@ -370,7 +375,7 @@ export const App = () => {
       list.push(next);
       return draft;
     });
-    setNotice({tone:'ok', message:'Clip split at the playhead'});
+    setNotice({tone:'ok', message:'Элемент разрезан в текущем моменте'});
   }, [commit, currentTime, selection]);
 
   const addMarker = useCallback((at: number) => commit((draft) => {
@@ -398,12 +403,12 @@ export const App = () => {
       if ((event.ctrlKey || event.metaKey) && event.key.toLowerCase() === 'd') {event.preventDefault(); duplicateSelected();}
       if ((event.ctrlKey || event.metaKey) && event.key.toLowerCase() === 'c' && selection.track !== 'project' && selection.id && project) {
         const item=project[selection.track]?.find((candidate)=>candidate.id===selection.id);
-        if(item){event.preventDefault();clipboard.current={track:selection.track,item:clone(item) as Record<string,unknown>&{id:string;at:number}};setNotice({tone:'ok',message:'Clip copied'});}
+        if(item){event.preventDefault();clipboard.current={track:selection.track,item:clone(item) as Record<string,unknown>&{id:string;at:number}};setNotice({tone:'ok',message:'Элемент скопирован'});}
       }
       if ((event.ctrlKey || event.metaKey) && event.key.toLowerCase() === 'v' && clipboard.current) {
         event.preventDefault(); const source=clipboard.current; const id=uid(source.track);
         commit((draft)=>{const list=draft[source.track]; if(list) list.push({...clone(source.item),id,at:currentTime} as never); return draft;});
-        setSelection({track:source.track,id,ids:[id]}); setNotice({tone:'ok',message:'Clip pasted at the playhead'});
+        setSelection({track:source.track,id,ids:[id]}); setNotice({tone:'ok',message:'Элемент вставлен в текущий момент'});
       }
       if (event.key === 'Delete' || event.key === 'Backspace') {event.preventDefault(); deleteSelected();}
       if (event.key === 'Escape') setSelection({track:'project'});
@@ -442,22 +447,52 @@ export const App = () => {
     try {
       if (dirty && !(await save())) return;
       setJob(await startJob(kind, project.id));
-      setNotice({tone: 'ok', message: kind === 'capture' ? 'Browser capture started' : 'MP4 render started'});
+      setNotice({tone: 'ok', message: kind === 'capture' ? 'Запись браузера началась' : 'Сборка MP4 началась'});
     } catch (error) {
-      setNotice({tone: 'error', message: error instanceof Error ? error.message : `Could not start ${kind}`});
+      setNotice({tone: 'error', message: error instanceof Error ? error.message : 'Не удалось запустить задачу'});
     }
   }, [dirty, project, save]);
 
+  const analyzeCaptureSource = useCallback(async () => {
+    if (!project) return;
+    setAnalyzingPage(true);
+    try {
+      const analysis=await analyzePage(project);
+      commit((draft)=>{draft.captureAnalysis=analysis;draft.pageHeight=analysis.pageHeight;return draft;});
+      setNotice({tone:'ok',message:`Страница разобрана: ${analysis.sections.length} секций и ${analysis.targets.length} целей`});
+    } catch(error) {
+      setNotice({tone:'error',message:error instanceof Error?error.message:'Не удалось разобрать страницу'});
+    } finally {setAnalyzingPage(false);}
+  },[commit,project]);
+
+  const buildCapturePlan=useCallback((sections:CaptureSection[],targets:CaptureTarget[])=>{
+    if(!project)return;
+    commit((draft)=>{
+      const ordered=[...sections].sort((a,b)=>a.scrollY-b.scrollY);
+      draft.frames=ordered.map((section,index)=>({id:`scene-${Date.now()}-${index}`,label:section.label,at:0,scrollY:section.scrollY,duration:index===0?0:.9,hold:1.1,easing:'easeInOut'}));
+      arrangeFrames(draft,'balanced');
+      draft.pointer=targets.map((target,index)=>{
+        const section=ordered.reduce((nearest,candidate)=>Math.abs(candidate.scrollY-target.pageY)<Math.abs(nearest.scrollY-target.pageY)?candidate:nearest,ordered[0]);
+        const scene=draft.frames[ordered.indexOf(section)];
+        return {id:`cursor-${Date.now()}-${index}`,label:target.label,targetLabel:target.label,at:Math.min(draft.duration-.2,scene.at+scene.duration+Math.min(.55,scene.hold*.45)),duration:.5,kind:'click',x:clamp(target.x,20,draft.viewport.width-20),y:clamp(target.pageY-section.scrollY,20,draft.viewport.height-20),selector:target.selector,easing:'easeOut',visible:true,clickEffect:'ring'};
+      });
+      draft.transitions=[{id:`transition-finish-${Date.now()}`,label:'Мягкое завершение',at:Math.max(0,draft.duration-.7),duration:.7,kind:'fade',strength:.82}];
+      return draft;
+    });
+    setCurrentTime(0);setSelection({track:'frames'});setPreviewMode('storyboard');
+    setNotice({tone:'ok',message:'Сценарий готов. Проверьте сцены и курсор до записи.'});
+  },[commit,project]);
+
   const autoArrangeFrames = useCallback((pace: 'slow' | 'balanced' | 'punchy' = 'balanced') => {
     commit((draft) => arrangeFrames(draft, pace));
-    setNotice({tone: 'ok', message: `Shots arranged with a ${pace} pace`});
+    setNotice({tone: 'ok', message: `Сцены расставлены, темп: ${pace}`});
   }, [commit]);
 
   const applyMotionRecipe = useCallback((recipe: MotionRecipeId) => {
     commit((draft) => applyRecipe(draft, recipe));
     setSelection({track: 'frames'});
     setCurrentTime(0);
-    setNotice({tone: 'ok', message: 'Story structure created. Every shot remains editable.'});
+    setNotice({tone: 'ok', message: 'Структура истории создана. Каждую сцену можно изменить.'});
   }, [commit]);
 
   const switchProject = useCallback(async (id: string) => {
@@ -501,7 +536,7 @@ export const App = () => {
     future.current = [];
     revision.current = 0;
     localStorage.setItem('motion-desk-project', created.id);
-    setNotice({tone: 'ok', message: 'Project duplicated for a new variant'});
+    setNotice({tone: 'ok', message: 'Создана копия проекта'});
   }, [dirty, project, save]);
 
   const exportProjectFile = useCallback(() => {
@@ -529,16 +564,16 @@ export const App = () => {
       future.current = [];
       revision.current = 0;
       localStorage.setItem('motion-desk-project', created.id);
-      setNotice({tone:'ok', message:`${source.title} imported as a new project`});
+      setNotice({tone:'ok', message:`${source.title} импортирован как новый проект`});
     } catch (error) {
-      setNotice({tone:'error', message:error instanceof Error ? error.message : 'Could not import project'});
+      setNotice({tone:'error', message:error instanceof Error ? error.message : 'Не удалось импортировать проект'});
     }
   }, []);
 
   const deleteCurrentProject = useCallback(async () => {
     if (!project) return;
-    if (saving) {setNotice({tone:'error', message:'Wait for the current save to finish'}); return;}
-    if (!window.confirm(`Delete “${project.title}”? This removes its timeline JSON.`)) return;
+    if (saving) {setNotice({tone:'error', message:'Дождитесь завершения сохранения'}); return;}
+    if (!window.confirm(`Удалить «${project.title}»? JSON монтажа также будет удалён.`)) return;
     const wasDirty = dirty;
     setDirty(false);
     try {
@@ -553,10 +588,10 @@ export const App = () => {
       future.current = [];
       revision.current = 0;
       localStorage.setItem('motion-desk-project', next.id);
-      setNotice({tone:'ok', message:'Project deleted'});
+      setNotice({tone:'ok', message:'Проект удалён'});
     } catch (error) {
       setDirty(wasDirty);
-      setNotice({tone:'error', message:error instanceof Error ? error.message : 'Could not delete project'});
+      setNotice({tone:'error', message:error instanceof Error ? error.message : 'Не удалось удалить проект'});
     }
   }, [dirty, project, saving]);
 
@@ -572,32 +607,33 @@ export const App = () => {
     return [...project.frames, ...project.pointer, ...project.transitions, ...project.captions, ...project.audio, ...(project.overlays ?? [])].filter((item) => item.at < 0 || item.at + ('hold' in item ? item.duration + item.hold : item.duration) > project.duration + .01).length;
   }, [project]);
 
-  if (!project && loadError) return <div className="loading-screen error-screen"><AlertTriangle/><strong>Motion Desk could not start</strong><span>{loadError}</span><button onClick={() => window.location.reload()}>Retry</button></div>;
-  if (!project) return <div className="loading-screen"><LoaderCircle className="spin" /> Loading Motion Desk</div>;
+  if (!project && loadError) return <div className="loading-screen error-screen"><AlertTriangle/><strong>Motion Desk не запустился</strong><span>{loadError}</span><button onClick={() => window.location.reload()}>Повторить</button></div>;
+  if (!project) return <div className="loading-screen"><LoaderCircle className="spin" /> Загружаем Motion Desk</div>;
 
   return (
-    <div className="editor-app" style={{gridTemplateRows:`54px minmax(0,1fr) ${timelineHeight}px`}}>
+    <div className={`editor-app ${previewFocus?'preview-focus':''}`} style={{gridTemplateRows:`54px minmax(0,1fr) ${previewFocus?0:timelineHeight}px`}}>
       <header className="topbar">
         <a className="brand" href="/"><img src="/assets/brand/autocubes.svg" /><div><strong>Motion Desk</strong><span>Autocubes</span></div></a>
-        <div className="project-switcher"><span className={dirty ? 'dirty-dot' : 'saved-dot'} /><select value={project.id} onFocus={() => setSelection({track: 'project'})} onChange={(event) => void switchProject(event.target.value)} aria-label="Project">{projects.map((item) => <option key={item.id} value={item.id}>{item.title}</option>)}</select><button onClick={exportProjectFile} title="Export project JSON"><Download size={13}/></button><label className="project-file-action" title="Import project JSON"><Upload size={13}/><input type="file" accept="application/json,.json" onChange={(event) => {const file=event.target.files?.[0]; if(file) void importProjectFile(file); event.target.value='';}}/></label><button onClick={() => void duplicateProject()} title="Duplicate project"><Copy size={14}/></button><button onClick={() => void addProject()} title="New project"><Plus size={15} /></button></div>
+        <div className="project-switcher"><span className={dirty ? 'dirty-dot' : 'saved-dot'} /><select value={project.id} onFocus={() => setSelection({track: 'project'})} onChange={(event) => void switchProject(event.target.value)} aria-label="Проект">{projects.map((item) => <option key={item.id} value={item.id}>{item.title}</option>)}</select><button onClick={exportProjectFile} title="Экспорт JSON проекта"><Download size={13}/></button><label className="project-file-action" title="Импорт JSON проекта"><Upload size={13}/><input type="file" accept="application/json,.json" onChange={(event) => {const file=event.target.files?.[0]; if(file) void importProjectFile(file); event.target.value='';}}/></label><button onClick={() => void duplicateProject()} title="Создать копию проекта"><Copy size={14}/></button><button onClick={() => void addProject()} title="Новый проект"><Plus size={15} /></button></div>
         <div className="topbar-spacer" />
-        <span className="save-state">{saving ? 'Saving…' : dirty ? 'Autosave pending' : <><CheckCircle2 size={13}/>{lastSavedAt ? 'Saved automatically' : 'Ready'}</>}</span>
+        <span className="save-state">{saving ? 'Сохраняем…' : dirty ? 'Ожидает автосохранения' : <><CheckCircle2 size={13}/>{lastSavedAt ? 'Сохранено автоматически' : 'Готово'}</>}</span>
         <div className="history-actions">
-          <button className="icon-button" onClick={undo} disabled={!history.current.length} title="Undo"><Undo2 size={16} /></button>
-          <button className="icon-button" onClick={redo} disabled={!future.current.length} title="Redo"><Redo2 size={16} /></button>
+          <button className="icon-button" onClick={undo} disabled={!history.current.length} title="Отменить"><Undo2 size={16} /></button>
+          <button className="icon-button" onClick={redo} disabled={!future.current.length} title="Повторить"><Redo2 size={16} /></button>
         </div>
-        <button className="icon-button" onClick={() => setShowShortcuts(true)} title="Keyboard shortcuts"><Keyboard size={16}/></button>
-        <button className="toolbar-button" onClick={() => void save()} disabled={saving}><Save size={16} />{saving ? 'Saving' : 'Save'}</button>
-        <button className="toolbar-button" onClick={() => void runJob('capture')} disabled={job?.status === 'running'}><Film size={16} />Capture</button>
-        <button className="toolbar-button primary" onClick={() => void runJob('render')} disabled={job?.status === 'running'}><Video size={16} />Export MP4</button>
+        <button className="icon-button" onClick={() => setShowShortcuts(true)} title="Горячие клавиши"><Keyboard size={16}/></button>
+        <button className={`icon-button ${previewFocus?'is-active':''}`} onClick={()=>setPreviewFocus((value)=>!value)} title="Большое превью"><Maximize2 size={16}/></button>
+        <button className="toolbar-button" onClick={() => void save()} disabled={saving}><Save size={16} />{saving ? 'Сохраняем' : 'Сохранить'}</button>
+        <button className="toolbar-button" onClick={() => setShowCaptureDirector(true)} disabled={job?.status === 'running'}><Film size={16} />Захват страницы</button>
+        <button className="toolbar-button primary" onClick={() => void runJob('render')} disabled={job?.status === 'running'}><Video size={16} />Экспорт MP4</button>
       </header>
 
       <main className="workspace">
         <aside className="sidebar">
           <div className="sidebar-tabs">
-            <button className={activePanel === 'shots' ? 'active' : ''} onClick={() => setActivePanel('shots')}><FolderOpen size={15} />Shots</button>
-            <button className={activePanel === 'captions' ? 'active' : ''} onClick={() => setActivePanel('captions')}><Captions size={15}/>Text</button>
-            <button className={activePanel === 'assets' ? 'active' : ''} onClick={() => setActivePanel('assets')}><Volume2 size={15} />Audio</button>
+            <button className={activePanel === 'shots' ? 'active' : ''} onClick={() => setActivePanel('shots')}><FolderOpen size={15} />Сцены</button>
+            <button className={activePanel === 'captions' ? 'active' : ''} onClick={() => setActivePanel('captions')}><Captions size={15}/>Текст</button>
+            <button className={activePanel === 'assets' ? 'active' : ''} onClick={() => setActivePanel('assets')}><Volume2 size={15} />Звук</button>
           </div>
           {activePanel === 'shots' ? (
             <ShotLibrary
@@ -606,7 +642,7 @@ export const App = () => {
               currentTime={currentTime}
               onSelect={(id) => {const frame = project.frames.find((item) => item.id === id); setSelection({track: 'frames', id}); if (frame) setCurrentTime(frame.at + frame.duration);}}
               onChange={(id, patch) => changeItemFor('frames', id, patch)}
-              onAdd={(scrollY) => {const id = uid('frames'); commit((draft) => {draft.frames.push({id, label: `Shot ${draft.frames.length + 1}`, at: currentTime, scrollY: scrollY ?? draft.frames.find((item) => currentTime >= item.at)?.scrollY ?? 0, duration: .8, hold: 1, easing: 'easeInOut', thumbnail: draft.frames[0]?.thumbnail}); return draft;}); setSelection({track:'frames', id});}}
+              onAdd={(scrollY) => {const id = uid('frames'); commit((draft) => {draft.frames.push({id, label: `Сцена ${draft.frames.length + 1}`, at: currentTime, scrollY: scrollY ?? draft.frames.find((item) => currentTime >= item.at)?.scrollY ?? 0, duration: .8, hold: 1, easing: 'easeInOut', thumbnail: draft.frames[0]?.thumbnail}); return draft;}); setSelection({track:'frames', id});}}
               onDuplicate={(id) => {setSelection({track:'frames', id}); const source = project.frames.find((item) => item.id === id); if (!source) return; const nextId = uid('frames'); commit((draft) => duplicateTimelineItem(draft, {track:'frames', id}, nextId)); setSelection({track:'frames', id:nextId});}}
               onDelete={(id) => {commit((draft) => {draft.frames = draft.frames.filter((item) => item.id !== id); return draft;}); if (selection.id === id) setSelection({track:'project'});}}
               onCapture={(id) => void captureFrameById(id)}
@@ -615,9 +651,9 @@ export const App = () => {
             />
           ) : activePanel === 'captions' ? <CaptionLibrary project={project} currentTime={currentTime} selectedId={selection.track==='captions'?selection.id:undefined} onSelect={(id)=>{const caption=project.captions.find((item)=>item.id===id);setSelection({track:'captions',id,ids:[id]});if(caption)setCurrentTime(caption.at);}} onImport={(captions)=>commit((draft)=>{draft.captions.push(...captions); draft.duration=Math.max(draft.duration,...captions.map((item)=>item.at+item.duration)); return draft;})}/> : (
             <div className="asset-list">
-              <div className="sidebar-section-head"><span>{assets.audio.length} files</span><div><label className="asset-upload" title="Import audio">{uploadingAudio ? <LoaderCircle className="spin" size={13}/> : <Upload size={13}/>}<input type="file" accept="audio/wav,audio/mpeg,audio/mp4,audio/aac" disabled={uploadingAudio} onChange={(event) => {const file = event.target.files?.[0]; if (file) void importAudio(file); event.target.value = '';}}/></label><button onClick={() => void loadAssets().then(setAssets)} title="Refresh"><RotateCcw size={14} /></button></div></div>
-              <input className="asset-search" value={assetQuery} onChange={(event) => setAssetQuery(event.target.value)} placeholder="Filter audio…" aria-label="Filter audio"/>
-              {assets.audio.filter((asset) => asset.toLowerCase().includes(assetQuery.toLowerCase())).map((asset) => <div className="asset-row" key={asset}><button onClick={() => {assetPreview.current?.pause(); const audio = new Audio(asset); audio.volume = .45; assetPreview.current = audio; void audio.play();}} title="Preview audio"><Play size={12}/></button><span>{asset.split('/').pop()}</span><div><button onClick={() => addItem('audio', asset)} title="Add at playhead"><Plus size={13}/></button>{asset.includes('/imported/') ? <button onClick={() => void removeImportedAudio(asset)} title="Remove imported audio"><Trash2 size={12}/></button> : null}</div></div>)}
+              <div className="sidebar-section-head"><span>{assets.audio.length} файлов</span><div><label className="asset-upload" title="Импортировать звук">{uploadingAudio ? <LoaderCircle className="spin" size={13}/> : <Upload size={13}/>}<input type="file" accept="audio/wav,audio/mpeg,audio/mp4,audio/aac" disabled={uploadingAudio} onChange={(event) => {const file = event.target.files?.[0]; if (file) void importAudio(file); event.target.value = '';}}/></label><button onClick={() => void loadAssets().then(setAssets)} title="Обновить библиотеку"><RotateCcw size={14} /></button></div></div>
+              <input className="asset-search" value={assetQuery} onChange={(event) => setAssetQuery(event.target.value)} placeholder="Найти звук…" aria-label="Поиск звука"/>
+              {assets.audio.filter((asset) => asset.toLowerCase().includes(assetQuery.toLowerCase())).map((asset) => <div className="asset-row" key={asset}><button onClick={() => {assetPreview.current?.pause(); const audio = new Audio(asset); audio.volume = .45; assetPreview.current = audio; void audio.play();}} title="Прослушать"><Play size={12}/></button><span>{asset.split('/').pop()}</span><div><button onClick={() => addItem('audio', asset)} title="Добавить в текущий момент"><Plus size={13}/></button>{asset.includes('/imported/') ? <button onClick={() => void removeImportedAudio(asset)} title="Удалить импортированный файл"><Trash2 size={12}/></button> : null}</div></div>)}
             </div>
           )}
         </aside>
@@ -625,14 +661,14 @@ export const App = () => {
         <div className="center-column">
           <Preview project={project} currentTime={currentTime} playing={playing} mode={previewMode} selection={selection} onModeChange={setPreviewMode} onPickPointer={(x, y) => changeItem({x, y})} onChangeViewport={(viewport) => commit((draft) => {draft.viewport = viewport; draft.guides = true; return draft;})} onToggleGuides={() => commit((draft) => {draft.guides = draft.guides === false; return draft;})} onChangeFramePosition={(scrollY) => changeItem({scrollY})} />
           <div className="transport">
-            <button className="icon-button" onClick={() => {setPlaying(false); setCurrentTime(0);}} title="Stop"><CircleStop size={17} /></button>
-            <button className="play-button" onClick={togglePlayback} title="Play / pause">{playing ? <Pause size={18} /> : <Play size={18} fill="currentColor" />}</button>
-            <button className={`icon-button ${looping ? 'is-active' : ''}`} onClick={() => setLooping((value) => !value)} title="Loop playback (L)"><Repeat2 size={15}/></button>
+            <button className="icon-button" onClick={() => {setPlaying(false); setCurrentTime(0);}} title="В начало"><CircleStop size={17} /></button>
+            <button className="play-button" onClick={togglePlayback} title="Воспроизвести или поставить на паузу">{playing ? <Pause size={18} /> : <Play size={18} fill="currentColor" />}</button>
+            <button className={`icon-button ${looping ? 'is-active' : ''}`} onClick={() => setLooping((value) => !value)} title="Повторять воспроизведение (L)"><Repeat2 size={15}/></button>
             <span className="timecode">{formatEditorTime(currentTime, project.fps, project.timeDisplay)}</span><span className="time-divider">/</span><span className="duration-readout">{formatEditorTime(project.duration, project.fps, project.timeDisplay)}</span>
             <div className="transport-spacer" />
-            {overlaps || missingFrames || outOfBounds ? <span className="warning-badge"><AlertTriangle size={14}/>{[overlaps && `${overlaps} overlaps`, missingFrames && `${missingFrames} uncaptured`, outOfBounds && `${outOfBounds} outside duration`].filter(Boolean).join(' · ')}</span> : <span className="ready-badge"><CheckCircle2 size={13}/>Ready to render</span>}
-            <label className="zoom-control"><span>Zoom</span><input type="range" min={38} max={150} value={zoom} onChange={(event) => setZoom(Number(event.target.value))} /></label>
-            <select className="playback-rate" value={project.playbackRate ?? 1} onChange={(event) => commit((draft) => {draft.playbackRate=Number(event.target.value); return draft;})} aria-label="Playback speed"><option value={.25}>0.25×</option><option value={.5}>0.5×</option><option value={1}>1×</option><option value={1.5}>1.5×</option><option value={2}>2×</option></select>
+            {overlaps || missingFrames || outOfBounds ? <span className="warning-badge"><AlertTriangle size={14}/>{[overlaps && `${overlaps} пересечений`, missingFrames && `${missingFrames} сцен без снимка`, outOfBounds && `${outOfBounds} элементов вне ролика`].filter(Boolean).join(' · ')}</span> : <span className="ready-badge"><CheckCircle2 size={13}/>Готово к экспорту</span>}
+            <label className="zoom-control"><span>Масштаб</span><input type="range" min={38} max={150} value={zoom} onChange={(event) => setZoom(Number(event.target.value))} /></label>
+            <select className="playback-rate" value={project.playbackRate ?? 1} onChange={(event) => commit((draft) => {draft.playbackRate=Number(event.target.value); return draft;})} aria-label="Скорость воспроизведения"><option value={.25}>0.25×</option><option value={.5}>0.5×</option><option value={1}>1×</option><option value={1.5}>1.5×</option><option value={2}>2×</option></select>
           </div>
         </div>
 
@@ -642,13 +678,14 @@ export const App = () => {
       <Timeline project={project} currentTime={currentTime} selection={selection} pixelsPerSecond={zoom} onSeek={(time) => {setPlaying(false); setCurrentTime(time);}} onSelect={setSelection} onMoveItem={(track, id, at) => {setSelection({track, id, ids:[id]}); changeItemFor(track, id, {at});}} onResizeItem={(track, id, duration) => {setSelection({track,id,ids:[id]}); if (track === 'frames') {const frame = project.frames.find((item) => item.id === id); changeItemFor(track,id,{hold: Math.max(0, duration - (frame?.duration ?? 0))});} else changeItemFor(track,id,{duration});}} onAdd={addItem} onToggleSnap={() => commit((draft) => {draft.snap = draft.snap === false; return draft;})} onZoom={setZoom} onSplit={splitSelected} onAddMarker={addMarker} onResizeHeight={(height)=>{setTimelineHeight(height);localStorage.setItem('motion-desk-timeline-height',String(height));}} />
 
       {notice ? <div className={`editor-toast ${notice.tone}`}>{notice.message}</div> : null}
+      {showCaptureDirector?<CaptureDirector project={project} analysis={project.captureAnalysis} analyzing={analyzingPage} recording={job?.status==='running'&&job.kind==='capture'} onChangeUrl={(url)=>commit((draft)=>{draft.url=url;draft.captureAnalysis=undefined;return draft;})} onAnalyze={()=>void analyzeCaptureSource()} onBuild={buildCapturePlan} onRecord={()=>{setShowCaptureDirector(false);void runJob('capture');}} onClose={()=>setShowCaptureDirector(false)}/>:null}
 
-      {showShortcuts ? <div className="shortcut-backdrop" onClick={() => setShowShortcuts(false)}><section className="shortcut-card" onClick={(event) => event.stopPropagation()}><div><span>Motion Desk</span><h2>Keyboard shortcuts</h2><button onClick={() => setShowShortcuts(false)}><X size={15}/></button></div><dl><dt><kbd>Space</kbd></dt><dd>Play or pause</dd><dt><kbd>L</kbd></dt><dd>Toggle playback loop</dd><dt><kbd>←</kbd> <kbd>→</kbd></dt><dd>Move one frame</dd><dt><kbd>Shift</kbd> + <kbd>←</kbd>/<kbd>→</kbd></dt><dd>Move one second</dd><dt><kbd>+</kbd> / <kbd>−</kbd></dt><dd>Timeline zoom</dd><dt><kbd>C</kbd></dt><dd>Add caption at playhead</dd><dt><kbd>S</kbd></dt><dd>Split selected clip</dd><dt><kbd>Ctrl</kbd> + <kbd>C</kbd>/<kbd>V</kbd></dt><dd>Copy or paste clip</dd><dt><kbd>Ctrl</kbd> + <kbd>S</kbd></dt><dd>Save now</dd><dt><kbd>Ctrl</kbd> + <kbd>Z</kbd></dt><dd>Undo</dd><dt><kbd>Ctrl</kbd> + <kbd>D</kbd></dt><dd>Duplicate selected clip</dd><dt><kbd>Delete</kbd></dt><dd>Delete selected clip</dd><dt><kbd>Home</kbd> / <kbd>End</kbd></dt><dd>Timeline start or end</dd></dl></section></div> : null}
+      {showShortcuts ? <div className="shortcut-backdrop" onClick={() => setShowShortcuts(false)}><section className="shortcut-card" onClick={(event) => event.stopPropagation()}><div><span>Motion Desk</span><h2>Горячие клавиши</h2><button onClick={() => setShowShortcuts(false)}><X size={15}/></button></div><dl><dt><kbd>Space</kbd></dt><dd>Воспроизведение или пауза</dd><dt><kbd>L</kbd></dt><dd>Повторять ролик</dd><dt><kbd>←</kbd> <kbd>→</kbd></dt><dd>Сдвиг на один кадр</dd><dt><kbd>Shift</kbd> + <kbd>←</kbd>/<kbd>→</kbd></dt><dd>Сдвиг на секунду</dd><dt><kbd>+</kbd> / <kbd>−</kbd></dt><dd>Масштаб монтажа</dd><dt><kbd>C</kbd></dt><dd>Добавить текст</dd><dt><kbd>S</kbd></dt><dd>Разрезать элемент</dd><dt><kbd>Ctrl</kbd> + <kbd>C</kbd>/<kbd>V</kbd></dt><dd>Копировать или вставить</dd><dt><kbd>Ctrl</kbd> + <kbd>S</kbd></dt><dd>Сохранить</dd><dt><kbd>Ctrl</kbd> + <kbd>Z</kbd></dt><dd>Отменить</dd><dt><kbd>Ctrl</kbd> + <kbd>D</kbd></dt><dd>Создать копию элемента</dd><dt><kbd>Delete</kbd></dt><dd>Удалить выбранное</dd><dt><kbd>Home</kbd> / <kbd>End</kbd></dt><dd>Начало или конец ролика</dd></dl></section></div> : null}
 
       {job ? (
         <section className={`job-drawer ${job.status}`}>
-          <div className="job-head"><span>{job.status === 'running' ? <LoaderCircle className="spin" size={15} /> : <Settings2 size={15} />}{job.kind === 'capture' ? 'Browser capture' : 'Remotion render'}</span>{job.status === 'complete' && job.outputUrl ? <a href={job.outputUrl}>Download MP4</a> : null}<strong>{job.status}</strong><button onClick={() => setJob(null)} title="Close"><X size={14} /></button></div>
-          <pre>{job.log.slice(-14).join('\n') || 'Starting…'}</pre>
+          <div className="job-head"><span>{job.status === 'running' ? <LoaderCircle className="spin" size={15} /> : <Settings2 size={15} />}{job.kind === 'capture' ? 'Запись браузера' : 'Сборка видео'}</span>{job.status === 'complete' && job.outputUrl ? <a href={job.outputUrl}>Скачать MP4</a> : null}<strong>{job.status === 'running'?'в работе':job.status === 'complete'?'готово':'ошибка'}</strong><button onClick={() => setJob(null)} title="Закрыть"><X size={14} /></button></div>
+          <pre>{job.log.slice(-14).join('\n') || 'Запускаем…'}</pre>
         </section>
       ) : null}
     </div>

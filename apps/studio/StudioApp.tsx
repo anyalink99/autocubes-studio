@@ -18,38 +18,38 @@ const modules = [
   {
     id: 'motion',
     title: 'Motion desk',
-    label: 'Capture / edit / render',
+    label: 'Захват / монтаж / экспорт',
     href: '/editor.html',
     icon: Film,
     tone: 'orange',
-    copy: 'Build site reels from real captures, frames, pointer actions, transitions, music, and SFX.',
+    copy: 'Собирайте шоукейсы сайтов из реальных сцен, действий курсора, текста, музыки и эффектов.',
   },
   {
     id: 'identity',
     title: 'Identity lab',
-    label: '60 systems / 532 variants',
+    label: '60 систем / 532 варианта',
     href: '/apps/identity/identity-lab.html',
     icon: Palette,
     tone: 'blue',
-    copy: 'Explore, edit, and shortlist identity compositions in one visual workspace.',
+    copy: 'Исследуйте, редактируйте и собирайте айдентику и карусели в одном пространстве.',
   },
   {
     id: 'documents',
-    title: 'Documents',
-    label: '15 structured templates',
+    title: 'Документы',
+    label: '15 структурированных шаблонов',
     href: '/documents.html',
     icon: FileText,
     tone: 'paper',
-    copy: 'Prepare technical specifications, briefs, proposals, estimates, acceptance, and handoff files.',
+    copy: 'Готовьте брифы, предложения, сметы, согласования и передачу проекта на двух языках.',
   },
   {
     id: 'canvas',
-    title: 'Project hub',
-    label: 'Assets / status / handoff',
+    title: 'Центр проектов',
+    label: 'Материалы / статусы / передача',
     href: '#project-hub',
     icon: Users,
     tone: 'muted',
-    copy: 'Connect motion projects, identity selections, documents, and production handoff.',
+    copy: 'Связывайте motion-проекты, выбранную айдентику, документы и финальные материалы.',
   },
 ] as const;
 
@@ -84,33 +84,33 @@ export const StudioApp = () => {
           <span>autocubes</span>
         </a>
         <nav className="studio-nav" aria-label="Studio tools">
-          <span className="nav-caption">Workspace</span>
-          <a className="active" href="/"><Boxes size={16} />Overview</a>
+          <span className="nav-caption">Студия</span>
+          <a className="active" href="/"><Boxes size={16} />Обзор</a>
           <a href="/editor.html"><Film size={16} />Motion</a>
-          <a href="/apps/identity/identity-lab.html"><Palette size={16} />Identity</a>
-          <a href="/documents.html"><FileText size={16} />Documents</a>
-          <span className="nav-caption second">Library</span>
-          <a href="/examples/documents/amavi-technical-specification.html" target="_blank"><LayoutTemplate size={16} />Examples</a>
+          <a href="/apps/identity/identity-lab.html"><Palette size={16} />Айдентика</a>
+          <a href="/documents.html"><FileText size={16} />Документы</a>
+          <span className="nav-caption second">Библиотека</span>
+          <a href="/examples/documents/amavi-technical-specification.html" target="_blank"><LayoutTemplate size={16} />Примеры</a>
         </nav>
-        <div className="sidebar-status"><span><i />Local workspace</span><b>Autocubes Studio</b></div>
+        <div className="sidebar-status"><span><i />Локальное пространство</span><b>Autocubes Studio</b></div>
       </aside>
 
       <main className="studio-main">
         <header className="studio-topbar">
           <div><span>{formatDate()}</span><strong>{clock}</strong></div>
-          <a className="top-action" href="/documents.html?new=technical-specification"><FileText size={15} />New document</a>
+          <a className="top-action" href="/documents.html?new=creative-brief"><FileText size={15} />Новый документ</a>
         </header>
 
         <section className="workspace-heading">
-          <div><span className="eyebrow">Creative operations</span><h1>Studio workspace</h1></div>
-          <p>Identity, motion, capture, and project documents in one working system.</p>
+          <div><span className="eyebrow">Производство контента</span><h1>Рабочая студия</h1></div>
+          <p>Айдентика, браузерные шоукейсы и проектные документы в одной системе.</p>
         </section>
 
         <section className="studio-metrics" aria-label="Workspace summary">
-          <div><span>Tools</span><strong>04</strong></div>
-          <div><span>Motion projects</span><strong>{String(projects.length).padStart(2, '0')}</strong></div>
-          <div><span>Studio documents</span><strong>{String(recentDocuments.length).padStart(2,'0')}</strong></div>
-          <div><span>Identity picks</span><strong>{String(identityState.picked).padStart(2,'0')}</strong></div>
+          <div><span>Инструменты</span><strong>04</strong></div>
+          <div><span>Motion-проекты</span><strong>{String(projects.length).padStart(2, '0')}</strong></div>
+          <div><span>Документы</span><strong>{String(recentDocuments.length).padStart(2,'0')}</strong></div>
+          <div><span>Выбрано в айдентике</span><strong>{String(identityState.picked).padStart(2,'0')}</strong></div>
         </section>
 
         <section className="module-grid" aria-label="Studio modules">
@@ -131,18 +131,18 @@ export const StudioApp = () => {
         </section>
 
         <section className="production-flow" aria-label="Studio production flow">
-          <a href="/apps/identity/identity-lab.html"><span>01</span><div><b>Define the system</b><small>{identityState.brand?.name??'Brand Kit'} · {identityState.picked} selected directions</small></div><ArrowRight size={15}/></a>
-          <a href="/editor.html"><span>02</span><div><b>Build the motion</b><small>{projects.length} projects · reels, stories, walkthroughs</small></div><ArrowRight size={15}/></a>
-          <a href="/documents.html"><span>03</span><div><b>Package the work</b><small>{recentDocuments.length} briefs, approvals, and handoffs</small></div><ArrowRight size={15}/></a>
+          <a href="/apps/identity/identity-lab.html"><span>01</span><div><b>Определить визуальную систему</b><small>{identityState.brand?.name??'Brand Kit'} · {identityState.picked} выбранных направлений</small></div><ArrowRight size={15}/></a>
+          <a href="/editor.html"><span>02</span><div><b>Собрать шоукейс</b><small>{projects.length} проектов · reels, stories и обзоры сайтов</small></div><ArrowRight size={15}/></a>
+          <a href="/documents.html"><span>03</span><div><b>Оформить и передать</b><small>{recentDocuments.length} брифов, согласований и handoff-файлов</small></div><ArrowRight size={15}/></a>
         </section>
 
         <section className="work-register" id="project-hub">
-          <div className="section-title"><div><span className="eyebrow">Current work</span><h2>Project register</h2></div><a href="/editor.html">Open motion desk <ArrowRight size={15} /></a></div>
+          <div className="section-title"><div><span className="eyebrow">Текущая работа</span><h2>Проекты студии</h2></div><a href="/editor.html">Открыть Motion Desk <ArrowRight size={15} /></a></div>
           <div className="register-table">
             {(projects.length ? projects : [{id:'flowline', title:'Flowline', url:'https://portfolio.autocubes.site/flowline'}]).slice(0, 5).map((project, index) => <a href={`/editor.html?project=${encodeURIComponent(project.id)}`} className="register-row" key={project.id}><span>{String(index + 1).padStart(2, '0')}</span><strong>{project.title}</strong><span>{project.url.replace(/^https?:\/\//, '')}</span><span>Motion</span><ArrowUpRight size={15} /></a>)}
-            {recentDocuments.slice(0, 3).map((document, index) => <a href={`/documents.html?id=${encodeURIComponent(document.id)}`} className="register-row" key={document.id}><span>{String(projects.length + index + 1).padStart(2, '0')}</span><strong>{document.title}</strong><span>{document.type}</span><span>Document</span><ArrowUpRight size={15} /></a>)}
+            {recentDocuments.slice(0, 3).map((document, index) => <a href={`/documents.html?id=${encodeURIComponent(document.id)}`} className="register-row" key={document.id}><span>{String(projects.length + index + 1).padStart(2, '0')}</span><strong>{document.title}</strong><span>{document.type}</span><span>Документ</span><ArrowUpRight size={15} /></a>)}
           </div>
-          <div className="hub-actions"><a href="/editor.html"><Film size={14}/>New motion project</a><a href="/apps/identity/identity-lab.html"><Palette size={14}/>Open Brand Kit</a><a href="/documents.html?new=motion-brief"><FileText size={14}/>Create motion brief</a><a href="/documents.html?new=social-pack"><LayoutTemplate size={14}/>Prepare social pack</a></div>
+          <div className="hub-actions"><a href="/editor.html"><Film size={14}/>Новый motion-проект</a><a href="/apps/identity/identity-lab.html"><Palette size={14}/>Открыть Brand Kit</a><a href="/documents.html?new=motion-brief"><FileText size={14}/>Создать motion-бриф</a><a href="/documents.html?new=social-pack"><LayoutTemplate size={14}/>Подготовить social pack</a></div>
         </section>
       </main>
     </div>

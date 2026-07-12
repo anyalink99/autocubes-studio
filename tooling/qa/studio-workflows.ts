@@ -2,6 +2,7 @@ import fs from 'node:fs/promises';
 import path from 'node:path';
 import {chromium} from 'playwright';
 import {createServer} from 'vite';
+import JSZip from 'jszip';
 
 const main=async()=>{
   const port=4193;
@@ -18,6 +19,11 @@ const main=async()=>{
 
     await page.goto(`${baseUrl}/editor.html`,{waitUntil:'networkidle'});
     if(!await page.locator('.page-map').isVisible())throw new Error('Motion Page Map is not visible');
+    const analysisSource=await (await page.request.get(`${baseUrl}/api/project`)).json() as Record<string,unknown>;
+    const analysisResponse=await page.request.post(`${baseUrl}/api/capture/analyze`,{data:{project:{...analysisSource,id:'qa-analysis',url:baseUrl}}});
+    if(!analysisResponse.ok())throw new Error(`Smart page analysis returned ${analysisResponse.status()}`);
+    const analysis=await analysisResponse.json() as {sections?:unknown[];targets?:unknown[];fullPageImage?:string};
+    if(!analysis.sections?.length||!analysis.targets?.length||!analysis.fullPageImage)throw new Error('Smart page analysis did not discover sections and targets');
     await page.locator('.shot-card-main').first().click();
     const position=page.locator('.position-input-row input');
     await position.fill('50%');
@@ -25,16 +31,16 @@ const main=async()=>{
     if(!/px$/.test(await position.inputValue()))throw new Error('Page Position did not accept a percentage');
     const selectedStop=page.locator('.page-map-stop.selected');
     if(!await selectedStop.isVisible())throw new Error('Page Map did not reflect shot selection');
-    await page.getByTitle('Build a story from a recipe').click();
-    await page.getByRole('button',{name:/Site walkthrough/}).click();
+    await page.getByTitle('Создать структуру истории').click();
+    await page.getByRole('button',{name:/Обзор сайта/}).click();
     if(await page.locator('.shot-card').count()!==5)throw new Error('Motion recipe did not build five shots');
-    await page.getByTitle('Add Overlays at playhead').click();
+    await page.getByTitle('Добавить: Графика').click();
     if(await page.locator('.track-overlays .timeline-clip').count()!==1)throw new Error('Overlay track did not receive a clip');
-    await page.getByTitle('Add Captions at playhead').click();
-    await page.locator('.inspector textarea').fill('Studio workflow test');
+    await page.getByTitle('Добавить: Текст').click();
+    await page.locator('.inspector textarea').first().fill('Studio workflow test');
     await page.locator('.inspector select').filter({has:page.locator('option[value="rise"]')}).selectOption('rise');
     if(await page.locator('.preview-caption').textContent()!=='Studio workflow test')throw new Error('Caption Studio did not update preview');
-    await page.getByTitle('Add marker at playhead').click();
+    await page.getByTitle('Добавить заметку времени').click();
     if(await page.locator('.timeline-marker').count()!==1)throw new Error('Timeline marker was not created');
     const frameClips=page.locator('.track-frames .timeline-clip');
     await frameClips.nth(0).click();
@@ -48,9 +54,12 @@ const main=async()=>{
     await page.reload({waitUntil:'networkidle'});
     await page.locator('#openBrandKit').click();
     await page.locator('#brandName').fill('Studio Test');
-    await page.locator('#brandTagline').fill('One system, every format.');
+    await page.locator('#brandTaglineEn').fill('One system, every format.');
     await page.locator('#saveBrandKit').click();
     if((await page.locator('.composition .brand-lockup > span').first().textContent())!=='Studio Test')throw new Error('Brand Kit did not apply to ideas');
+    await page.locator('[data-output-language="ru"]').click();
+    if(!/Сайты/.test(await page.locator('.composition .layout-manifesto .line').first().textContent()||''))throw new Error('Identity RU output did not translate the composition');
+    await page.locator('[data-output-language="en"]').click();
     await page.locator('.pick-button').nth(0).click();
     await page.locator('.pick-button').nth(1).click();
     await page.locator('#openCarousel').click();
@@ -63,18 +72,26 @@ const main=async()=>{
     await page.evaluate(()=>{localStorage.removeItem('autocubes-documents-v2');localStorage.removeItem('autocubes-documents-v1');});
     await page.reload({waitUntil:'networkidle'});
     const initialBlocks=await page.locator('.paper-block').count();
-    await page.getByRole('button',{name:/Add block/}).click();
-    await page.locator('.block-menu').getByRole('button',{name:'Checklist'}).click();
+    await page.getByRole('button',{name:/Добавить блок/}).click();
+    await page.locator('.block-menu').getByRole('button',{name:'Чек-лист'}).click();
     if(await page.locator('.paper-block').count()!==initialBlocks+1)throw new Error('Documents did not insert a block');
-    await page.getByTitle('Undo').click();
+    await page.getByTitle('Отменить').click();
     if(await page.locator('.paper-block').count()!==initialBlocks)throw new Error('Documents undo failed');
-    await page.getByTitle('Redo').click();
+    await page.getByTitle('Повторить').click();
     const markdownPromise=page.waitForEvent('download');
-    await page.getByTitle('Download Markdown').click();
+    await page.getByTitle('Скачать текущий Markdown').click();
     const markdown=await markdownPromise;
     const markdownPath=path.resolve('out/qa/studio-document.md');
     await markdown.saveAs(markdownPath);
     if((await fs.stat(markdownPath)).size<200)throw new Error('Documents Markdown export is too small');
+    const packagePromise=page.waitForEvent('download');
+    await page.getByTitle('Скачать пакет RU + EN').click();
+    const packageDownload=await packagePromise;
+    const packagePath=path.resolve('out/qa/studio-document-bilingual.zip');
+    await packageDownload.saveAs(packagePath);
+    const packageZip=await JSZip.loadAsync(await fs.readFile(packagePath));
+    const packageNames=Object.keys(packageZip.files);
+    if(!packageNames.some((name)=>name.endsWith('-ru.html'))||!packageNames.some((name)=>name.endsWith('-en.html')))throw new Error('Documents package is missing RU/EN outputs');
     await page.screenshot({path:path.resolve('out/qa/documents-blocks.png')});
 
     await page.goto(baseUrl,{waitUntil:'networkidle'});
@@ -82,7 +99,7 @@ const main=async()=>{
     if(!await page.locator('#project-hub').isVisible())throw new Error('Studio Project Hub is missing');
     if(errors.length)throw new Error(`Browser errors:\n${errors.join('\n')}`);
     console.log('Studio workflows passed · Motion Page Map/Timeline · Identity Brand Kit/Carousel · Documents blocks · Project Hub');
-  }finally{await browser.close();await server.close();}
+  }finally{await browser.close();await server.close();await fs.rm(path.resolve('public/editor-frames/qa-analysis'),{recursive:true,force:true});}
 };
 
 void main().catch((error)=>{console.error(error);process.exitCode=1;});

@@ -35,17 +35,17 @@ The root React application is the launch surface. It reads motion project summar
 
 The editor modifies `data/projects/*.editor.json` through the local API. Capture jobs use Playwright; render jobs synchronize the selected project into `data/generated/editor-project.json` before invoking Remotion.
 
-Motion schema version 3 migrates through `packages/core/editor-operations.ts`. Portable operations own clamping, time formatting, page-position parsing, frame arrangement, recipes, and snapping. Page Map, Shot Library, Timeline, Caption Library, Preview, and Inspector consume those contracts without importing Node infrastructure.
+Motion schema version 3 migrates through `packages/core/editor-operations.ts`. Portable operations own clamping, time formatting, page-position parsing, frame arrangement, recipes, and snapping. Capture Director uses a lightweight Playwright analysis endpoint to discover sections and targets before a recording job is authorized. Recording writes to a staging directory and atomically replaces the last successful capture. Page Map, Shot Library, Timeline, Caption Library, Preview, and Inspector consume those contracts without importing Node infrastructure.
 
 ### Documents
 
-Documents are structured React state stored under `autocubes-documents-v2`. Legacy sections migrate into typed blocks. HTML is standalone and print-ready; Markdown and JSON are portable interchange formats. Review notes and version snapshots remain local-first document data.
+Documents are structured React state stored under `autocubes-documents-v2`. Legacy sections migrate into typed blocks. Each document contains independent `ru` and `en` content snapshots; Russian is the authoring default and bilingual ZIP is the normal handoff boundary. HTML is standalone and print-ready; Markdown and JSON remain portable interchange formats.
 
 ### Identity Lab
 
 Identity Lab remains standalone HTML by design: it can be opened or shared without bootstrapping a React application. Per-variant overrides are stored under `autocubes-identity-v3-edits`.
 
-Brand Kit is stored under `autocubes-identity-brand-kit-v1` and applied before per-composition overrides. Picked composition order is both Carousel Builder order and PNG-pack export order.
+Brand Kit is stored under `autocubes-identity-brand-kit-v1` and applied before per-composition overrides. Identity output language is stored separately; post metadata and Brand Kit copy preserve RU/EN variants. Picked composition order is both Carousel Builder order and PNG-pack export order.
 
 Identity export runs in the browser. `html-to-image` rasterizes the active artboard at the selected output resolution; JSZip packages picked compositions without sending artwork to a remote service.
 

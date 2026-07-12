@@ -3,7 +3,7 @@ import {createReadStream} from 'node:fs';
 import path from 'node:path';
 import {chromium} from 'playwright';
 import {Plugin} from 'vite';
-import {EditorProject, JobState} from '../../packages/core/editor-project';
+import {CaptureAnalysis, EditorProject, JobState} from '../../packages/core/editor-project';
 import {getJob, getJobOutput, startJob} from './job-manager';
 import {capturesDirectory, editorFramesDirectory, workspacePath} from './paths';
 import {createProject, deleteProject, listProjects, saveProject} from './project-repository';
@@ -61,6 +61,41 @@ const captureFrame = async (project: EditorProject, frameId: string, scrollY: nu
   } finally {
     await browser.close();
   }
+};
+
+const analyzePage = async (project: EditorProject): Promise<CaptureAnalysis> => {
+  const browser = await chromium.launch({headless:true});
+  try {
+    const page = await browser.newPage({viewport:project.viewport});
+    await page.goto(project.url,{waitUntil:'domcontentloaded',timeout:60_000});
+    await page.waitForTimeout(900);
+    const result = await page.evaluate(() => {
+      const visible = (element:Element) => {
+        const rect=(element as HTMLElement).getBoundingClientRect();
+        const style=getComputedStyle(element);
+        return rect.width>4&&rect.height>4&&style.display!=='none'&&style.visibility!=='hidden'&&Number(style.opacity)>0;
+      };
+      const selectorFor=(element:Element) => {
+        const escaped=(value:string)=>CSS.escape(value);
+        if(element.id)return `#${escaped(element.id)}`;
+        for(const name of ['data-testid','data-test','aria-label','name']){const value=element.getAttribute(name);if(value)return `[${name}="${value.replaceAll('"','\\"')}"]`;}
+        const parts:string[]=[];let current:Element|null=element;
+        while(current&&current!==document.body&&parts.length<4){let part=current.tagName.toLowerCase();const parentElement:Element|null=current.parentElement;if(parentElement){const siblings=[...parentElement.children].filter((item)=>item.tagName===current!.tagName);if(siblings.length>1)part+=`:nth-of-type(${siblings.indexOf(current)+1})`;}parts.unshift(part);current=parentElement;}
+        return parts.join(' > ');
+      };
+      const pageHeight=Math.max(document.body.scrollHeight,document.documentElement.scrollHeight);
+      const headings=[...document.querySelectorAll('h1,h2,h3,section[id]')].filter(visible).map((element,index)=>{const rect=(element as HTMLElement).getBoundingClientRect();const heading=element.matches('section')?element.querySelector('h1,h2,h3'):element;return {id:`section-${index}`,label:(heading?.textContent||element.getAttribute('aria-label')||`Section ${index+1}`).trim().replace(/\s+/g,' ').slice(0,80),selector:selectorFor(element),scrollY:Math.max(0,Math.round(rect.top+window.scrollY-window.innerHeight*.12)),level:element.matches('h1')?1:element.matches('h2')?2:3};}).filter((item)=>item.label);
+      const sections=headings.filter((item,index,array)=>index===0||item.scrollY-array[index-1].scrollY>window.innerHeight*.28).slice(0,18);
+      if(!sections.length||sections[0].scrollY>80)sections.unshift({id:'section-top',label:document.title||'Top',selector:'body',scrollY:0,level:1});
+      const targets=[...document.querySelectorAll('a[href],button,input,select,textarea,[role="button"],[tabindex]')].filter(visible).map((element,index)=>{const rect=(element as HTMLElement).getBoundingClientRect();const role=element.getAttribute('role')||element.tagName.toLowerCase();return {id:`target-${index}`,label:(element.getAttribute('aria-label')||element.textContent||element.getAttribute('placeholder')||element.getAttribute('title')||role).trim().replace(/\s+/g,' ').slice(0,70),selector:selectorFor(element),role,x:Math.round(rect.left+rect.width/2),y:Math.round(rect.top+rect.height/2),pageY:Math.round(rect.top+window.scrollY+rect.height/2),width:Math.round(rect.width),height:Math.round(rect.height)};}).filter((item)=>item.label).slice(0,100);
+      return {title:document.title||new URL(location.href).hostname,pageHeight,sections,targets};
+    });
+    const directory=path.join(editorFramesDirectory,project.id);
+    await fs.mkdir(directory,{recursive:true});
+    const filename='page-analysis.png';
+    await page.screenshot({path:path.join(directory,filename),fullPage:true});
+    return {url:project.url,title:result.title,pageHeight:result.pageHeight,sections:result.sections,targets:result.targets,analyzedAt:new Date().toISOString(),fullPageImage:`/editor-frames/${project.id}/${filename}?v=${Date.now()}`};
+  } finally {await browser.close();}
 };
 
 export const studioApi = (): Plugin => ({
@@ -128,6 +163,10 @@ export const studioApi = (): Plugin => ({
         if (url.pathname === '/api/frame' && request.method === 'POST') {
           const {project, frameId, scrollY} = await readBody<{project: EditorProject; frameId: string; scrollY: number}>(request);
           return reply(response, 200, await captureFrame(project, frameId, scrollY));
+        }
+        if (url.pathname === '/api/capture/analyze' && request.method === 'POST') {
+          const {project}=await readBody<{project:EditorProject}>(request);
+          return reply(response,200,await analyzePage(project));
         }
         if (url.pathname === '/api/jobs' && request.method === 'POST') {
           const {kind, projectId} = await readBody<{kind: JobState['kind']; projectId: string}>(request);

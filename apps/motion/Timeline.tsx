@@ -23,12 +23,12 @@ type Props = {
 };
 
 const trackMeta = [
-  {id: 'frames' as const, label: 'Scroll', icon: ScanLine},
-  {id: 'pointer' as const, label: 'Pointer', icon: MousePointer2},
-  {id: 'transitions' as const, label: 'Transition', icon: Sparkles},
-  {id: 'captions' as const, label: 'Captions', icon: Captions},
-  {id: 'overlays' as const, label: 'Overlays', icon: Layers3},
-  {id: 'audio' as const, label: 'Audio', icon: Music2},
+  {id: 'frames' as const, label: 'Сцены', help:'скролл и паузы', icon: ScanLine},
+  {id: 'pointer' as const, label: 'Курсор', help:'наведение и клики', icon: MousePointer2},
+  {id: 'captions' as const, label: 'Текст', help:'подписи в кадре', icon: Captions},
+  {id: 'overlays' as const, label: 'Графика', help:'логотип и CTA', icon: Layers3},
+  {id: 'transitions' as const, label: 'Смена сцен', help:'визуальные стыки', icon: Sparkles},
+  {id: 'audio' as const, label: 'Звук', help:'музыка и эффекты', icon: Music2},
 ];
 
 export const Timeline = ({project, currentTime, selection, pixelsPerSecond, onSeek, onSelect, onMoveItem, onResizeItem, onAdd, onToggleSnap, onZoom, onSplit, onAddMarker, onResizeHeight}: Props) => {
@@ -36,7 +36,7 @@ export const Timeline = ({project, currentTime, selection, pixelsPerSecond, onSe
   const [drag, setDrag] = useState<DragState | null>(null);
   const [locked, setLocked] = useState<Set<TimelineTrack>>(new Set());
   const [muted, setMuted] = useState<Set<TimelineTrack>>(new Set());
-  const [collapsed, setCollapsed] = useState<Set<TimelineTrack>>(new Set());
+  const [collapsed, setCollapsed] = useState<Set<TimelineTrack>>(new Set(['overlays','transitions']));
   const width = Math.max(project.duration * pixelsPerSecond + 160, 900);
   const selectedIds = new Set(selection.ids?.length ? selection.ids : selection.id ? [selection.id] : []);
   const rulerStep = pixelsPerSecond >= 100 ? .5 : pixelsPerSecond < 50 ? 2 : 1;
@@ -113,22 +113,22 @@ export const Timeline = ({project, currentTime, selection, pixelsPerSecond, onSe
   const beginHeightResize=(event:React.PointerEvent)=>{event.preventDefault();const startY=event.clientY;const startHeight=event.currentTarget.closest('.timeline-panel')?.getBoundingClientRect().height??368;const move=(next:PointerEvent)=>onResizeHeight(Math.max(250,Math.min(560,startHeight+startY-next.clientY)));const up=()=>{window.removeEventListener('pointermove',move);window.removeEventListener('pointerup',up);};window.addEventListener('pointermove',move);window.addEventListener('pointerup',up);};
 
   return <section className="timeline-panel">
-    <button className="timeline-height-handle" onPointerDown={beginHeightResize} title="Drag to resize timeline" aria-label="Resize timeline"/>
+    <button className="timeline-height-handle" onPointerDown={beginHeightResize} title="Потяните, чтобы изменить высоту монтажа" aria-label="Изменить высоту монтажа"/>
     <div className="timeline-labels">
-      <div className="timeline-label-head"><span>Timeline</span><button onClick={() => onZoom(Math.max(30, pixelsPerSecond - 12))} title="Zoom out"><ZoomOut size={13}/></button><button onClick={() => onZoom(Math.min(220, pixelsPerSecond + 12))} title="Zoom in"><ZoomIn size={13}/></button><button onClick={() => onZoom(Math.max(30, (scrollerRef.current?.clientWidth ?? 900) / project.duration))} title="Fit timeline"><Maximize2 size={13}/></button><button className={project.snap !== false ? 'snap-active' : ''} onClick={onToggleSnap} title="Toggle frame and edge snapping"><Magnet size={13}/></button></div>
-      {trackMeta.map(({id, label, icon: Icon}) => <div className={`track-label ${collapsed.has(id) ? 'collapsed' : ''}`} key={id}><button onClick={() => toggleSet(setCollapsed, id)} title="Collapse track">{collapsed.has(id) ? <ChevronRight size={13}/> : <ChevronDown size={13}/>}</button><Icon size={14}/><span>{label}</span><button onClick={() => toggleSet(setMuted, id)} title="Show or hide track">{muted.has(id) ? <EyeOff size={12}/> : <Eye size={12}/>}</button><button onClick={() => toggleSet(setLocked, id)} title="Lock track">{locked.has(id) ? <Lock size={12}/> : <Unlock size={12}/>}</button><button onClick={() => onAdd(id)} title={`Add ${label} at playhead`}><Plus size={13}/></button></div>)}
+      <div className="timeline-label-head"><span>Монтаж</span><button onClick={() => onZoom(Math.max(30, pixelsPerSecond - 12))} title="Уменьшить масштаб"><ZoomOut size={13}/></button><button onClick={() => onZoom(Math.min(220, pixelsPerSecond + 12))} title="Увеличить масштаб"><ZoomIn size={13}/></button><button onClick={() => onZoom(Math.max(30, (scrollerRef.current?.clientWidth ?? 900) / project.duration))} title="Показать весь ролик"><Maximize2 size={13}/></button><button className={project.snap !== false ? 'snap-active' : ''} onClick={onToggleSnap} title="Привязка к кадрам и краям"><Magnet size={13}/></button></div>
+      {trackMeta.map(({id, label, help, icon: Icon}) => <div className={`track-label ${collapsed.has(id) ? 'collapsed' : ''}`} key={id}><button onClick={() => toggleSet(setCollapsed, id)} title="Свернуть дорожку">{collapsed.has(id) ? <ChevronRight size={13}/> : <ChevronDown size={13}/>}</button><Icon size={14}/><span><b>{label}</b><small>{help}</small></span><button onClick={() => toggleSet(setMuted, id)} title="Показать или скрыть">{muted.has(id) ? <EyeOff size={12}/> : <Eye size={12}/>}</button><button onClick={() => toggleSet(setLocked, id)} title="Заблокировать дорожку">{locked.has(id) ? <Lock size={12}/> : <Unlock size={12}/>}</button><button onClick={() => onAdd(id)} title={`Добавить: ${label}`}><Plus size={13}/></button></div>)}
     </div>
     <div className="timeline-scroll" ref={scrollerRef} onWheel={(event) => {if (!event.ctrlKey && !event.metaKey) return; event.preventDefault(); onZoom(Math.max(30, Math.min(220, pixelsPerSecond - event.deltaY * .15)));}}>
       <div className="timeline-canvas" style={{width}}>
         <div className="timeline-ruler" onClick={seek} onDoubleClick={(event) => {seek(event); onAddMarker(currentTime);}}>{ruler.map((second) => <div className="ruler-mark" key={second} style={{left: second * pixelsPerSecond}}><span>{formatEditorTime(second, project.fps, project.timeDisplay)}</span></div>)}</div>
         {(project.markers ?? []).map((marker) => <button className="timeline-marker" key={marker.id} style={{left:marker.at * pixelsPerSecond, '--marker-color':marker.color ?? '#ffb35c'} as React.CSSProperties} title={`${marker.label} · ${formatEditorTime(marker.at, project.fps, project.timeDisplay)}`} onClick={() => onSeek(marker.at)}><Flag size={10}/></button>)}
         {trackMeta.map(({id}) => <div className={`timeline-track track-${id} ${collapsed.has(id) ? 'collapsed' : ''} ${muted.has(id) ? 'muted' : ''}`} key={id} onClick={seek} onDoubleClick={() => onAdd(id)}>
-          {items[id].map((item) => {
+          {items[id].map((item,itemIndex) => {
             const activeDrag = drag?.track === id && drag.id === item.id ? drag : null;
             const at = activeDrag?.currentAt ?? item.at;
             const clipWidth = activeDrag?.mode === 'resize' ? activeDrag.currentWidth : item.width;
             return <button key={item.id} className={`timeline-clip ${selectedIds.has(item.id) ? 'selected' : ''} ${id === 'audio' && 'enabled' in item && !item.enabled ? 'disabled' : ''}`} style={{left:at * pixelsPerSecond, width:Math.max(16, clipWidth * pixelsPerSecond)}} onClick={(event) => selectClip(event,id,item.id)} onPointerDown={(event) => {if (locked.has(id) || event.shiftKey) return; event.preventDefault(); onSelect({track:id,id:item.id,ids:[item.id]}); setDrag({mode:'move',track:id,id:item.id,startX:event.clientX,startScroll:scrollerRef.current?.scrollLeft ?? 0,startAt:item.at,startWidth:item.width,currentAt:item.at,currentWidth:item.width});}} title={`${item.text} · ${formatEditorTime(item.at,project.fps,project.timeDisplay)} → ${formatEditorTime(itemEnd(item),project.fps,project.timeDisplay)}`}>
-              <span>{item.text}</span><small>{formatEditorTime(at,project.fps,project.timeDisplay)}</small>{'beatInterval' in item && Number(item.beatInterval)>0?<div className="clip-beats">{Array.from({length:Math.floor(item.width/Number(item.beatInterval))},(_,index)=><i key={index} style={{left:`${(index+1)*Number(item.beatInterval)/item.width*100}%`}}/>)}</div>:null}<i className="clip-handle" onPointerDown={(event) => {if (locked.has(id)) return; event.stopPropagation(); event.preventDefault(); onSelect({track:id,id:item.id,ids:[item.id]}); setDrag({mode:'resize',track:id,id:item.id,startX:event.clientX,startScroll:scrollerRef.current?.scrollLeft ?? 0,startAt:item.at,startWidth:item.width,currentAt:item.at,currentWidth:item.width});}}/>
+              {'thumbnail' in item&&item.thumbnail?<img className="timeline-scene-thumb" src={item.thumbnail} alt=""/>:null}<span>{id==='frames'?<em>Сцена {itemIndex+1}</em>:null}{item.text}</span><small>{formatEditorTime(at,project.fps,project.timeDisplay)}</small>{'beatInterval' in item && Number(item.beatInterval)>0?<div className="clip-beats">{Array.from({length:Math.floor(item.width/Number(item.beatInterval))},(_,index)=><i key={index} style={{left:`${(index+1)*Number(item.beatInterval)/item.width*100}%`}}/>)}</div>:null}<i className="clip-handle" onPointerDown={(event) => {if (locked.has(id)) return; event.stopPropagation(); event.preventDefault(); onSelect({track:id,id:item.id,ids:[item.id]}); setDrag({mode:'resize',track:id,id:item.id,startX:event.clientX,startScroll:scrollerRef.current?.scrollLeft ?? 0,startAt:item.at,startWidth:item.width,currentAt:item.at,currentWidth:item.width});}}/>
             </button>;
           })}
         </div>)}
@@ -136,6 +136,6 @@ export const Timeline = ({project, currentTime, selection, pixelsPerSecond, onSe
         <div className="playhead" style={{left:currentTime * pixelsPerSecond}}><span/></div>
       </div>
     </div>
-    <div className="timeline-quick-actions"><button onClick={onSplit} title="Split selected clip at playhead"><Scissors size={13}/></button><button onClick={() => onAddMarker(currentTime)} title="Add marker at playhead"><Flag size={13}/></button></div>
+    <div className="timeline-quick-actions"><button onClick={onSplit} title="Разрезать выбранный элемент"><Scissors size={13}/></button><button onClick={() => onAddMarker(currentTime)} title="Добавить заметку времени"><Flag size={13}/></button></div>
   </section>;
 };

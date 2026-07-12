@@ -28,20 +28,20 @@ export const PagePositionControl = ({project, value, onChange}: Props) => {
   };
 
   return <section className="page-position-control">
-    <div className="page-position-head"><button onPointerDown={beginScrub} title="Drag to scrub page position"><LocateFixed size={13}/>Page position</button><strong>{percent}%</strong></div>
+    <div className="page-position-head"><button onPointerDown={beginScrub} title="Потяните, чтобы изменить положение"><LocateFixed size={13}/>Положение на странице</button><strong>{percent}%</strong></div>
     <div className="position-input-row">
       <input value={input} onChange={(event) => setInput(event.target.value)} onBlur={submit} onKeyDown={(event) => {if (event.key === 'Enter') submit();}} aria-label="Page position in pixels or percent"/>
-      <span>of {Math.round(maximum)}px</span>
+      <span>из {Math.round(maximum)}px</span>
     </div>
     <input className="position-range" type="range" min={0} max={maximum} step={1} value={value} onChange={(event) => onChange(Number(event.target.value))}/>
     <div className="position-presets">
-      <button onClick={() => onChange(0)} title="Top"><ArrowUpToLine size={12}/><span>Top</span></button>
+      <button onClick={() => onChange(0)} title="Начало"><ArrowUpToLine size={12}/><span>Начало</span></button>
       <button onClick={() => onChange(maximum * .25)}><ChevronsUp size={12}/><span>25%</span></button>
-      <button onClick={() => onChange(maximum * .5)}><LocateFixed size={12}/><span>Center</span></button>
+      <button onClick={() => onChange(maximum * .5)}><LocateFixed size={12}/><span>Центр</span></button>
       <button onClick={() => onChange(maximum * .75)}><ChevronsDown size={12}/><span>75%</span></button>
-      <button onClick={() => onChange(maximum)} title="Bottom"><ArrowDownToLine size={12}/><span>Bottom</span></button>
+      <button onClick={() => onChange(maximum)} title="Конец"><ArrowDownToLine size={12}/><span>Конец</span></button>
     </div>
-    <div className="position-nudges"><span>Nudge</span>{[-100,-10,-1,1,10,100].map((amount) => <button key={amount} onClick={() => onChange(clamp(value + amount, 0, maximum))}>{amount > 0 ? '+' : ''}{amount}</button>)}</div>
-    <p>Enter a value such as <b>1200px</b>, <b>50%</b>, <b>center</b>, or <b>bottom</b>.</p>
+    <div className="position-nudges"><span>Сдвиг</span>{[-100,-10,-1,1,10,100].map((amount) => <button key={amount} onClick={() => onChange(clamp(value + amount, 0, maximum))}>{amount > 0 ? '+' : ''}{amount}</button>)}</div>
+    <p>Можно ввести <b>1200px</b>, <b>50%</b>, <b>center</b> или <b>bottom</b>.</p>
   </section>;
 };
