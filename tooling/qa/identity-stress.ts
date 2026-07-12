@@ -46,6 +46,18 @@ const main = async () => {
   if (Math.abs(scrollAfter - scrollBefore) > 2) throw new Error(`Variant paging moved the page by ${scrollAfter - scrollBefore}px`);
 
   await page.locator('.composition .artboard').first().click();
+  await page.locator('.layer-row').nth(1).locator('.layer-name').click();
+  const defaultFields = await page.locator('#inspector').evaluate((inspector) => Object.fromEntries(
+    ['x','y','width','height','fontSize','opacity'].map((property) => [property, (inspector.querySelector<HTMLInputElement>(`[data-prop="${property}"]`)?.value ?? '')]),
+  ));
+  if (Object.values(defaultFields).some((value) => value === '') || Number(defaultFields.width) <= 0 || Number(defaultFields.height) <= 0) {
+    throw new Error(`Layer defaults were not initialized: ${JSON.stringify(defaultFields)}`);
+  }
+  const selectedBefore = await page.locator('.editor-selected').boundingBox();
+  await page.locator('[data-prop="width"]').fill(String(Number(defaultFields.width) + 1));
+  const selectedAfter = await page.locator('.editor-selected').boundingBox();
+  if (!selectedBefore || !selectedAfter || selectedAfter.width < selectedBefore.width * .8) throw new Error('First size edit reset the layer geometry');
+
   const modalLayout = await page.evaluate(() => Object.fromEntries(
     ['#modal', '.modal-panel', '.panel-head', '.editor-scroll', '.modal-actions', '.export-actions', '.modal-nav', '#nextComposition']
       .map((selector) => [selector, document.querySelector<HTMLElement>(selector)?.getBoundingClientRect().toJSON()]),
@@ -54,6 +66,14 @@ const main = async () => {
     throw new Error(`Modal controls are outside viewport: ${JSON.stringify(modalLayout)}`);
   }
   for (let index = 0; index < 20; index += 1) await page.locator('#nextComposition').click();
+
+  const previewAt100 = await page.locator('#modalArtboard').boundingBox();
+  await page.locator('#studioScale').fill('60');
+  await page.waitForTimeout(250);
+  const previewAt60 = await page.locator('#modalArtboard').boundingBox();
+  if (!previewAt100 || !previewAt60 || previewAt60.width >= previewAt100.width * .8) throw new Error(`Studio scale does not control the preview: ${JSON.stringify({previewAt100,previewAt60,value:await page.locator('#studioScale').inputValue()})}`);
+  if (await page.locator('#modalArtboard').evaluate((element) => (element as HTMLElement).offsetWidth) !== 1080) throw new Error('Studio scale changed canonical artboard geometry');
+  await page.locator('#studioScale').fill('100');
 
   for (const zoom of [.75, 1, 1.25, 1.5, 2]) {
     await page.evaluate((value) => {
@@ -65,18 +85,16 @@ const main = async () => {
       const stage = document.querySelector<HTMLElement>('.modal-stage')!.getBoundingClientRect();
       const shell = document.querySelector<HTMLElement>('#modalArtboard')!.getBoundingClientRect();
       const board = document.querySelector<HTMLElement>('#modalArtboard .artboard')!.getBoundingClientRect();
-      return {stage, shell, board};
+      return {stage, shell, board, canonicalWidth:document.querySelector<HTMLElement>('#modalArtboard')!.offsetWidth};
     });
-    if (state.shell.width <= 0 || state.shell.height <= 0 || state.shell.width > state.stage.width + 2 || state.shell.height > state.stage.height + 2) {
-      throw new Error(`Modal escaped its stage at zoom ${zoom}: ${JSON.stringify(state)}`);
-    }
+    if (state.canonicalWidth !== 1080) throw new Error(`Browser zoom changed canonical geometry at ${zoom}: ${JSON.stringify(state)}`);
     if (Math.abs(state.board.width / state.board.height - .8) > .02) throw new Error(`Modal ratio broke at zoom ${zoom}`);
   }
 
   await page.evaluate(() => { document.documentElement.style.zoom = ''; });
   for (const viewport of [{width: 1024, height: 768}, {width: 800, height: 900}, {width: 390, height: 844}]) {
     await page.setViewportSize(viewport);
-    await page.waitForTimeout(50);
+    await page.waitForTimeout(250);
     const layout = await page.evaluate(() => {
       const stage = document.querySelector<HTMLElement>('.modal-stage')!.getBoundingClientRect();
       const shell = document.querySelector<HTMLElement>('#modalArtboard')!.getBoundingClientRect();

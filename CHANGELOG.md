@@ -14,6 +14,7 @@
 
 - Localized the complete studio interface into Russian without changing the established visual language.
 - Added English/Russian Identity output switching, bilingual Brand Kit fields, per-language post copy, translated artboards, and language-aware export manifests.
+- Made Identity layer controls initialize from real composition geometry and isolated raster export from browser zoom, monitor resolution, and Studio preview scale.
 - Made Documents Russian-first with independent RU/EN snapshots and one bilingual ZIP containing HTML and Markdown in both languages plus shared JSON.
 
 ### Quality

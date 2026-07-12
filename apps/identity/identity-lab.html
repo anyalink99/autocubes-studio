@@ -103,6 +103,12 @@
     .format-preset { height: 32px; display: flex; align-items: center; gap: 7px; padding: 0 10px; border: 1px solid #34352f; border-radius: 4px; color: #aaa9a3; background: #181816; font-size: 10px; cursor: pointer; }
     .format-preset:hover { color: #fff; border-color: #5b5c55; }
     .format-preset.active { color: #fff; border-color: #74503d; background: #2a211c; box-shadow: inset 0 0 0 1px rgba(255,90,47,.15); }
+    .identity-scale { height:32px; display:flex; align-items:center; gap:7px; padding:0 9px; border:1px solid #34352f; border-radius:4px; color:#8d8f87; background:#151613; }
+    .identity-scale>span { font-size:8px; font-weight:700; letter-spacing:.08em; text-transform:uppercase; }
+    .identity-scale input { width:96px; accent-color:var(--orange); cursor:pointer; }
+    .identity-scale output { min-width:31px; color:#ddd; font:8px Consolas,monospace; text-align:right; }
+    .identity-scale button { width:20px; height:22px; display:grid; place-items:center; padding:0; border:0; border-radius:3px; color:#aaa; background:#242521; cursor:pointer; }
+    .identity-scale button:hover { color:#fff; background:#30312c; }
     .output-language { display:flex; gap:2px; padding:2px; border:1px solid #3a3b36; border-radius:4px; background:#111210; }
     .output-language button { height:25px; padding:0 7px; border:0; border-radius:3px; color:#777970; background:transparent; font-size:8px; cursor:pointer; }
     .output-language button.active { color:#150c08; background:var(--orange); font-weight:700; }
@@ -132,7 +138,8 @@
     .intro-copy b { color: #f4f4ef; font-weight: 600; }
     .gallery {
       display: grid;
-      grid-template-columns: repeat(3, minmax(0, 1fr));
+      grid-template-columns: repeat(auto-fit, var(--identity-card-width, 420px));
+      justify-content: center;
       gap: 34px 18px;
       padding: 22px 22px 110px;
     }
@@ -406,7 +413,7 @@
     .modal { position: fixed; inset: 0; z-index: 50; display: none; grid-template-columns: minmax(0, 1fr) 390px; grid-template-rows: minmax(0, 1fr); background: rgba(5,5,5,.94); backdrop-filter: blur(12px); }
     .modal.open { display: grid; }
     .modal-stage { position: relative; display: grid; place-items: center; min-width: 0; min-height: 0; overflow: hidden; padding: 28px 68px; container-type: size; }
-    .modal-artboard { width: min(100cqw, calc(100cqh * var(--format-aspect))); max-width: 100%; max-height: 100%; aspect-ratio: var(--format-ratio); box-shadow: 0 30px 90px rgba(0,0,0,.7); }
+    .modal-artboard { position:absolute; left:50%; top:50%; width:var(--identity-canonical-width,1080px); aspect-ratio:var(--format-ratio); box-shadow:0 30px 90px rgba(0,0,0,.7); transform:translate(-50%,-50%) scale(var(--identity-preview-scale,1)); transition:transform .18s ease; }
     .modal-artboard .artboard { width: 100%; height: 100%; aspect-ratio: auto; cursor: default; }
     .artboard [data-edit-id].editor-hidden { display: none !important; }
     .modal-artboard.editing .artboard [data-edit-id] { cursor: pointer; }
@@ -472,9 +479,9 @@
     .export-actions button:disabled { opacity: .45; cursor: wait; }
     .toast { position: fixed; left: 50%; bottom: 18px; z-index: 100; min-width: 240px; padding: 11px 14px; border: 1px solid #4b4d46; border-radius: 5px; color: #efefe9; background: #20211e; box-shadow: 0 18px 60px rgba(0,0,0,.55); font-size: 11px; text-align: center; transform: translate(-50%, 90px); transition: transform .22s ease; }
     .toast.visible { transform: translate(-50%,0); }
-    @media (max-width: 1180px) { .gallery { grid-template-columns: repeat(2, minmax(0, 1fr)); } .lab-brand { min-width: 170px; } }
+    @media (max-width: 1180px) { .lab-brand { min-width: 170px; } }
     @media (max-width: 980px) { .modal { grid-template-columns: minmax(0,1fr) 340px; } .modal-stage { padding: 20px; } }
-    @media (max-width: 820px) { .lab-header { position: relative; height: auto; min-height: 64px; flex-wrap: wrap; padding: 10px 14px; } .lab-brand { min-width: 0; } .filters { order: 3; width: 100%; } .format-dock { top: 0; padding: 7px 14px; overflow-x: auto; } .format-dock-label, .export-size { display:none; } .format-preset span { display:none; } .intro { grid-template-columns: 1fr; padding: 38px 14px; } .gallery { grid-template-columns: repeat(2, minmax(0, 1fr)); padding: 16px 14px 100px; } .modal { grid-template-columns: 1fr; grid-template-rows: minmax(300px,48vh) minmax(0,1fr); } .modal-stage { padding: 12px; } .modal-panel { border-top: 1px solid var(--line); border-left: 0; } .editor-scroll { padding-bottom: 12px; } }
+    @media (max-width: 820px) { .lab-header { position: relative; height: auto; min-height: 64px; flex-wrap: wrap; padding: 10px 14px; } .lab-brand { min-width: 0; } .filters { order: 3; width: 100%; } .format-dock { top: 0; padding: 7px 14px; overflow-x: auto; } .format-dock-label, .export-size, .identity-scale>span { display:none; } .identity-scale input { width:70px; } .format-preset span { display:none; } .intro { grid-template-columns: 1fr; padding: 38px 14px; } .gallery { grid-template-columns: repeat(auto-fit,minmax(260px,1fr)); padding: 16px 14px 100px; } .modal { grid-template-columns: 1fr; grid-template-rows: minmax(300px,48vh) minmax(0,1fr); } .modal-stage { padding: 12px; } .modal-panel { border-top: 1px solid var(--line); border-left: 0; } .editor-scroll { padding-bottom: 12px; } }
     @media (max-width: 820px) { .carousel-builder { grid-template-columns:1fr; grid-template-rows:45vh minmax(0,1fr); } .carousel-preview { padding:10px; } .carousel-panel { border-top:1px solid var(--line); border-left:0; } }
     @media (max-width: 520px) { .gallery { grid-template-columns: 1fr; } .counter { display: none; } .intro h1 { letter-spacing: -2px; } .modal { grid-template-rows: 42vh minmax(0,1fr); } .modal-stage { align-items: center; padding: 8px; } .modal-panel { padding: 12px; } }
     @media (prefers-reduced-motion: reduce) { * { scroll-behavior: auto !important; transition: none !important; } }
@@ -497,6 +504,7 @@
     <button class="format-preset" data-format="story"><b>9:16</b><span>История / Reel</span></button>
     <button class="format-preset" data-format="landscape"><b>1.91:1</b><span>Горизонтальный</span></button>
     <details class="custom-format" id="customFormat"><summary>Свой</summary><div class="custom-popover"><label>Ширина<input id="customWidth" type="number" min="320" max="4096" value="1080"></label><span>×</span><label>Высота<input id="customHeight" type="number" min="320" max="4096" value="1350"></label><button id="applyCustom">Применить</button></div></details>
+    <div class="identity-scale" title="Меняет только размер предпросмотра. Экспорт остаётся неизменным"><span>Масштаб</span><button id="scaleDown" aria-label="Уменьшить предпросмотр">−</button><input id="studioScale" type="range" min="60" max="120" step="5" value="100"><output id="studioScaleValue">100%</output><button id="scaleUp" aria-label="Увеличить предпросмотр">+</button></div>
     <div class="dock-spacer"></div>
     <span class="export-size" id="exportSize">1080 × 1350 px</span>
     <div class="output-language"><button data-output-language="en" class="active">Результат EN</button><button data-output-language="ru">Результат RU</button></div>
@@ -621,6 +629,7 @@
     } catch {}
     let currentFormat = formats[localStorage.getItem('autocubes-identity-format')] || formats.portrait;
     let guidesVisible = localStorage.getItem('autocubes-identity-guides') !== 'false';
+    let studioScale = Math.max(60, Math.min(120, Number(localStorage.getItem('autocubes-identity-studio-scale')) || 100));
     let toastTimer = 0;
 
     function showToast(message) {
@@ -629,6 +638,25 @@
       toast.classList.add('visible');
       clearTimeout(toastTimer);
       toastTimer = setTimeout(() => toast.classList.remove('visible'), 2400);
+    }
+
+    function applyStudioScale(value, persist = true) {
+      studioScale = Math.max(60, Math.min(120, Math.round(Number(value) / 5) * 5));
+      document.documentElement.style.setProperty('--identity-card-width', `${Math.round(420 * studioScale / 100)}px`);
+      document.getElementById('studioScale').value = String(studioScale);
+      document.getElementById('studioScaleValue').textContent = `${studioScale}%`;
+      updateEditorPreviewScale();
+      if (persist) localStorage.setItem('autocubes-identity-studio-scale', String(studioScale));
+    }
+
+    function updateEditorPreviewScale() {
+      const stage = document.querySelector('.modal-stage');
+      const shell = document.getElementById('modalArtboard');
+      if (!stage || !shell) return;
+      const canonicalWidth = currentFormat.width;
+      const canonicalHeight = canonicalWidth * currentFormat.height / currentFormat.width;
+      const fit = Math.min(Math.max(0.1, (stage.clientWidth - 40) / canonicalWidth), Math.max(0.1, (stage.clientHeight - 40) / canonicalHeight), 1);
+      shell.style.setProperty('--identity-preview-scale', String(fit * studioScale / 100));
     }
 
     const cloneValue = value => value == null ? null : JSON.parse(JSON.stringify(value));
@@ -666,6 +694,7 @@
       const root = document.documentElement;
       root.style.setProperty('--format-ratio', currentFormat.ratio);
       root.style.setProperty('--format-aspect', String(currentFormat.width / currentFormat.height));
+      root.style.setProperty('--identity-canonical-width', `${currentFormat.width}px`);
       root.style.setProperty('--safe-top', `${currentFormat.safe.top}%`);
       root.style.setProperty('--safe-right', `${currentFormat.safe.right}%`);
       root.style.setProperty('--safe-bottom', `${currentFormat.safe.bottom}%`);
@@ -684,6 +713,7 @@
       const guideButton = document.getElementById('toggleGuides');
       guideButton.classList.toggle('active', guidesVisible);
       guideButton.textContent = guidesVisible ? 'Безопасные зоны: вкл' : 'Безопасные зоны';
+      updateEditorPreviewScale();
       if (persist) localStorage.setItem('autocubes-identity-format', currentFormat.id);
     }
 
@@ -787,8 +817,13 @@
 
     function applyNodeStyle(element, node = {}) {
       const style = node.style || {};
+      const defaults = node.defaults || {};
       const verticalScale = currentFormat.height / currentFormat.width;
-      element.style.translate = `${Number(style.x || 0)}cqw ${Number(style.y || 0) * verticalScale}cqw`;
+      const hasX = style.x !== '' && style.x != null;
+      const hasY = style.y !== '' && style.y != null;
+      const offsetX = hasX ? Number(style.x) - Number(defaults.x || 0) : 0;
+      const offsetY = hasY ? Number(style.y) - Number(defaults.y || 0) : 0;
+      element.style.translate = hasX || hasY ? `${offsetX}cqw ${offsetY * verticalScale}cqw` : '';
       element.style.width = style.width === '' || style.width == null ? '' : `${style.width}cqw`;
       element.style.height = style.height === '' || style.height == null ? '' : `${Number(style.height) * verticalScale}cqw`;
       element.style.padding = style.padding === '' || style.padding == null ? '' : `${style.padding}cqw`;
@@ -899,11 +934,44 @@
       return editorState.selected === 'canvas' ? currentBoard() : currentBoard()?.querySelector(`[data-edit-id="${editorState.selected}"]`);
     }
 
+    const rounded = (value, precision = 10) => Math.round(value * precision) / precision;
+    function measureNodeDefaults(element, node) {
+      if (!element || !node || node.defaults) return node;
+      const board = currentBoard();
+      const boardBounds = board.getBoundingClientRect();
+      const bounds = element.getBoundingClientRect();
+      const computed = getComputedStyle(element);
+      const fontSize = Number.parseFloat(computed.fontSize) || 0;
+      const currentX = rounded((bounds.left - boardBounds.left) / boardBounds.width * 100);
+      const currentY = rounded((bounds.top - boardBounds.top) / boardBounds.height * 100);
+      const legacyX = node.style?.x === '' || node.style?.x == null ? 0 : Number(node.style.x);
+      const legacyY = node.style?.y === '' || node.style?.y == null ? 0 : Number(node.style.y);
+      node.defaults = {
+        x: rounded(currentX - legacyX),
+        y: rounded(currentY - legacyY),
+        width: rounded(bounds.width / boardBounds.width * 100),
+        height: rounded(bounds.height / boardBounds.height * 100),
+        padding: rounded((Number.parseFloat(computed.paddingLeft) || 0) / boardBounds.width * 100),
+        fontSize: rounded(fontSize / boardBounds.width * 100),
+        rotation: 0,
+        letterSpacing: computed.letterSpacing === 'normal' ? 0 : rounded((Number.parseFloat(computed.letterSpacing) || 0) / Math.max(1, fontSize), 100),
+        lineHeight: computed.lineHeight === 'normal' ? 1.2 : rounded((Number.parseFloat(computed.lineHeight) || fontSize * 1.2) / Math.max(1, fontSize), 100),
+        zIndex: computed.zIndex === 'auto' ? 0 : Number(computed.zIndex) || 0,
+        opacity: Number(computed.opacity),
+        borderRadius: rounded((Number.parseFloat(computed.borderRadius) || 0) / boardBounds.width * 100),
+      };
+      // Старые x/y были дельтами. Один раз переводим их в понятные абсолютные
+      // координаты, не меняя фактическое положение элемента.
+      if (node.style?.x !== '' && node.style?.x != null) node.style.x = currentX;
+      if (node.style?.y !== '' && node.style?.y != null) node.style.y = currentY;
+      return node;
+    }
+
     function nodeRecord(key = editorState.selected) {
       const record = editRecord(currentId);
-      if (key.startsWith('a')) return record.added.find(item => item.id === key);
+      if (key.startsWith('a')) return measureNodeDefaults(currentBoard()?.querySelector(`[data-edit-id="${key}"]`), record.added.find(item => item.id === key));
       if (!record.nodes[key]) record.nodes[key] = {style:{}};
-      return record.nodes[key];
+      return measureNodeDefaults(currentBoard()?.querySelector(`[data-edit-id="${key}"]`), record.nodes[key]);
     }
 
     function selectEditorElement(key) {
@@ -963,17 +1031,19 @@
       } else {
         const node = nodeRecord();
         const style = node.style || (node.style = {});
+        const defaults = node.defaults || {};
+        const valueOf = property => style[property] ?? defaults[property] ?? '';
         const computed = getComputedStyle(element);
         const editableText = element.children.length === 0 && element.tagName !== 'IMG';
         document.getElementById('selectedType').textContent = layerLabel(element);
         inspector.innerHTML = `<div class="field-grid">
           ${editableText ? `<div class="editor-field wide"><label>Содержимое</label><textarea data-prop="text">${escapeHTML(element.textContent)}</textarea></div>` : ''}
-          ${numberField('Смещение X','x',style.x ?? 0)}${numberField('Смещение Y','y',style.y ?? 0)}
-          ${numberField('Ширина %','width',style.width)}${numberField('Высота %','height',style.height)}
-          ${numberField('Отступ %','padding',style.padding)}${numberField('Размер текста','fontSize',style.fontSize)}
-          ${numberField('Поворот °','rotation',style.rotation)}${numberField('Трекинг','letterSpacing',style.letterSpacing)}
-          ${numberField('Интерлиньяж','lineHeight',style.lineHeight,'min="0.5" max="3" step="0.05"')}${numberField('Слой','zIndex',style.zIndex)}
-          ${numberField('Прозрачность %','opacity',style.opacity == null ? 100 : Math.round(style.opacity * 100),'min="0" max="100"')}${numberField('Радиус %','borderRadius',style.borderRadius)}
+          ${numberField('Положение X %','x',valueOf('x'))}${numberField('Положение Y %','y',valueOf('y'))}
+          ${numberField('Ширина %','width',valueOf('width'))}${numberField('Высота %','height',valueOf('height'))}
+          ${numberField('Отступ %','padding',valueOf('padding'))}${numberField('Размер текста','fontSize',valueOf('fontSize'))}
+          ${numberField('Поворот °','rotation',valueOf('rotation'))}${numberField('Трекинг','letterSpacing',valueOf('letterSpacing'))}
+          ${numberField('Интерлиньяж','lineHeight',valueOf('lineHeight'),'min="0.5" max="3" step="0.05"')}${numberField('Слой','zIndex',valueOf('zIndex'))}
+          ${numberField('Прозрачность %','opacity',Math.round(Number(valueOf('opacity') || 1) * 100),'min="0" max="100"')}${numberField('Радиус %','borderRadius',valueOf('borderRadius'))}
           ${colorField('Текст', 'color', style.color || computed.color)}${colorField('Заливка','backgroundColor',style.backgroundColor || computed.backgroundColor)}
           <div class="editor-field"><label>Выравнивание</label><select data-prop="textAlign"><option value="">Авто</option><option value="left">Слева</option><option value="center">По центру</option><option value="right">Справа</option></select></div>
           ${element.tagName === 'IMG' ? '<div class="editor-field"><label>Вписывание</label><select data-prop="objectFit"><option value="">Авто</option><option value="cover">Заполнить</option><option value="contain">Вместить</option><option value="fill">Растянуть</option></select></div>' : ''}
@@ -1072,7 +1142,8 @@
         text:isText ? element.textContent : '',
         html:type === 'group' ? element.outerHTML.replace(/ data-(?:edit|added)-id="[^"]*"/g,'').replace(/ class="([^"]*)editor-selected([^"]*)"/,' class="$1$2"') : '',
         src:isImage ? element.src : '',
-        style:{...cloneValue(sourceNode.style || {}), x:Number(sourceNode.style?.x || 0)+2, y:Number(sourceNode.style?.y || 0)+2, width:sourceNode.style?.width ?? bounds.width / boardBounds.width * 100, height:sourceNode.style?.height ?? bounds.height / boardBounds.height * 100, zIndex:Number.isFinite(currentZ) ? currentZ + 1 : 13}
+        defaults:{x:10,y:10},
+        style:{...cloneValue(sourceNode.style || {}), x:Number(sourceNode.style?.x ?? sourceNode.defaults?.x ?? 0)+2, y:Number(sourceNode.style?.y ?? sourceNode.defaults?.y ?? 0)+2, width:sourceNode.style?.width ?? bounds.width / boardBounds.width * 100, height:sourceNode.style?.height ?? bounds.height / boardBounds.height * 100, zIndex:Number.isFinite(currentZ) ? currentZ + 1 : 13}
       };
       editRecord(currentId).added.push(item);
       currentBoard().appendChild(createAddedElement(item));
@@ -1093,8 +1164,9 @@
         event.preventDefault();
         selectEditorElement(target.dataset.editId);
         checkpoint();
-        const style = nodeRecord().style || {};
-        editorState.drag = {pointer:event.pointerId, startX:event.clientX, startY:event.clientY, x:Number(style.x || 0), y:Number(style.y || 0)};
+        const node = nodeRecord();
+        const style = node.style || {};
+        editorState.drag = {pointer:event.pointerId, startX:event.clientX, startY:event.clientY, x:Number(style.x ?? node.defaults?.x ?? 0), y:Number(style.y ?? node.defaults?.y ?? 0)};
         target.setPointerCapture(event.pointerId);
       });
       board.addEventListener('pointermove', event => {
@@ -1310,6 +1382,7 @@
       document.getElementById('modalTitle').textContent = ideaTitleRu[study.title] || study.title;
       document.getElementById('modal').classList.add('open');
       document.body.style.overflow = 'hidden';
+      requestAnimationFrame(updateEditorPreviewScale);
       updateModalPick();
       beginCanvasEditing();
       renderPostFields();
@@ -1388,6 +1461,36 @@
     document.getElementById('closeCarousel').onclick = () => document.getElementById('carouselBuilder').classList.remove('open');
     document.getElementById('reverseCarousel').onclick = () => setPickedOrder([...picked].reverse());
     document.getElementById('exportCarousel').onclick = () => {document.getElementById('carouselBuilder').classList.remove('open'); document.getElementById('exportPack').click();};
+
+    async function canonicalDataUrl(id, kind = 'png', format = currentFormat) {
+      const study = studies[id - 1];
+      if (!study) throw new Error(`Unknown composition ${id}`);
+      const previousFormat = currentFormat;
+      currentFormat = format;
+      const host = document.createElement('div');
+      const pageZoom = Number.parseFloat(getComputedStyle(document.documentElement).zoom) || 1;
+      host.setAttribute('aria-hidden', 'true');
+      host.style.cssText = `position:fixed;left:-20000px;top:0;width:${format.width}px;height:${format.height}px;overflow:hidden;pointer-events:none;contain:strict;zoom:${1 / pageZoom};`;
+      host.innerHTML = study.html;
+      document.documentElement.appendChild(host);
+      const board = host.querySelector('.artboard');
+      board.style.width = `${format.width}px`;
+      board.style.height = `${format.height}px`;
+      board.style.aspectRatio = 'auto';
+      board.classList.add('is-exporting');
+      applyStoredEdits(board, id);
+      try {
+        await document.fonts.ready;
+        await Promise.all([...board.querySelectorAll('img')].map((image) => image.decode?.().catch(() => undefined)));
+        await new Promise((resolve) => requestAnimationFrame(() => requestAnimationFrame(resolve)));
+        const options = {width:format.width, height:format.height, canvasWidth:format.width, canvasHeight:format.height, pixelRatio:1, cacheBust:true, backgroundColor:getComputedStyle(board).backgroundColor};
+        return kind === 'png' ? await toPng(board, options) : await toJpeg(board, {...options, quality:.94});
+      } finally {
+        host.remove();
+        currentFormat = previousFormat;
+      }
+    }
+
     document.getElementById('exportSelection').onclick = () => {
       const ids = [...picked];
       const blob = new Blob([JSON.stringify({project:'autocubes identity lab',outputLanguage:currentOutputLanguage,selected:ids.map(id=>({id:`AC-${String(id).padStart(3,'0')}`,family:studies[id-1].family,title:studies[id-1].title,edits:edits[id] || null}))},null,2)],{type:'application/json'});
@@ -1400,21 +1503,11 @@
       const button = event.currentTarget;
       button.disabled = true;
       const zip = new JSZip();
-      const host = document.createElement('div');
-      host.style.cssText = `position:fixed;left:-10000px;top:0;width:540px;aspect-ratio:${currentFormat.ratio};`;
-      document.body.appendChild(host);
       try {
-        await document.fonts.ready;
         for (let index = 0; index < ids.length; index++) {
           const id = ids[index];
-          const study = studies[id - 1];
-          host.innerHTML = study.html;
-          const board = host.querySelector('.artboard');
-          board.style.width = '100%'; board.style.height = '100%'; board.style.aspectRatio = 'auto';
-          board.classList.add('is-exporting');
-          applyStoredEdits(board, id);
           showToast(`Рендер ${index + 1} из ${ids.length}…`);
-          const dataUrl = await toPng(board, {canvasWidth:currentFormat.width, canvasHeight:currentFormat.height, pixelRatio:1, cacheBust:true, backgroundColor:getComputedStyle(board).backgroundColor});
+          const dataUrl = await canonicalDataUrl(id, 'png', currentFormat);
           zip.file(`AC-${String(id).padStart(3,'0')}-${currentFormat.id}.png`, dataUrl.split(',')[1], {base64:true});
         }
         zip.file('manifest.json', JSON.stringify({format:currentFormat, outputLanguage:currentOutputLanguage, compositions:ids.map(id => ({id, family:studies[id-1].family, title:studies[id-1].title, post:edits[id]?.post || null}))}, null, 2));
@@ -1427,25 +1520,15 @@
         console.error(error);
         showToast('Не удалось собрать PNG-пакет');
       } finally {
-        host.remove();
         button.disabled = false;
       }
     };
     async function exportComposition(kind) {
-      const board = currentBoard();
-      if (!board || !currentId) return;
+      if (!currentBoard() || !currentId) return;
       const buttons = [document.getElementById('exportPng'), document.getElementById('exportJpeg'), document.getElementById('exportAllSizes')];
       buttons.forEach(button => button.disabled = true);
-      const shell = document.getElementById('modalArtboard');
-      const hadGuides = board.classList.contains('show-guides');
-      shell.classList.remove('editing');
-      board.classList.remove('show-guides');
-      board.classList.add('is-exporting');
-      board.querySelectorAll('.editor-selected').forEach(element => element.classList.remove('editor-selected'));
       try {
-        await document.fonts.ready;
-        const options = {canvasWidth:currentFormat.width, canvasHeight:currentFormat.height, pixelRatio:1, cacheBust:true, backgroundColor:getComputedStyle(board).backgroundColor};
-        const dataUrl = kind === 'png' ? await toPng(board, options) : await toJpeg(board, {...options, quality:.94});
+        const dataUrl = await canonicalDataUrl(currentId, kind, currentFormat);
         const link = document.createElement('a');
         link.href = dataUrl;
         link.download = `autocubes-${String(currentId).padStart(3,'0')}-${currentFormat.id}.${kind === 'png' ? 'png' : 'jpg'}`;
@@ -1455,36 +1538,22 @@
         console.error(error);
         showToast('Экспорт не удался. Проверьте изображения и повторите попытку.');
       } finally {
-        shell.classList.add('editing');
-        board.classList.remove('is-exporting');
-        if (hadGuides) board.classList.add('show-guides');
-        selectEditorElement(editorState.selected);
         buttons.forEach(button => button.disabled = false);
       }
     }
     document.getElementById('exportPng').onclick = () => exportComposition('png');
     document.getElementById('exportJpeg').onclick = () => exportComposition('jpeg');
     document.getElementById('exportAllSizes').onclick = async event => {
-      const board = currentBoard();
-      if (!board || !currentId) return;
+      if (!currentBoard() || !currentId) return;
       const button = event.currentTarget;
-      const originalFormat = currentFormat.id;
-      const shell = document.getElementById('modalArtboard');
       button.disabled = true;
-      shell.classList.remove('editing');
-      board.classList.remove('show-guides');
       const zip = new JSZip();
       try {
-        await document.fonts.ready;
         for (const formatId of ['portrait','square','story','landscape']) {
-          applyFormat(formatId, false);
-          await new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve)));
-          const activeBoard = currentBoard();
-          activeBoard.classList.remove('show-guides');
-          activeBoard.classList.add('is-exporting');
-          const dataUrl = await toPng(activeBoard, {canvasWidth:currentFormat.width, canvasHeight:currentFormat.height, pixelRatio:1, cacheBust:true, backgroundColor:getComputedStyle(activeBoard).backgroundColor});
+          const format = formats[formatId];
+          const dataUrl = await canonicalDataUrl(currentId, 'png', format);
           zip.file(`AC-${String(currentId).padStart(3,'0')}-${formatId}.png`, dataUrl.split(',')[1], {base64:true});
-          showToast(`Рендер: ${currentFormat.label}…`);
+          showToast(`Рендер: ${format.label}…`);
         }
         zip.file('manifest.json', JSON.stringify({composition:currentId, outputLanguage:currentOutputLanguage, formats:['portrait','square','story','landscape'], post:edits[currentId]?.post || null}, null, 2));
         const blob = await zip.generateAsync({type:'blob', compression:'DEFLATE', compressionOptions:{level:6}});
@@ -1496,11 +1565,6 @@
         console.error(error);
         showToast('Не удалось экспортировать все форматы');
       } finally {
-        applyFormat(originalFormat, false);
-        currentBoard()?.classList.remove('is-exporting');
-        currentBoard()?.classList.toggle('show-guides', guidesVisible);
-        shell.classList.add('editing');
-        selectEditorElement(editorState.selected);
         button.disabled = false;
       }
     };
@@ -1514,6 +1578,10 @@
       showToast(currentOutputLanguage === 'ru' ? 'Результат переключён на русский' : 'Результат переключён на английский');
     }
     document.querySelectorAll('[data-output-language]').forEach(button => button.onclick = () => setOutputLanguage(button.dataset.outputLanguage));
+    document.getElementById('studioScale').oninput = event => applyStudioScale(event.target.value);
+    document.getElementById('scaleDown').onclick = () => applyStudioScale(studioScale - 5);
+    document.getElementById('scaleUp').onclick = () => applyStudioScale(studioScale + 5);
+    window.addEventListener('resize', updateEditorPreviewScale);
     document.querySelectorAll('[data-format]').forEach(button => button.onclick = () => {
       applyFormat(button.dataset.format);
       showToast(`${currentFormat.label} · ${currentFormat.width} × ${currentFormat.height}`);
@@ -1544,10 +1612,10 @@
         event.preventDefault();
         const node = nodeRecord();
         const distance = event.shiftKey ? 2 : .5;
-        if (event.key === 'ArrowLeft') node.style.x = Number(node.style.x || 0) - distance;
-        if (event.key === 'ArrowRight') node.style.x = Number(node.style.x || 0) + distance;
-        if (event.key === 'ArrowUp') node.style.y = Number(node.style.y || 0) - distance;
-        if (event.key === 'ArrowDown') node.style.y = Number(node.style.y || 0) + distance;
+        if (event.key === 'ArrowLeft') node.style.x = Number(node.style.x ?? node.defaults?.x ?? 0) - distance;
+        if (event.key === 'ArrowRight') node.style.x = Number(node.style.x ?? node.defaults?.x ?? 0) + distance;
+        if (event.key === 'ArrowUp') node.style.y = Number(node.style.y ?? node.defaults?.y ?? 0) - distance;
+        if (event.key === 'ArrowDown') node.style.y = Number(node.style.y ?? node.defaults?.y ?? 0) + distance;
         applyNodeStyle(currentElement(), node);
         saveEdits();
         renderInspector();
@@ -1556,6 +1624,7 @@
       if (!isField && ['Delete','Backspace'].includes(event.key) && editorState.selected !== 'canvas') removeLayer(editorState.selected);
       if (!isField && event.key.toLowerCase() === 'f') togglePick(currentId);
     });
+    applyStudioScale(studioScale, false);
     applyFormat(currentFormat.id, false);
     document.querySelectorAll('[data-output-language]').forEach(button => button.classList.toggle('active', button.dataset.outputLanguage === currentOutputLanguage));
     renderGallery();

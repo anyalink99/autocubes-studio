@@ -46,6 +46,17 @@ const main = async () => {
     if (exportSize < 10_000) throw new Error(`Identity export is unexpectedly small: ${exportSize} bytes`);
     const squarePng = await fs.readFile(exportPath);
     if (squarePng.readUInt32BE(16) !== 1080 || squarePng.readUInt32BE(20) !== 1080) throw new Error('Identity square export dimensions are incorrect');
+    await page.locator('#studioScale').fill('60');
+    await page.evaluate(() => {document.documentElement.style.zoom = '1.5';});
+    const zoomedDownloadPromise = page.waitForEvent('download');
+    await page.locator('#exportPng').click();
+    const zoomedDownload = await zoomedDownloadPromise;
+    const zoomedPath = path.resolve('out/qa/identity-square-zoomed.png');
+    await zoomedDownload.saveAs(zoomedPath);
+    const zoomedPng = await fs.readFile(zoomedPath);
+    if (!squarePng.equals(zoomedPng)) throw new Error('Identity export changed with Studio or browser scale');
+    await page.evaluate(() => {document.documentElement.style.zoom = '';});
+    await page.locator('#studioScale').fill('100');
     await page.screenshot({path: path.resolve('out/qa/identity-editor.png')});
 
     const formatsPromise = page.waitForEvent('download');
