@@ -145,6 +145,9 @@
     }
     .composition { min-width: 0; }
     .composition[hidden] { display: none; }
+    .artboard-preview { position:relative; width:100%; aspect-ratio:var(--format-ratio); overflow:hidden; background:#080808; }
+    .artboard-preview-canvas { position:absolute; left:0; top:0; width:var(--identity-canonical-width,1080px); height:var(--identity-canonical-height,1350px); transform-origin:top left; }
+    .artboard-preview-canvas>.artboard { width:100%; height:100%; aspect-ratio:auto; }
     .card-head { height: 34px; display: flex; align-items: center; gap: 7px; color: #85867f; font: 600 9px Arial, Helvetica, sans-serif; text-transform: uppercase; letter-spacing: 1px; }
     .card-head .family { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
     .card-head .spacer { flex: 1; }
@@ -646,6 +649,7 @@
       document.getElementById('studioScale').value = String(studioScale);
       document.getElementById('studioScaleValue').textContent = `${studioScale}%`;
       updateEditorPreviewScale();
+      requestAnimationFrame(updateGridPreviewScales);
       if (persist) localStorage.setItem('autocubes-identity-studio-scale', String(studioScale));
     }
 
@@ -657,6 +661,16 @@
       const canonicalHeight = canonicalWidth * currentFormat.height / currentFormat.width;
       const fit = Math.min(Math.max(0.1, (stage.clientWidth - 40) / canonicalWidth), Math.max(0.1, (stage.clientHeight - 40) / canonicalHeight), 1);
       shell.style.setProperty('--identity-preview-scale', String(fit * studioScale / 100));
+    }
+
+    function updateGridPreviewScales() {
+      document.querySelectorAll('.artboard-preview').forEach((preview) => {
+        const canvas = preview.querySelector('.artboard-preview-canvas');
+        if (!canvas) return;
+        canvas.style.width = `${currentFormat.width}px`;
+        canvas.style.height = `${currentFormat.height}px`;
+        canvas.style.transform = `scale(${preview.clientWidth / currentFormat.width})`;
+      });
     }
 
     const cloneValue = value => value == null ? null : JSON.parse(JSON.stringify(value));
@@ -695,6 +709,7 @@
       root.style.setProperty('--format-ratio', currentFormat.ratio);
       root.style.setProperty('--format-aspect', String(currentFormat.width / currentFormat.height));
       root.style.setProperty('--identity-canonical-width', `${currentFormat.width}px`);
+      root.style.setProperty('--identity-canonical-height', `${currentFormat.height}px`);
       root.style.setProperty('--safe-top', `${currentFormat.safe.top}%`);
       root.style.setProperty('--safe-right', `${currentFormat.safe.right}%`);
       root.style.setProperty('--safe-bottom', `${currentFormat.safe.bottom}%`);
@@ -706,6 +721,7 @@
       document.getElementById('customFormat').classList.toggle('active', currentFormat.id === 'custom');
       document.querySelectorAll('.artboard').forEach(board => board.classList.toggle('show-guides', guidesVisible));
       document.querySelectorAll('.composition .artboard').forEach(board => applyStoredEdits(board, Number(board.closest('.composition')?.dataset.id)));
+      updateGridPreviewScales();
       if (currentId && currentBoard()) {
         applyStoredEdits(currentBoard(), currentId);
         if (document.getElementById('modal').classList.contains('open')) selectEditorElement(editorState.selected);
@@ -1227,7 +1243,7 @@
     function cardMarkup(group) {
       const study = activeStudy(group);
       const variant = (positions[group.template] || 0) + 1;
-      return `<article class="composition ${picked.has(study.id) ? 'picked' : ''}" data-id="${study.id}" data-template="${group.template}" data-family="${group.family}"><div class="card-head"><span>Идея ${String(group.template + 1).padStart(2,'0')}</span><span class="family">${familyLabels[group.family] || group.family} / ${ideaTitleRu[group.title] || group.title}</span><span class="spacer"></span><button class="mutate-button" title="Создать другую контролируемую вариацию">Вариант</button><div class="variant-nav"><button data-delta="-1" title="Предыдущий вариант">&#8592;</button><span>${String(variant).padStart(2,'0')} / ${String(group.studies.length).padStart(2,'0')}</span><button data-delta="1" title="Следующий вариант">&#8594;</button></div><button class="pick-button" title="Добавить в выбранное" aria-label="Добавить в выбранное">&#10003;</button></div>${study.html}</article>`;
+      return `<article class="composition ${picked.has(study.id) ? 'picked' : ''}" data-id="${study.id}" data-template="${group.template}" data-family="${group.family}"><div class="card-head"><span>Идея ${String(group.template + 1).padStart(2,'0')}</span><span class="family">${familyLabels[group.family] || group.family} / ${ideaTitleRu[group.title] || group.title}</span><span class="spacer"></span><button class="mutate-button" title="Создать другую контролируемую вариацию">Вариант</button><div class="variant-nav"><button data-delta="-1" title="Предыдущий вариант">&#8592;</button><span>${String(variant).padStart(2,'0')} / ${String(group.studies.length).padStart(2,'0')}</span><button data-delta="1" title="Следующий вариант">&#8594;</button></div><button class="pick-button" title="Добавить в выбранное" aria-label="Добавить в выбранное">&#10003;</button></div><div class="artboard-preview"><div class="artboard-preview-canvas">${study.html}</div></div></article>`;
     }
 
     function hydrateCard(card) {
@@ -1248,12 +1264,14 @@
       const next = holder.firstElementChild;
       previous.replaceWith(next);
       hydrateCard(next);
+      updateGridPreviewScales();
       applyFilters();
     }
 
     function renderGallery(order = groupOrder) {
       gallery.innerHTML = order.map(cardMarkup).join('');
       gallery.querySelectorAll('.composition').forEach(hydrateCard);
+      updateGridPreviewScales();
       applyFilters();
     }
 
@@ -1581,7 +1599,7 @@
     document.getElementById('studioScale').oninput = event => applyStudioScale(event.target.value);
     document.getElementById('scaleDown').onclick = () => applyStudioScale(studioScale - 5);
     document.getElementById('scaleUp').onclick = () => applyStudioScale(studioScale + 5);
-    window.addEventListener('resize', updateEditorPreviewScale);
+    window.addEventListener('resize', () => {updateEditorPreviewScale(); updateGridPreviewScales();});
     document.querySelectorAll('[data-format]').forEach(button => button.onclick = () => {
       applyFormat(button.dataset.format);
       showToast(`${currentFormat.label} · ${currentFormat.width} × ${currentFormat.height}`);

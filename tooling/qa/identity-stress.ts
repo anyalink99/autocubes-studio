@@ -38,6 +38,24 @@ const main = async () => {
   if (galleryState.cards !== 60 || galleryState.visible !== 60) throw new Error(`Gallery lost cards: ${JSON.stringify(galleryState)}`);
   if (galleryState.boards.some(({width, height}) => width < 100 || height < 100 || Math.abs(width / height - .8) > .02)) throw new Error('Gallery artboard geometry is unstable');
 
+  const readProcessGeometry = async (selector: string) => page.locator(selector).evaluate((board) => {
+    const boardBounds = board.getBoundingClientRect();
+    return Object.fromEntries(['h2','.steps','.step:first-child'].map((item) => {
+      const element = board.querySelector<HTMLElement>(item)!;
+      const bounds = element.getBoundingClientRect();
+      const computed = getComputedStyle(element);
+      return [item,{left:(bounds.left-boardBounds.left)/boardBounds.width,top:(bounds.top-boardBounds.top)/boardBounds.height,width:bounds.width/boardBounds.width,height:bounds.height/boardBounds.height,fontSize:Number.parseFloat(computed.fontSize)/(board as HTMLElement).clientWidth,border:Number.parseFloat(computed.borderBottomWidth)/(board as HTMLElement).clientWidth}];
+    }));
+  });
+  const galleryProcess = await readProcessGeometry('.composition[data-template="5"] .artboard');
+  await page.locator('.composition[data-template="5"] .artboard').click();
+  await page.waitForTimeout(250);
+  const editorProcess = await readProcessGeometry('#modalArtboard .artboard');
+  for (const key of Object.keys(galleryProcess)) for (const metric of Object.keys(galleryProcess[key])) {
+    if (Math.abs(galleryProcess[key][metric]-editorProcess[key][metric])>.002) throw new Error(`Process layout mismatch at ${key}.${metric}: ${galleryProcess[key][metric]} vs ${editorProcess[key][metric]}`);
+  }
+  await page.locator('#closeModal').click();
+
   const targetCard = page.locator('.composition').nth(24);
   await targetCard.scrollIntoViewIfNeeded();
   const scrollBefore = await page.evaluate(() => window.scrollY);
