@@ -96,10 +96,10 @@ const main=async()=>{
     await page.screenshot({path:path.resolve('out/qa/documents-blocks.png')});
 
     await page.goto(baseUrl,{waitUntil:'networkidle'});
-    if(await page.locator('.production-flow a').count()!==3)throw new Error('Studio production flow is missing');
-    if(!await page.locator('#project-hub').isVisible())throw new Error('Studio Project Hub is missing');
+    if(!await page.locator('.ops-shell').isVisible())throw new Error('Operations Desk root is missing');
+    if(await page.locator('.ops-sidebar nav button').count()!==5)throw new Error('Operations Desk navigation is incomplete');
     if(errors.length)throw new Error(`Browser errors:\n${errors.join('\n')}`);
-    console.log('Studio workflows passed · Motion Page Map/Timeline · Identity Brand Kit/Carousel · Documents blocks · Project Hub');
+    console.log('Studio workflows passed · Motion Page Map/Timeline · Identity Brand Kit/Carousel · Documents blocks · Operations Desk');
   }finally{await browser.close();await server.close();await fs.rm(path.resolve('public/editor-frames/qa-analysis'),{recursive:true,force:true});}
 };
 

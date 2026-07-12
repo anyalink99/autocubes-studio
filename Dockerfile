@@ -6,7 +6,7 @@ RUN npm ci
 COPY . .
 
 FROM source AS verify
-RUN npm run typecheck && npm run qa:sync
+RUN npm run typecheck && npm run qa:sync && npm run qa:workflows
 
 FROM source AS build
 RUN npm run build
