@@ -9,6 +9,8 @@ npm install
 npm run dev
 ```
 
+On Windows, double-click `start-studio.bat`. It checks Node.js, dependencies, and the Playwright browser before starting the workspace. An alternative port can be passed as the first argument: `start-studio.bat 4190`.
+
 The studio opens at `http://127.0.0.1:4178/`.
 
 ## Applications
