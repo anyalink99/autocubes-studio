@@ -10,11 +10,10 @@ const main=async()=>{
   const previewMode=process.env.STUDIO_QA_PREVIEW==='1';
   const server=previewMode
     ? await preview({configFile:path.resolve('vite.config.ts'),preview:{host:'127.0.0.1',port,strictPort:true,open:false}})
-    : await createServer({configFile:path.resolve('vite.config.ts'),server:{host:'127.0.0.1',port,strictPort:true,open:false}});
+    : await (async()=>{const development=await createServer({configFile:path.resolve('vite.config.ts'),server:{host:'127.0.0.1',port,strictPort:true,open:false}});await development.listen();return development;})();
   const browser=await chromium.launch({headless:true});
   const errors:string[]=[];
   try{
-    if(!previewMode)await server.listen();
     const page=await browser.newPage({viewport:{width:1440,height:1000}});
     await page.addInitScript(()=>sessionStorage.setItem('autocubes-sync-disabled','true'));
     page.on('pageerror',(error)=>errors.push(error.message));
