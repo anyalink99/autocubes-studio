@@ -23,7 +23,7 @@ const main = async () => {
   await page.reload({waitUntil: 'networkidle'});
 
   for (let index = 0; index < 30; index += 1) {
-    await page.locator('.composition').first().locator('[data-delta="1"]').click();
+    await page.locator('.composition[data-template="0"]').locator('[data-delta="1"]').click();
   }
 
   const galleryState = await page.evaluate(() => ({
@@ -35,8 +35,46 @@ const main = async () => {
     }),
     overflow: document.documentElement.scrollWidth - window.innerWidth,
   }));
-  if (galleryState.cards !== 60 || galleryState.visible !== 60) throw new Error(`Gallery lost cards: ${JSON.stringify(galleryState)}`);
+  if (galleryState.cards !== 64 || galleryState.visible !== 64) throw new Error(`Gallery lost cards: ${JSON.stringify(galleryState)}`);
   if (galleryState.boards.some(({width, height}) => width < 100 || height < 100 || Math.abs(width / height - .8) > .02)) throw new Error('Gallery artboard geometry is unstable');
+
+  const identityTypography = await page.evaluate(() => ({
+    foreignFonts:[...new Set([...document.querySelectorAll<HTMLElement>('.composition .artboard, .composition .artboard *')]
+      .map((element) => getComputedStyle(element).fontFamily)
+      .filter((family) => !family.toLowerCase().startsWith('inter'))) ],
+    idea61Text:document.querySelector<HTMLElement>('.composition[data-template="60"] .brief-main')?.innerText.replace(/\s+/g, ' ').trim(),
+  }));
+  if (identityTypography.foreignFonts.length) throw new Error(`Identity typography drifted from Inter: ${identityTypography.foreignFonts.join(', ')}`);
+  if (identityTypography.idea61Text !== 'We create brand identities, websites, applications, motion, and digital systems. One team takes the work from the first idea to launch.') {
+    throw new Error(`Idea 61 copy drifted: ${identityTypography.idea61Text}`);
+  }
+
+  const controlsCard = page.locator('.composition[data-template="60"] .artboard');
+  await controlsCard.click();
+  const logoToggle = page.locator('[data-prop="logoVisible"]');
+  if (!(await logoToggle.isChecked())) throw new Error('Logo visibility control did not default to visible');
+  await logoToggle.uncheck();
+  const headingId = await page.locator('#modalArtboard .brief-main').getAttribute('data-edit-id');
+  if (!headingId) throw new Error('Idea 61 heading did not receive an editable layer id');
+  await page.locator(`.layer-row[data-layer="${headingId}"] .layer-name`).click();
+  const weightControl = page.locator('[data-prop="fontWeight"]');
+  await weightControl.selectOption('900');
+  const changedControls = await page.locator('#modalArtboard .artboard').evaluate((board) => ({
+    logosHidden:board.classList.contains('logos-hidden'),
+    logoDisplay:getComputedStyle(board.querySelector<HTMLElement>('.brief-mark')!).display,
+    headingWeight:getComputedStyle(board.querySelector<HTMLElement>('.brief-main')!).fontWeight,
+  }));
+  if (!changedControls.logosHidden || changedControls.logoDisplay !== 'none') throw new Error(`Logo visibility did not apply: ${JSON.stringify(changedControls)}`);
+  if (changedControls.headingWeight !== '900') throw new Error(`Text weight did not apply: ${JSON.stringify(changedControls)}`);
+  await page.locator('#closeModal').click();
+  await controlsCard.click();
+  const persistedControls = await page.locator('#modalArtboard .artboard').evaluate((board) => ({
+    logosHidden:board.classList.contains('logos-hidden'),
+    headingWeight:getComputedStyle(board.querySelector<HTMLElement>('.brief-main')!).fontWeight,
+  }));
+  if (!persistedControls.logosHidden || persistedControls.headingWeight !== '900') throw new Error(`Identity controls did not persist: ${JSON.stringify(persistedControls)}`);
+  await page.locator('#resetComposition').click();
+  await page.locator('#closeModal').click();
 
   const readProcessGeometry = async (selector: string) => page.locator(selector).evaluate((board) => {
     const boardBounds = board.getBoundingClientRect();
@@ -63,11 +101,11 @@ const main = async () => {
   const scrollAfter = await page.evaluate(() => window.scrollY);
   if (Math.abs(scrollAfter - scrollBefore) > 2) throw new Error(`Variant paging moved the page by ${scrollAfter - scrollBefore}px`);
 
-  const galleryTypography = await page.locator('.composition .artboard').first().evaluate((board) => {
+  const galleryTypography = await page.locator('.composition[data-template="0"] .artboard').evaluate((board) => {
     const element = board.querySelector<HTMLElement>('.brand-lockup > span')!;
     return Number.parseFloat(getComputedStyle(element).fontSize) / (board as HTMLElement).clientWidth;
   });
-  await page.locator('.composition .artboard').first().click();
+  await page.locator('.composition[data-template="0"] .artboard').click();
   await page.waitForTimeout(250);
   const editorTypography = await page.locator('#modalArtboard .artboard').evaluate((board) => {
     const element = board.querySelector<HTMLElement>('.brand-lockup > span')!;
