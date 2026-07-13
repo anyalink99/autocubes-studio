@@ -8,6 +8,7 @@ import {capturesDirectory, editorFramesDirectory, workspacePath} from './paths';
 import {createProject, deleteProject, listProjects, saveProject} from './project-repository';
 import {launchStudioBrowser} from './browser';
 import {assertSyncChannel, readSyncRecord, updateSyncRecord} from './sync-store';
+import {AssistantApiError, AssistantRequest, createAssistantResponse} from './assistant-api';
 
 const readBuffer = async (request: NodeJS.ReadableStream, maxBytes = 5 * 1024 * 1024) => {
   const chunks: Buffer[] = [];
@@ -100,14 +101,45 @@ const analyzePage = async (project: EditorProject): Promise<CaptureAnalysis> => 
 };
 
 type MiddlewareHost = {middlewares: ViteDevServer['middlewares']};
+type StudioApiOptions = {env?: Record<string, string | undefined>};
 
-const attachStudioApi = (server: MiddlewareHost) => {
+const bearerToken = (authorization: string | undefined) => {
+  const match = authorization?.match(/^Bearer\s+(.+)$/i);
+  return match?.[1];
+};
+
+const attachStudioApi = (server: MiddlewareHost, env: Record<string, string | undefined>) => {
   server.middlewares.use(async (request, response, next) => {
       if (!request.url?.startsWith('/api/')) return next();
       try {
         const url = new URL(request.url, 'http://localhost');
+        if (url.pathname === '/api/assistant' && request.method !== 'POST') {
+          return reply(response, 405, {error: 'Use POST'});
+        }
+        if (url.pathname === '/api/assistant') {
+          const accessToken = env.ASSISTANT_API_TOKEN;
+          if (!accessToken) return reply(response, 503, {error: 'ASSISTANT_API_TOKEN is not configured'});
+          if (bearerToken(request.headers.authorization) !== accessToken) return reply(response, 401, {error: 'A valid Bearer token is required'});
+          try {
+            let body: AssistantRequest;
+            try {
+              body = await readBody<AssistantRequest>(request);
+            } catch {
+              return reply(response, 400, {error: 'Request body must be valid JSON'});
+            }
+            const result = await createAssistantResponse(body, {
+              apiKey: env.OPENAI_API_KEY,
+              model: env.OPENAI_MODEL,
+              instructions: env.OPENAI_ASSISTANT_INSTRUCTIONS,
+            });
+            return reply(response, 200, result);
+          } catch (error) {
+            if (error instanceof AssistantApiError) return reply(response, error.statusCode, {error: error.message});
+            throw error;
+          }
+        }
         if (url.pathname.startsWith('/api/sync/')) {
-          const configuredToken = process.env.STUDIO_SYNC_TOKEN;
+          const configuredToken = env.STUDIO_SYNC_TOKEN;
           if (configuredToken && request.headers['x-studio-sync-token'] !== configuredToken) return reply(response, 401, {error: 'Sync token is required'});
           const channel = assertSyncChannel(url.pathname.split('/').pop() ?? '');
           if (request.method === 'GET') {
@@ -232,8 +264,8 @@ const attachStudioApi = (server: MiddlewareHost) => {
   });
 };
 
-export const studioApi = (): Plugin => ({
+export const studioApi = ({env = process.env}: StudioApiOptions = {}): Plugin => ({
   name: 'autocubes-studio-api',
-  configureServer: attachStudioApi,
-  configurePreviewServer: attachStudioApi,
+  configureServer: (server) => attachStudioApi(server, env),
+  configurePreviewServer: (server) => attachStudioApi(server, env),
 });

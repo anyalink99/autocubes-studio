@@ -82,6 +82,29 @@ Operations and Documents are offline-capable but synchronize through the same-or
 
 Audio imported from Motion Desk is stored in the ignored `public/assets/music/imported/` directory. Move approved reusable tracks into `public/assets/music/` before committing them as shared studio assets.
 
+## Assistant API
+
+Studio exposes a server-side OpenAI Responses API proxy at `POST /api/assistant`. Copy `.env.example` to `.env`, set `OPENAI_API_KEY` and a long random `ASSISTANT_API_TOKEN`, then restart Studio. The OpenAI key stays on the server and must never use a `VITE_` prefix.
+
+```bash
+curl http://127.0.0.1:4178/api/assistant \
+  -H "Authorization: Bearer $ASSISTANT_API_TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{"prompt":"Explain the project in three sentences."}'
+```
+
+The response contains `answer`, `responseId`, `model`, and token `usage`. Pass `responseId` back as `previousResponseId` to continue the same conversation:
+
+```json
+{
+  "prompt": "Now make it suitable for a client presentation.",
+  "previousResponseId": "resp_...",
+  "maxOutputTokens": 1200
+}
+```
+
+`OPENAI_MODEL` defaults to `gpt-5.6`; override it in `.env` when a different cost/latency profile is preferable. This endpoint uses the standard OpenAI API and does not run Codex or expose local Codex tasks.
+
 ## Social production workflow
 
 Identity Lab and Motion Desk share Instagram-oriented output presets: Reel/Story `9:16`, feed portrait `4:5`, square `1:1`, and landscape `1.91:1`.

@@ -4,6 +4,7 @@
   "private": true,
   "scripts": {
     "runtime:ensure": "tsx tooling/scripts/ensure-runtime-data.ts",
+    "assistant:chat": "powershell -NoProfile -ExecutionPolicy Bypass -File tooling/scripts/chat.ps1",
     "predev": "npm run runtime:ensure",
     "prestudio": "npm run runtime:ensure",
     "preeditor": "npm run runtime:ensure",
@@ -33,8 +34,9 @@
     "qa:workflows": "tsx tooling/qa/studio-workflows.ts",
     "qa:operations": "tsx tooling/qa/operations-smoke.ts",
     "qa:sync": "tsx tooling/qa/sync-smoke.ts",
+    "qa:assistant": "tsx tooling/qa/assistant-api.ts",
     "video:check": "remotion compositions packages/video/index.ts",
-    "check": "npm run typecheck && npm run build && npm run qa:smoke && npm run qa:identity && npm run qa:workflows && npm run qa:operations && npm run video:check"
+    "check": "npm run typecheck && npm run build && npm run qa:assistant && npm run qa:smoke && npm run qa:identity && npm run qa:workflows && npm run qa:operations && npm run video:check"
   },
   "dependencies": {
     "@remotion/cli": "4.0.486",
@@ -42,6 +44,7 @@
     "html-to-image": "^1.11.13",
     "jszip": "^3.10.1",
     "lucide-react": "^0.468.0",
+    "openai": "^6.46.0",
     "playwright": "^1.61.1",
     "react": "18.3.1",
     "react-dom": "18.3.1",
