@@ -5,7 +5,7 @@ import {findMediaPreset, formatRatio, mediaPresets} from '../../packages/core/me
 import {PagePositionControl} from './PagePositionControl';
 import {EasingControl} from './EasingControl';
 import {CaptureTarget} from '../../packages/core/editor-project';
-import {clamp} from '../../packages/core/editor-operations';
+import {captureTargetAction, clamp} from '../../packages/core/editor-operations';
 
 type Props = {
   project: EditorProject;
@@ -161,7 +161,8 @@ export const Inspector = ({project, selection, assets, capturingFrame, onChangeP
               <NumberField label="Y" value={pointerItem.y} min={0} max={project.viewport.height} step={1} onChange={(y) => patch({y})} />
             </div>
             <TextField label="Цель на странице" value={pointerItem.selector ?? ''} placeholder="CSS-селектор найденной кнопки или ссылки" onChange={(selector) => patch({selector})} />
-            {project.captureAnalysis?.targets.length?<TargetPicker targets={project.captureAnalysis.targets} onPick={(target)=>{const frame=[...project.frames].sort((a,b)=>a.at-b.at).reduce((active,item)=>pointerItem.at>=item.at?item:active,project.frames[0]);patch({selector:target.selector,targetLabel:target.label,x:clamp(target.x,20,project.viewport.width-20),y:clamp(target.pageY-(frame?.scrollY??0),20,project.viewport.height-20)});}}/>:null}
+            {project.captureAnalysis?.targets.length?<TargetPicker targets={project.captureAnalysis.targets} onPick={(target)=>{const frame=[...project.frames].sort((a,b)=>a.at-b.at).reduce((active,item)=>pointerItem.at>=item.at?item:active,project.frames[0]);patch({selector:target.selector,targetLabel:target.label,targetRole:target.role,kind:captureTargetAction(target),x:clamp(target.x,20,project.viewport.width-20),y:clamp(target.pageY-(frame?.scrollY??0),20,project.viewport.height-20),resultThumbnail:undefined,interactionChanged:undefined});}}/>:null}
+            {pointerItem.resultThumbnail?<div className={`interaction-result ${pointerItem.interactionChanged?'changed':'delivered'}`}><img src={pointerItem.resultThumbnail} alt="Состояние страницы после действия"/><span><b>{pointerItem.interactionChanged?'Страница отреагировала':'Событие выполнено'}</b><small>{pointerItem.interactionChanged?'После действия сохранено изменённое состояние DOM.':'Наведение или клик доставлены, заметного изменения DOM нет.'}</small></span></div>:<p className="interaction-pending">Реакция страницы будет проверена во время следующей записи.</p>}
             <SelectField label="Эффект клика" value={pointerItem.clickEffect ?? 'ring'} options={['ring','pulse','none']} onChange={(clickEffect)=>patch({clickEffect})}/>
             <label className="toggle-field"><input type="checkbox" checked={pointerItem.visible} onChange={(event) => patch({visible: event.target.checked})} /><span>Показывать курсор</span></label>
             <div className="pick-hint"><MousePointer2 size={15} /> Нажмите на превью, чтобы изменить точку действия</div>

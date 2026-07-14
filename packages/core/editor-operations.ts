@@ -155,12 +155,34 @@ export const arrangeFrames = (project: EditorProject, pace: keyof typeof paceMap
 
 export type CaptureDirectionReport={score:number;duration:number;sceneCount:number;actionCount:number;warnings:string[]};
 
+export const captureTargetAction=(target:CaptureTarget):'click'|'hover'=>/watch\s*demo|play\s*video|open\s*video/i.test(target.label)?'hover':target.action??(target.role==='a'?'hover':/button|tab|switch|checkbox|option|summary|div/i.test(target.role)?'click':'hover');
+
+export const recommendedCaptureTargets=(sections:CaptureSection[],targets:CaptureTarget[],viewportHeight:number,limit=6)=>{
+  const ordered=[...sections].sort((a,b)=>a.scrollY-b.scrollY);
+  const ignored=/social|brand link|subscribe|contact us|enter email|^a$|^div$/i;
+  const candidates=targets.filter((target)=>!ignored.test(target.label));
+  const selected:CaptureTarget[]=[];
+  const labels=new Set<string>();
+  for(const section of ordered){
+    const visible=candidates.filter((target)=>target.pageY>=section.scrollY+20&&target.pageY<=section.scrollY+viewportHeight-20&&!labels.has(target.label.toLowerCase()));
+    const best=visible.sort((a,b)=>{
+      const score=(target:CaptureTarget)=>Math.abs(target.pageY-(section.scrollY+viewportHeight*.52))-(captureTargetAction(target)==='click'?220:0)-(target.role==='button'?120:0)-(/next|view|professional|student|faq/i.test(target.label)?100:0);
+      return score(a)-score(b);
+    })[0];
+    if(best){selected.push(best);labels.add(best.label.toLowerCase());}
+    if(selected.length>=limit)break;
+  }
+  return selected;
+};
+
 export const buildDirectedCapturePlan=(project:EditorProject,sections:CaptureSection[],targets:CaptureTarget[],profile:MotionProfile='balanced')=>{
   const ordered=[...sections].sort((a,b)=>a.scrollY-b.scrollY);
   const stamp=Date.now();
   const grouped=new Map<string,CaptureTarget[]>();
   for(const target of targets){
-    const section=ordered.reduce((nearest,candidate)=>Math.abs(candidate.scrollY-target.pageY)<Math.abs(nearest.scrollY-target.pageY)?candidate:nearest,ordered[0]);
+    const visibleSections=ordered.filter((candidate)=>target.pageY>=candidate.scrollY+12&&target.pageY<=candidate.scrollY+project.viewport.height-12);
+    const pool=visibleSections.length?visibleSections:ordered;
+    const section=pool.reduce((nearest,candidate)=>Math.abs(candidate.scrollY+project.viewport.height*.5-target.pageY)<Math.abs(nearest.scrollY+project.viewport.height*.5-target.pageY)?candidate:nearest,pool[0]);
     if(!section)continue;
     const list=grouped.get(section.id)??[];
     if(list.length<2)list.push(target);
@@ -179,9 +201,9 @@ export const buildDirectedCapturePlan=(project:EditorProject,sections:CaptureSec
     for(const [actionIndex,target] of actions.entries()){
       const destination={x:clamp(target.x,24,project.viewport.width-24),y:clamp(target.pageY-section.scrollY,24,project.viewport.height-24)};
       const moveDuration=estimatePointerDuration(Math.hypot(destination.x-previousPointer.x,destination.y-previousPointer.y),Math.hypot(project.viewport.width,project.viewport.height),profile);
-      const kind=/button|tab|switch|checkbox/i.test(target.role)?'click' as const:'hover' as const;
+      const kind=captureTargetAction(target);
       const settle=kind==='click'?(profile==='cinematic'?.26:profile==='snappy'?.18:.22):0;
-      pointer.push({id:`cursor-${stamp}-${index}-${actionIndex}`,label:target.label,targetLabel:target.label,at:roundToFrame(actionAt,project.fps),duration:moveDuration+settle,kind,x:destination.x,y:destination.y,selector:target.selector,easing:'easeOut',visible:true,clickEffect:kind==='click'?'ring':'none',path:'human',settle});
+      pointer.push({id:`cursor-${stamp}-${index}-${actionIndex}`,label:target.label,targetLabel:target.label,targetRole:target.role,at:roundToFrame(actionAt,project.fps),duration:moveDuration+settle,kind,x:destination.x,y:destination.y,selector:target.selector,easing:'easeOut',visible:true,clickEffect:kind==='click'?'ring':'none',path:'human',settle});
       actionAt+=moveDuration+settle+(profile==='cinematic'?.42:.28);
       previousPointer=destination;
     }
@@ -202,6 +224,7 @@ export const buildDirectedCapturePlan=(project:EditorProject,sections:CaptureSec
 
 export const polishMotionProject=(project:EditorProject,profile:MotionProfile=project.motionProfile??'balanced')=>{
   const frames=[...project.frames].sort((a,b)=>a.at-b.at);
+  if(!frames.length)return project;
   const oldFrames=frames.map((frame)=>({...frame}));
   const actionsByFrame=new Map<string,EditorProject['pointer']>();
   for(const action of [...project.pointer].sort((a,b)=>a.at-b.at)){
@@ -240,9 +263,38 @@ export const polishMotionProject=(project:EditorProject,profile:MotionProfile=pr
   project.motionProfile=profile;
   project.duration=Math.max(3,Math.ceil((at+(profile==='cinematic'?.5:.3))*project.fps)/project.fps);
   project.exportRange={in:0,out:project.duration};
-  const finalTransition=project.transitions.find((item)=>item.label==='Мягкое завершение');
-  if(finalTransition){finalTransition.at=Math.max(0,project.duration-finalTransition.duration);finalTransition.strength=1;}
+  const finalTransition=project.transitions.find((item)=>item.id.startsWith('transition-finish-'));
+  if(finalTransition){
+    const interactionEnd=Math.max(0,...project.pointer.map(itemEnd));
+    finalTransition.duration=Math.min(.72,Math.max(.3,finalTransition.duration));
+    finalTransition.at=Math.max(interactionEnd+.18,project.duration-finalTransition.duration);
+    project.duration=Math.max(project.duration,finalTransition.at+finalTransition.duration);
+    project.exportRange={in:0,out:project.duration};
+    finalTransition.strength=1;
+  }
   return project;
+};
+
+export const applyRecommendedCaptureActions=(project:EditorProject,targets:CaptureTarget[]=project.captureAnalysis?.targets??[],profile:MotionProfile=project.motionProfile??'balanced')=>{
+  const frames=[...project.frames].sort((a,b)=>a.at-b.at);
+  if(!frames.length)return project;
+  const sections:CaptureSection[]=frames.map((frame,index)=>({id:frame.id,label:frame.label,selector:'',scrollY:frame.scrollY,level:index===0?1:2}));
+  const selected=recommendedCaptureTargets(sections,targets,project.viewport.height);
+  const stamp=Date.now();
+  const counts=new Map<string,number>();
+  let previous={x:project.viewport.width*.82,y:project.viewport.height*.82};
+  project.pointer=selected.map((target,index)=>{
+    const visible=frames.filter((frame)=>target.pageY>=frame.scrollY+12&&target.pageY<=frame.scrollY+project.viewport.height-12);
+    const pool=visible.length?visible:frames;
+    const frame=pool.reduce((nearest,candidate)=>Math.abs(candidate.scrollY+project.viewport.height*.5-target.pageY)<Math.abs(nearest.scrollY+project.viewport.height*.5-target.pageY)?candidate:nearest,pool[0]);
+    const order=counts.get(frame.id)??0;counts.set(frame.id,order+1);
+    const destination={x:clamp(target.x,24,project.viewport.width-24),y:clamp(target.pageY-frame.scrollY,24,project.viewport.height-24)};
+    const duration=estimatePointerDuration(Math.hypot(destination.x-previous.x,destination.y-previous.y),Math.hypot(project.viewport.width,project.viewport.height),profile);
+    previous=destination;
+    const kind=captureTargetAction(target);
+    return {id:`cursor-auto-${stamp}-${index}`,label:target.label,targetLabel:target.label,targetRole:target.role,at:frame.at+frame.duration+.28+order*.9,duration:duration+(kind==='click'?.22:0),kind,x:destination.x,y:destination.y,selector:target.selector,easing:'easeOut' as EasingName,visible:true,clickEffect:kind==='click'?'ring' as const:'none' as const,path:'human' as const,settle:kind==='click'?.22:0};
+  });
+  return polishMotionProject(project,profile);
 };
 
 export const captureDirectionReport=(project:EditorProject):CaptureDirectionReport=>{

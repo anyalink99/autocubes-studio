@@ -1,6 +1,6 @@
 import fs from 'node:fs/promises';
 import path from 'node:path';
-import {chromium, Page} from 'playwright';
+import {chromium, Locator, Page} from 'playwright';
 import {EditorProject, EasingName, PointerEvent, ScrollFrame} from '../../packages/core/editor-project';
 import {migrateEditorProject} from '../../packages/core/editor-operations';
 import {cursorStateAt} from '../../packages/core/motion-kinematics';
@@ -41,24 +41,38 @@ const scrollTo = async (page: Page, y: number, duration: number, easing: EasingN
 const movePointerNaturally=async(page:Page,project:EditorProject,action:PointerEvent)=>{
   const settle=action.kind==='click'?Math.max(.04,action.settle??.2):0;
   const moveDuration=Math.max(.06,action.duration-settle);
-  const steps=Math.max(8,Math.round(moveDuration*60));
-  const stepDuration=moveDuration/steps;
-  for(let index=1;index<=steps;index+=1){
-    const state=cursorStateAt(project.pointer,action.at+index/steps*moveDuration,project.viewport);
-    await page.mouse.move(state.x,state.y);
-    await sleep(stepDuration*1000);
-  }
+  const destination=cursorStateAt(project.pointer,action.at+moveDuration,project.viewport);
+  // The browser cursor is hidden and the exported cursor follows the same
+  // kinematic curve in Remotion. A single CDP move at the curve endpoint keeps
+  // the real hover/click synchronized without dozens of costly IPC calls.
+  await sleep(Math.max(0,moveDuration*1000-40));
+  await page.mouse.move(destination.x,destination.y);
 };
 
 const pointerTarget = async (page: Page, action: PointerEvent) => {
   if (action.selector) {
-    const locator = page.locator(action.selector).first();
+    const matches=page.locator(action.selector);
+    let locator=(await matches.count())===1?matches:undefined;
+    if(!locator&&action.targetLabel){
+      const textMatches=page.getByText(action.targetLabel,{exact:true});
+      let best:{locator:Locator;score:number}|undefined;
+      for(let index=0;index<Math.min(30,await textMatches.count());index+=1){const candidate=textMatches.nth(index);const candidateBox=await candidate.boundingBox().catch(()=>null);if(!candidateBox)continue;const score=Math.hypot(candidateBox.x+candidateBox.width/2-action.x,candidateBox.y+candidateBox.height/2-action.y);if(!best||score<best.score)best={locator:candidate,score};}
+      locator=best?.locator;
+    }
+    if(!locator)return {x:action.x,y:action.y,locator:undefined};
     await locator.waitFor({state: 'visible', timeout: 2500}).catch(() => undefined);
-    const box = await locator.boundingBox().catch(() => null);
-    if (box) return {x: box.x + box.width / 2, y: box.y + box.height / 2};
+    let box = await locator.boundingBox().catch(() => null);
+    if(box&&(box.y+box.height<0||box.y>(page.viewportSize()?.height??0))){await locator.scrollIntoViewIfNeeded().catch(()=>undefined);await sleep(100);box=await locator.boundingBox().catch(()=>null);}
+    if (box) return {x: box.x + box.width / 2, y: box.y + box.height / 2, locator};
   }
-  return {x: action.x, y: action.y};
+  return {x: action.x, y: action.y, locator:undefined};
 };
+
+const interactionState=async(page:Page,locator?:Locator)=>({
+  url:page.url(),
+  body:await page.locator('body').evaluate((body)=>`${body.textContent?.length}:${body.querySelectorAll('*').length}`).catch(()=>''),
+  target:locator?await locator.evaluate((element)=>({text:element.textContent,classes:element.className,expanded:element.getAttribute('aria-expanded'),pressed:element.getAttribute('aria-pressed'),selected:element.getAttribute('aria-selected'),value:(element as HTMLInputElement).value})).catch(()=>null):null,
+});
 
 const main = async () => {
   const project = migrateEditorProject(JSON.parse(await fs.readFile(projectPath, 'utf8')) as EditorProject);
@@ -72,17 +86,22 @@ const main = async () => {
   await fs.rm(path.join(captureRoot, `.${captureBaseId}-next`), {recursive: true, force: true}).catch(() => undefined);
   const videoDirectory = path.join(output, 'raw-video');
   const stillDirectory = path.join(output, 'stills');
+  const actionDirectory = path.join(output, 'actions');
   await ensureCleanDir(output);
   await fs.mkdir(videoDirectory, {recursive: true});
   await fs.mkdir(stillDirectory, {recursive: true});
+  await fs.mkdir(actionDirectory, {recursive: true});
 
   const browser = await chromium.launch({headless: true, args: ['--disable-background-timer-throttling', '--disable-renderer-backgrounding']});
   const context = await browser.newContext({
     viewport: project.viewport,
     recordVideo: {dir: videoDirectory, size: project.viewport},
   });
-  const page = await context.newPage();
+  // Playwright starts recording while the page is being created. Starting this
+  // clock after newPage() loses several seconds on slower Windows machines and
+  // makes the rendered cursor arrive before the real browser interaction.
   const videoStarted = Date.now();
+  const page = await context.newPage();
   console.log(`Подготовка страницы: ${project.url}`);
   await page.goto(project.url, {waitUntil: 'domcontentloaded', timeout: 60000});
   await page.waitForLoadState('networkidle', {timeout: 8000}).catch(() => undefined);
@@ -106,8 +125,6 @@ const main = async () => {
     if (event.type === 'frame') {
       const frame = event.value;
       await scrollTo(page, Math.min(frame.scrollY, Math.max(0, pageHeight - project.viewport.height)), frame.duration, frame.easing);
-      await sleep(Math.min(180, Math.max(60, frame.hold * 80)));
-      await page.screenshot({path: path.join(stillDirectory, `${frame.id}.png`)});
       console.log(`[${event.at.toFixed(2)}с] сцена «${frame.label}» → ${frame.scrollY}px`);
     } else {
       const action = event.value;
@@ -122,8 +139,8 @@ const main = async () => {
         await page.mouse.down();
         await sleep(80);
         await page.mouse.up();
-        await sleep(Math.max(20,settleMs-leadIn-80));
-      }
+        await sleep(Math.max(180,settleMs-leadIn-80));
+      }else if(action.kind==='hover')await sleep(220);
       console.log(`[${event.at.toFixed(2)}с] ${action.kind === 'click' ? 'клик' : action.kind === 'hover' ? 'наведение' : 'движение'} «${action.targetLabel || action.label}» → ${Math.round(target.x)}, ${Math.round(target.y)}`);
     }
   }
@@ -134,11 +151,51 @@ const main = async () => {
   await page.close();
   await context.close();
   const recordedPath = await video?.path();
-  await browser.close();
 
   if (!recordedPath) throw new Error('Playwright не создал видеофайл');
   await fs.copyFile(recordedPath, path.join(output, 'capture.webm'));
   await fs.rm(videoDirectory, {recursive: true, force: true});
+
+  // Full-resolution screenshots block Playwright long enough to push later
+  // clicks several seconds away from the editor timeline. Capture them in a
+  // separate, unrecorded replay so the video pass stays real-time.
+  const referenceContext=await browser.newContext({viewport:project.viewport});
+  const referencePage=await referenceContext.newPage();
+  await referencePage.goto(project.url,{waitUntil:'domcontentloaded',timeout:60000});
+  await referencePage.waitForLoadState('networkidle',{timeout:8000}).catch(()=>undefined);
+  await referencePage.addStyleTag({content:'* { cursor: none !important; } html { scroll-behavior: auto !important; }'});
+  await referencePage.evaluate(()=>window.scrollTo(0,0));
+  await sleep(300);
+  for(const event of events){
+    if(event.type==='frame'){
+      const frame=event.value;
+      await referencePage.evaluate((y)=>window.scrollTo(0,y),Math.min(frame.scrollY,Math.max(0,pageHeight-project.viewport.height)));
+      await sleep(260);
+      await referencePage.screenshot({path:path.join(stillDirectory,`${frame.id}.png`)});
+      continue;
+    }
+    const action=event.value;
+    const target=await pointerTarget(referencePage,action);
+    action.x=target.x;
+    action.y=target.y;
+    await referencePage.mouse.move(target.x,target.y);
+    const before=await interactionState(referencePage,target.locator);
+    if(action.kind==='click'){
+      await referencePage.mouse.down();
+      await sleep(80);
+      await referencePage.mouse.up();
+      await sleep(Math.max(260,(action.settle??.2)*1000));
+    }else if(action.kind==='hover')await sleep(220);
+    const after=await interactionState(referencePage,target.locator);
+    action.interactionChanged=JSON.stringify(before)!==JSON.stringify(after);
+    const resultFilename=`${action.id.replace(/[^a-z0-9-_]/gi,'-')}.png`;
+    await referencePage.screenshot({path:path.join(actionDirectory,resultFilename)});
+    action.resultThumbnail=`/captures/${captureId}/actions/${resultFilename}?v=${Date.now()}`;
+    console.log(`[interaction] ${action.targetLabel||action.label}: ${action.interactionChanged?'DOM changed':'no visible DOM change'}`);
+  }
+  await referencePage.close();
+  await referenceContext.close();
+  await browser.close();
 
   // Каталог ревизии никем не используется до этой точки. Публикация происходит
   // одной сменой URL в проекте, поэтому открытое старое превью не блокирует запись.

@@ -137,8 +137,10 @@ const main = async () => {
     if (!await page.locator('.clip-handle-start').count() || !await page.locator('.clip-handle-end').count()) throw new Error('Timeline must expose both trim handles');
     const analysisResponse=await page.request.post(`${baseUrl}/api/capture/analyze`,{data:{project:{...projectExport,id:'qa-live-preview',url:`${baseUrl}/operations.html`,viewport:{width:1080,height:900}}}});
     if(!analysisResponse.ok())throw new Error(`Capture analysis returned ${analysisResponse.status()}`);
-    const analysis=await analysisResponse.json() as {previewFrames?:Array<{image:string;scrollY:number}>};
+    const analysis=await analysisResponse.json() as {previewFrames?:Array<{image:string;scrollY:number}>;targets:Array<{selector:string;action?:string}>};
     if((analysis.previewFrames?.length??0)<2)throw new Error('Capture analysis did not store live viewport states');
+    if(!analysis.targets.some((target)=>target.action==='click'))throw new Error('Capture analysis did not discover real click interactions');
+    if(new Set(analysis.targets.map((target)=>target.selector)).size!==analysis.targets.length)throw new Error('Capture analysis produced ambiguous interaction selectors');
     await page.locator('.preview-format').selectOption('instagram-portrait');
     const stageRatio = await page.locator('.stage').evaluate((element) => getComputedStyle(element).aspectRatio);
     if (!stageRatio.includes('1080') || !stageRatio.includes('1350')) throw new Error(`Motion format did not change: ${stageRatio}`);

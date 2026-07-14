@@ -3,7 +3,7 @@ import {toPng} from 'html-to-image';
 import {Crosshair, Download, Film, Image as ImageIcon, LayoutGrid, Maximize2, ZoomIn, ZoomOut} from 'lucide-react';
 import {EditorProject, Selection} from '../../packages/core/editor-project';
 import {findMediaPreset, formatRatio, mediaPresets} from '../../packages/core/media-presets';
-import {maxScroll, scrollPercent} from '../../packages/core/editor-operations';
+import {itemEnd, maxScroll, scrollPercent} from '../../packages/core/editor-operations';
 import {cursorStateAt, motionEase, transitionAmountAt} from '../../packages/core/motion-kinematics';
 
 type Props = {
@@ -68,7 +68,8 @@ export const Preview = ({project, currentTime, playing, mode, selection, onModeC
     if(!frame||!previews?.length)return undefined;
     return previews.reduce((nearest,candidate)=>Math.abs(candidate.scrollY-frame.scrollY)<Math.abs(nearest.scrollY-frame.scrollY)?candidate:nearest,previews[0]).image;
   };
-  const currentPreview=previewForFrame(frameState.current);
+  const completedInteraction=[...project.pointer].filter((action)=>action.resultThumbnail&&currentTime>=action.at+action.duration&&frameState.current&&action.at>=frameState.current.at&&action.at<itemEnd(frameState.current)).sort((a,b)=>b.at-a.at)[0];
+  const currentPreview=completedInteraction?.resultThumbnail??previewForFrame(frameState.current);
   const previousPreview=frameState.previous?.id===frameState.current?.id?undefined:previewForFrame(frameState.previous);
   const hasScrollSurface=Boolean(project.captureAnalysis?.fullPageImage||currentPreview||previousPreview);
 

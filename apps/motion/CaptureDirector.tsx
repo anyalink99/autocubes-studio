@@ -1,7 +1,7 @@
 import React, {useEffect, useMemo, useRef, useState} from 'react';
 import {ArrowRight, Check, Crosshair, Eye, Globe2, GripVertical, LoaderCircle, MousePointer2, Play, RefreshCw, ScanSearch, Sparkles, Video, X} from 'lucide-react';
 import {CaptureAnalysis, CaptureSection, CaptureTarget, EditorProject, MotionProfile, ScrollFrame} from '../../packages/core/editor-project';
-import {captureDirectionReport, clamp, formatEditorTime, maxScroll, scrollPercent} from '../../packages/core/editor-operations';
+import {captureDirectionReport, captureTargetAction, clamp, formatEditorTime, maxScroll, recommendedCaptureTargets, scrollPercent} from '../../packages/core/editor-operations';
 
 type Props = {
   project: EditorProject;
@@ -12,12 +12,13 @@ type Props = {
   onAnalyze: () => void;
   onBuild: (sections: CaptureSection[], targets: CaptureTarget[], profile: MotionProfile) => void;
   onPolish: (profile: MotionProfile) => void;
+  onRecommendActions: (profile: MotionProfile) => void;
   onChangeFrame: (id: string, patch: Partial<ScrollFrame>) => void;
   onRecord: () => void;
   onClose: () => void;
 };
 
-export const CaptureDirector = ({project, analysis, analyzing, recording, onChangeUrl, onAnalyze, onBuild, onPolish, onChangeFrame, onRecord, onClose}: Props) => {
+export const CaptureDirector = ({project, analysis, analyzing, recording, onChangeUrl, onAnalyze, onBuild, onPolish, onRecommendActions, onChangeFrame, onRecord, onClose}: Props) => {
   const [sectionIds, setSectionIds] = useState<Set<string>>(new Set());
   const [targetIds, setTargetIds] = useState<Set<string>>(new Set());
   const [stage, setStage] = useState<'source' | 'plan' | 'ready'>(analysis ? project.frames.length ? 'ready' : 'plan' : 'source');
@@ -28,10 +29,10 @@ export const CaptureDirector = ({project, analysis, analyzing, recording, onChan
   useEffect(() => {
     if (!analysis) return;
     setSectionIds(new Set(analysis.sections.slice(0, 8).map((item) => item.id)));
-    setTargetIds(new Set());
+    setTargetIds(new Set(recommendedCaptureTargets(analysis.sections,analysis.targets,project.viewport.height).map((item)=>item.id)));
     if (previousAnalysisAt.current !== analysis.analyzedAt) setStage('plan');
     previousAnalysisAt.current = analysis.analyzedAt;
-  }, [analysis?.analyzedAt]);
+  }, [analysis?.analyzedAt,project.viewport.height]);
 
   useEffect(() => {
     if (!project.frames.some((frame) => frame.id === selectedFrameId)) setSelectedFrameId(project.frames[0]?.id);
@@ -86,6 +87,7 @@ export const CaptureDirector = ({project, analysis, analyzing, recording, onChan
         <div><span>{stage === 'ready' ? `${project.frames.length} сцен · ${project.pointer.length} действий · ${project.duration.toFixed(1)} сек` : analysis.title}</span><small>{stage === 'ready' ? 'Preview и финальный MP4 используют одну кинематику' : `${analysis.sections.length} секций · ${analysis.targets.length} интерактивных целей`}</small></div>
         {stage === 'ready' ? <>
           <button onClick={() => onPolish(profile)}><Sparkles size={14}/>Применить ритм</button>
+          <button onClick={() => onRecommendActions(profile)}><MousePointer2 size={14}/>Автодействия</button>
           <button onClick={() => setStage('plan')}>Пересобрать сценарий</button>
           <button onClick={onClose}><Eye size={14}/>Открыть основной монтаж</button>
           <button className="capture-primary" onClick={onRecord} disabled={recording}>{recording ? <LoaderCircle className="spin" size={15}/> : <Play size={15}/>}Записать показанное</button>
@@ -105,7 +107,7 @@ const CapturePlanner = ({analysis, sectionIds, targetIds, selectedSections, sele
   <aside className="page-atlas"><div className="atlas-head"><span>Карта страницы</span><b>{analysis.pageHeight}px</b></div><div className="atlas-image"><img src={analysis.fullPageImage} alt="Полный снимок страницы"/>{analysis.sections.map((section) => <i key={section.id} className={sectionIds.has(section.id) ? 'selected' : ''} style={{top: `${section.scrollY / analysis.pageHeight * 100}%`}}/>)}</div><button onClick={onAnalyze} disabled={analyzing}><RefreshCw size={13}/>Обновить разбор</button></aside>
   <div className="capture-choices">
     <section><div className="choice-head"><div><span>Сцены</span><strong>{selectedSections.length} выбрано</strong></div><p>Каждая сцена — остановка камеры. Перемещение между ними станет скроллом.</p></div><div className="choice-list">{analysis.sections.map((section, index) => <button className={sectionIds.has(section.id) ? 'selected' : ''} key={section.id} onClick={() => onToggleSection(section.id)}><span>{sectionIds.has(section.id) ? <Check size={12}/> : String(index + 1).padStart(2, '0')}</span><div><strong>{section.label}</strong><small>{section.scrollY}px от начала</small></div></button>)}</div></section>
-    <section><div className="choice-head"><div><span>Действия курсора</span><strong>{selectedTargets.length} выбрано</strong></div><p>Кнопки будут нажаты, а ссылки — аккуратно подсвечены наведением, чтобы запись случайно не ушла с нужной страницы.</p></div><div className="target-list">{analysis.targets.slice(0, 30).map((target) => <button className={targetIds.has(target.id) ? 'selected' : ''} key={target.id} onClick={() => onToggleTarget(target.id)}><span>{targetIds.has(target.id) ? <Check size={11}/> : <MousePointer2 size={11}/>}</span><div><strong>{target.label}</strong><small>{/button|tab|switch|checkbox/i.test(target.role)?'клик':'наведение'} · {target.role} · {target.selector}</small></div></button>)}</div></section>
+    <section><div className="choice-head"><div><span>Действия курсора</span><strong>{selectedTargets.length} выбрано</strong></div><p>Безопасные интерактивные цели уже выбраны автоматически. Клики реально выполняются в браузере и проверяются по изменению страницы.</p></div><div className="target-list">{analysis.targets.slice(0, 30).map((target) => <button className={targetIds.has(target.id) ? 'selected' : ''} key={target.id} onClick={() => onToggleTarget(target.id)}><span>{targetIds.has(target.id) ? <Check size={11}/> : <MousePointer2 size={11}/>}</span><div><strong>{target.label}</strong><small>{captureTargetAction(target)==='click'?'клик':'наведение'} · {target.role} · {target.selector}</small></div></button>)}</div></section>
   </div>
 </div>;
 

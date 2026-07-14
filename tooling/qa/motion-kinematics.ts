@@ -1,5 +1,5 @@
 import assert from 'node:assert/strict';
-import {buildDirectedCapturePlan,captureDirectionReport,magneticSnap,migrateEditorProject,moveTimelineItems,trimTimelineItem,updateFrameWithRipple} from '../../packages/core/editor-operations';
+import {buildDirectedCapturePlan,captureDirectionReport,magneticSnap,migrateEditorProject,moveTimelineItems,recommendedCaptureTargets,trimTimelineItem,updateFrameWithRipple} from '../../packages/core/editor-operations';
 import {cursorStateAt,transitionAmountAt} from '../../packages/core/motion-kinematics';
 import {CaptureSection,CaptureTarget,EditorProject} from '../../packages/core/editor-project';
 
@@ -25,7 +25,11 @@ assert.equal(project.pointer.length,2);
 assert.ok(project.frames[2].duration>project.frames[1].duration,'Longer scroll must receive more time');
 assert.ok(project.frames.every((frame,index)=>index===0||frame.at>=project.frames[index-1].at+project.frames[index-1].duration+project.frames[index-1].hold-.02),'Scenes must not overlap');
 assert.ok(project.pointer.every((event)=>event.path==='human'&&event.duration>.6),'Directed cursor moves must use readable human paths');
+assert.deepEqual(project.pointer.map((event)=>event.kind),['click','hover'],'Buttons must click while navigation links only hover');
+assert.ok(project.pointer.every((event)=>event.y>=0&&event.y<=project.viewport.height),'Every interaction must belong to a scene where its target is visible');
+assert.equal(recommendedCaptureTargets(sections,targets,project.viewport.height).length,2,'Automatic direction must mix safe clicks with non-destructive hover movement');
 assert.equal(project.transitions[0]?.strength,1,'The directed outro must finish at full black');
+assert.ok((project.transitions[0]?.at??0)>=Math.max(...project.pointer.map((event)=>event.at+event.duration)),'The outro must not hide the final browser interaction');
 assert.ok(transitionAmountAt('fade',1,1)>.999,'Fade must remain black at its end');
 assert.ok(transitionAmountAt('dipBlack',1,1)<.001,'Dip must intentionally return to the image');
 

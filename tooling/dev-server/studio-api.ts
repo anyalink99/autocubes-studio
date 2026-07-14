@@ -82,16 +82,26 @@ const analyzePage = async (project: EditorProject): Promise<CaptureAnalysis> => 
       const selectorFor=(element:Element) => {
         const escaped=(value:string)=>CSS.escape(value);
         if(element.id)return `#${escaped(element.id)}`;
-        for(const name of ['data-testid','data-test','aria-label','name']){const value=element.getAttribute(name);if(value)return `[${name}="${value.replaceAll('"','\\"')}"]`;}
+        const unique=(selector:string)=>{try{return document.querySelectorAll(selector).length===1;}catch{return false;}};
+        for(const name of ['data-testid','data-test','aria-label','name']){const value=element.getAttribute(name);if(value){const selector=`[${name}="${value.replaceAll('"','\\"')}"]`;if(unique(selector))return selector;}}
         const parts:string[]=[];let current:Element|null=element;
-        while(current&&current!==document.body&&parts.length<4){let part=current.tagName.toLowerCase();const parentElement:Element|null=current.parentElement;if(parentElement){const siblings=[...parentElement.children].filter((item)=>item.tagName===current!.tagName);if(siblings.length>1)part+=`:nth-of-type(${siblings.indexOf(current)+1})`;}parts.unshift(part);current=parentElement;}
+        while(current&&parts.length<12){let part=current.tagName.toLowerCase();const parentElement:Element|null=current.parentElement;if(parentElement){const siblings=[...parentElement.children].filter((item)=>item.tagName===current!.tagName);if(siblings.length>1)part+=`:nth-of-type(${siblings.indexOf(current)+1})`;}parts.unshift(part);const candidate=parts.join(' > ');if(unique(candidate))return candidate;if(current===document.body)break;current=parentElement;}
         return parts.join(' > ');
       };
+      const labelFor=(element:Element,role:string)=>{const source=(element.getAttribute('aria-label')||element.textContent||element.getAttribute('placeholder')||element.getAttribute('title')||role).trim().replace(/\s+/g,' ').slice(0,70);const half=Math.floor(source.length/2);return source.length%2===0&&source.slice(0,half)===source.slice(half)?source.slice(0,half):source;};
       const pageHeight=Math.max(document.body.scrollHeight,document.documentElement.scrollHeight);
       const headings=[...document.querySelectorAll('h1,h2,h3,section[id]')].filter(visible).map((element,index)=>{const rect=(element as HTMLElement).getBoundingClientRect();const heading=element.matches('section')?element.querySelector('h1,h2,h3'):element;return {id:`section-${index}`,label:(heading?.textContent||element.getAttribute('aria-label')||`Section ${index+1}`).trim().replace(/\s+/g,' ').slice(0,80),selector:selectorFor(element),scrollY:Math.max(0,Math.round(rect.top+window.scrollY-window.innerHeight*.12)),level:element.matches('h1')?1:element.matches('h2')?2:3};}).filter((item)=>item.label);
       const sections=headings.filter((item,index,array)=>index===0||item.scrollY-array[index-1].scrollY>window.innerHeight*.28).slice(0,18);
       if(!sections.length||sections[0].scrollY>80)sections.unshift({id:'section-top',label:document.title||'Top',selector:'body',scrollY:0,level:1});
-      const targets=[...document.querySelectorAll('a[href],button,input,select,textarea,[role="button"],[tabindex]')].filter(visible).map((element,index)=>{const rect=(element as HTMLElement).getBoundingClientRect();const role=element.getAttribute('role')||element.tagName.toLowerCase();return {id:`target-${index}`,label:(element.getAttribute('aria-label')||element.textContent||element.getAttribute('placeholder')||element.getAttribute('title')||role).trim().replace(/\s+/g,' ').slice(0,70),selector:selectorFor(element),role,x:Math.round(rect.left+rect.width/2),y:Math.round(rect.top+rect.height/2),pageY:Math.round(rect.top+window.scrollY+rect.height/2),width:Math.round(rect.width),height:Math.round(rect.height)};}).filter((item)=>item.label).slice(0,100);
+      const targets=[...document.querySelectorAll('a[href],button,input,select,textarea,[role="button"],[role="tab"],[role="switch"],[aria-expanded],[aria-pressed],[tabindex]')].filter(visible).map((element,index)=>{
+        const rect=(element as HTMLElement).getBoundingClientRect();
+        const role=element.getAttribute('role')||element.tagName.toLowerCase();
+        const tag=element.tagName.toLowerCase();
+        const href=tag==='a'?(element as HTMLAnchorElement).href:undefined;
+        const stateful=element.matches('button,[role="button"],[role="tab"],[role="switch"],[aria-expanded],[aria-pressed],summary,[tabindex]');
+        const action=tag==='a'||!stateful?'hover' as const:'click' as const;
+        return {id:`target-${index}`,label:labelFor(element,role),selector:selectorFor(element),role,action,href,x:Math.round(rect.left+rect.width/2),y:Math.round(rect.top+rect.height/2),pageY:Math.round(rect.top+window.scrollY+rect.height/2),width:Math.round(rect.width),height:Math.round(rect.height)};
+      }).filter((item)=>item.label).slice(0,100);
       return {title:document.title||new URL(location.href).hostname,pageHeight,sections,targets};
     });
     const directory=path.join(editorFramesDirectory,project.id);

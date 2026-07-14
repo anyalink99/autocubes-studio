@@ -6,7 +6,7 @@ export type PointerKind = 'move' | 'click' | 'hover';
 export type OutputLanguage = 'en' | 'ru';
 
 export type CaptureSection = {id:string; label:string; selector:string; scrollY:number; level:number};
-export type CaptureTarget = {id:string; label:string; selector:string; role:string; x:number; y:number; pageY:number; width:number; height:number};
+export type CaptureTarget = {id:string; label:string; selector:string; role:string; x:number; y:number; pageY:number; width:number; height:number; action?:'click'|'hover'; href?:string};
 export type CapturePreviewFrame = {id:string; label:string; scrollY:number; image:string};
 export type CaptureAnalysis = {
   url:string;
@@ -43,6 +43,7 @@ export type PointerEvent = {
   x: number;
   y: number;
   selector?: string;
+  targetRole?: string;
   easing: EasingName;
   visible: boolean;
   targetLabel?: string;
@@ -50,6 +51,8 @@ export type PointerEvent = {
   path?: PointerPath;
   curve?: number;
   settle?: number;
+  resultThumbnail?: string;
+  interactionChanged?: boolean;
 };
 
 export type TransitionEvent = {
