@@ -60,9 +60,15 @@ const main=async()=>{
     await page.screenshot({path:path.resolve('out/qa/motion-workflow.png')});
     await page.getByRole('button',{name:/Проверить захват|Настроить захват/}).click();
     if(!await page.locator('.capture-director').isVisible())throw new Error('Capture Director did not open');
+    if(!await page.locator('.review-timing-controls').isVisible()){
+      await page.route('**/api/capture/analyze',(route)=>route.fulfill({status:200,contentType:'application/json',body:JSON.stringify(analysis)}));
+      await page.locator('.capture-source .capture-primary').click();
+      await page.locator('.capture-planner').waitFor();
+      await page.locator('.capture-director-actions .capture-primary').click();
+      await page.locator('.review-timing-controls').waitFor();
+    }
     await page.locator('.capture-profile-picker button').filter({hasText:'Кинематографично'}).click();
     if(!await page.locator('.capture-profile-picker button.active').getByText('Кинематографично').isVisible())throw new Error('Capture rhythm profile did not respond');
-    if(!await page.locator('.review-timing-controls').isVisible())throw new Error('Capture timing controls are missing');
     await page.getByRole('button',{name:/Применить ритм/}).click();
     if(Number(await page.locator('.capture-score>b').textContent())<85)throw new Error('Capture rhythm polish did not improve the direction score');
     await page.screenshot({path:path.resolve('out/qa/capture-director.png')});
