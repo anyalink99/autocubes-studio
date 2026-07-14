@@ -114,15 +114,22 @@ const main = async () => {
     await projectDownload.saveAs(projectExportPath);
     const projectExport = JSON.parse(await fs.readFile(projectExportPath, 'utf8')) as EditorProject;
     if (!projectExport.title) throw new Error('Motion project export is invalid');
-    if(projectExport.captureAnalysis?.fullPageImage&&projectExport.frames[0]?.thumbnail&&!await page.locator('.stage-settled-preview').isVisible())throw new Error('Storyboard did not prefer the exact captured scene over the page map');
+    if(projectExport.captureAnalysis?.fullPageImage&&projectExport.frames[0]?.thumbnail&&!await page.locator('.stage-scroll-surface').isVisible())throw new Error('Storyboard scroll surface is missing');
     const settledTarget=projectExport.frames[4]??projectExport.frames.at(-1);
     if(settledTarget?.thumbnail){
-      const targetTime=settledTarget.at+settledTarget.duration+.05;
-      await page.locator('.timeline-ruler').evaluate((ruler,time)=>{const canvas=ruler.closest('.timeline-canvas');const marks=[...ruler.querySelectorAll<HTMLElement>('.ruler-mark')];if(!canvas||marks.length<2)throw new Error('Timeline ruler is incomplete');const pixelsPerSecond=marks[1].offsetLeft-marks[0].offsetLeft;const bounds=canvas.getBoundingClientRect();ruler.dispatchEvent(new MouseEvent('click',{bubbles:true,clientX:bounds.left+time*pixelsPerSecond,clientY:bounds.top+8}));},targetTime);
+      const seekTimeline=async(time:number)=>page.locator('.timeline-ruler').evaluate((ruler,nextTime)=>{const canvas=ruler.closest('.timeline-canvas');const marks=[...ruler.querySelectorAll<HTMLElement>('.ruler-mark')];if(!canvas||marks.length<2)throw new Error('Timeline ruler is incomplete');const pixelsPerSecond=marks[1].offsetLeft-marks[0].offsetLeft;const bounds=canvas.getBoundingClientRect();ruler.dispatchEvent(new MouseEvent('click',{bubbles:true,clientX:bounds.left+nextTime*pixelsPerSecond,clientY:bounds.top+8}));},time);
+      await seekTimeline(settledTarget.at+settledTarget.duration*.5);
       await page.waitForTimeout(100);
-      const settledSource=await page.locator('.stage-settled-preview').getAttribute('src');
-      const settledOpacity=Number(await page.locator('.stage-settled-preview').evaluate((node)=>getComputedStyle(node).opacity));
-      if(!settledSource?.includes(settledTarget.thumbnail.split('?')[0])||settledOpacity<.99)throw new Error('Storyboard replaced an exact settled scene with a blank page-map region');
+      const movingSource=await page.locator('.stage-scroll-patch-current').getAttribute('src');
+      const stageBox=await page.locator('.stage-page-simulator').boundingBox();
+      const previousBox=await page.locator('.stage-scroll-patch-previous').boundingBox();
+      const currentBox=await page.locator('.stage-scroll-patch-current').boundingBox();
+      if(!movingSource?.includes(settledTarget.thumbnail.split('?')[0])||!stageBox||!previousBox||!currentBox||previousBox.y>=stageBox.y||currentBox.y<=stageBox.y)throw new Error('Storyboard is cross-fading instead of physically scrolling scene frames');
+      await page.locator('.stage').screenshot({path:path.resolve('out/qa/motion-storyboard-scroll.png')});
+      await seekTimeline(settledTarget.at+settledTarget.duration+.05);
+      await page.waitForTimeout(100);
+      const settledBox=await page.locator('.stage-scroll-patch-current').boundingBox();
+      if(!settledBox||Math.abs(settledBox.y-stageBox.y)>2)throw new Error('Scrolled scene did not settle on the exact captured viewport');
       await page.locator('.stage').screenshot({path:path.resolve('out/qa/motion-storyboard-settled.png')});
     }
     if (!await page.getByTitle('Магнит к плейхеду, маркерам и краям').isVisible()) throw new Error('Timeline magnet control is missing');

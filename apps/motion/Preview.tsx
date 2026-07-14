@@ -62,15 +62,15 @@ export const Preview = ({project, currentTime, playing, mode, selection, onModeC
   const caption = project.captions.find((item) => currentTime >= item.at && currentTime <= item.at + item.duration);
   const overlay = (project.overlays ?? []).find((item) => currentTime >= item.at && currentTime <= item.at + item.duration);
   const selectedFrame = selection.track === 'frames' ? project.frames.find((item) => item.id === selection.id) : undefined;
-  const livePreview = useMemo(() => {
-    const previews = project.captureAnalysis?.previewFrames;
-    if (!previews?.length) return undefined;
-    return previews.reduce((nearest, candidate) => Math.abs(candidate.scrollY - frameState.scrollY) < Math.abs(nearest.scrollY - frameState.scrollY) ? candidate : nearest, previews[0]);
-  }, [frameState.scrollY, project.captureAnalysis?.previewFrames]);
-  const settledPreview=frameState.current?.thumbnail??livePreview?.image;
-  const departingPreview=frameState.previous?.id!==frameState.current?.id?frameState.previous?.thumbnail:undefined;
-  const settledOpacity=Math.max(0,Math.min(1,(frameState.blend-.55)/.45));
-  const departingOpacity=Math.max(0,Math.min(1,1-frameState.blend/.35));
+  const previewForFrame=(frame:typeof frameState.current)=>{
+    if(frame?.thumbnail)return frame.thumbnail;
+    const previews=project.captureAnalysis?.previewFrames;
+    if(!frame||!previews?.length)return undefined;
+    return previews.reduce((nearest,candidate)=>Math.abs(candidate.scrollY-frame.scrollY)<Math.abs(nearest.scrollY-frame.scrollY)?candidate:nearest,previews[0]).image;
+  };
+  const currentPreview=previewForFrame(frameState.current);
+  const previousPreview=frameState.previous?.id===frameState.current?.id?undefined:previewForFrame(frameState.previous);
+  const hasScrollSurface=Boolean(project.captureAnalysis?.fullPageImage||currentPreview||previousPreview);
 
   const handlePick = (event: React.MouseEvent<HTMLDivElement>) => {
     if (selection.track !== 'pointer') return;
@@ -132,10 +132,7 @@ export const Preview = ({project, currentTime, playing, mode, selection, onModeC
         <div ref={stageRef} className={`stage ${selection.track === 'pointer' ? 'is-picking' : ''} ${selectedFrame ? 'is-positioning' : ''}`} style={{aspectRatio: `${project.viewport.width} / ${project.viewport.height}`, transform:`scale(${canvasZoom / 100})`}} onClick={handlePick}>
           {mode === 'capture' && project.previewVideo ? <video ref={videoRef} src={project.previewVideo} muted playsInline/> : (
             <>
-              {project.captureAnalysis?.fullPageImage?<><div className="stage-page-simulator"><img src={project.captureAnalysis.fullPageImage} alt="" style={{height:`${project.pageHeight/project.viewport.height*100}%`,top:`${-frameState.scrollY/project.viewport.height*100}%`}}/></div>{departingPreview?<img className="stage-live-preview stage-departing-preview" src={departingPreview} alt="" style={{opacity:departingOpacity}}/>:null}{settledPreview?<img className="stage-live-preview stage-settled-preview" src={settledPreview} alt="" style={{opacity:settledOpacity}}/>:null}</>:<>
-                {frameState.previous?.thumbnail ? <img src={frameState.previous.thumbnail} alt="" style={{opacity: 1 - frameState.blend}}/> : null}
-                {frameState.current?.thumbnail ? <img src={frameState.current.thumbnail} alt="" style={{opacity: frameState.blend}}/> : <div className="stage-empty">Сначала разберите страницу или обновите снимок сцены</div>}
-              </>}
+              {hasScrollSurface?<div className="stage-page-simulator"><div className="stage-scroll-surface" style={{height:`${project.pageHeight/project.viewport.height*100}%`,transform:`translateY(-${frameState.scrollY/project.pageHeight*100}%)`}}>{project.captureAnalysis?.fullPageImage?<img className="stage-page-map" src={project.captureAnalysis.fullPageImage} alt=""/>:null}{previousPreview&&frameState.previous?<img className="stage-scroll-patch stage-scroll-patch-previous" src={previousPreview} alt="" style={{top:`${frameState.previous.scrollY/project.pageHeight*100}%`,height:`${project.viewport.height/project.pageHeight*100}%`}}/>:null}{currentPreview&&frameState.current?<img className="stage-scroll-patch stage-scroll-patch-current" src={currentPreview} alt="" style={{top:`${frameState.current.scrollY/project.pageHeight*100}%`,height:`${project.viewport.height/project.pageHeight*100}%`}}/>:null}</div></div>:<div className="stage-empty">Сначала разберите страницу или обновите снимок сцены</div>}
             </>
           )}
           {selection.track==='pointer'&&project.pointer.length?<svg className="pointer-path" viewBox={`0 0 ${project.viewport.width} ${project.viewport.height}`} preserveAspectRatio="none" aria-hidden="true"><polyline points={[...project.pointer].sort((a,b)=>a.at-b.at).map((item)=>`${item.x},${item.y}`).join(' ')}/>{project.pointer.map((item)=><circle key={item.id} cx={item.x} cy={item.y} r={item.id===selection.id?18:11} className={item.id===selection.id?'selected':''}/>)}</svg>:null}
