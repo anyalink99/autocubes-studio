@@ -1,4 +1,5 @@
-import {EditorProject, EasingName, Selection} from './editor-project';
+import {CaptureSection, CaptureTarget, EditorProject, EasingName, MotionProfile, Selection} from './editor-project';
+import {estimatePointerDuration, estimateScrollDuration, recommendedHold} from './motion-kinematics';
 
 export type TimelineTrack = Exclude<Selection['track'], 'project'>;
 export type MotionRecipeId = 'walkthrough' | 'case-study' | 'feature-reveal' | 'portfolio' | 'typography';
@@ -42,6 +43,9 @@ export const migrateEditorProject = (source: EditorProject): EditorProject => {
     playbackRate: clamp(source.playbackRate ?? 1, .25, 2),
     masterVolume: clamp(source.masterVolume ?? 1, 0, 1.5),
     outputLanguage: source.outputLanguage ?? 'en',
+    motionProfile: source.motionProfile ?? 'balanced',
+    cursorScale: clamp(source.cursorScale ?? 1, .6, 1.8),
+    cursorTrail: source.cursorTrail ?? true,
     frames: source.frames ?? [],
     pointer: source.pointer ?? [],
     transitions: source.transitions ?? [],
@@ -55,7 +59,7 @@ export const migrateEditorProject = (source: EditorProject): EditorProject => {
     out: clamp(source.exportRange?.out ?? duration, 0, duration),
   };
   project.frames = project.frames.map((item) => ({...item, at: clamp(item.at, 0, duration), scrollY: clamp(item.scrollY, 0, maxScroll(project)), duration: Math.max(0, item.duration), hold: Math.max(0, item.hold)}));
-  project.pointer = project.pointer.map((item) => ({...item, at: clamp(item.at, 0, duration), duration: Math.max(.01, item.duration), x: clamp(item.x, 0, viewport.width), y: clamp(item.y, 0, viewport.height)}));
+  project.pointer = project.pointer.map((item) => ({...item, at: clamp(item.at, 0, duration), duration: Math.max(.01, item.duration), x: clamp(item.x, 0, viewport.width), y: clamp(item.y, 0, viewport.height), path:item.path ?? 'human', settle:clamp(item.settle ?? .2,0,.5)}));
   project.transitions = project.transitions.map((item) => ({...item, at: clamp(item.at, 0, duration), duration: Math.max(.01, item.duration), strength: clamp(item.strength, 0, 1)}));
   project.captions = project.captions.map((item) => ({...item, textEn:item.textEn ?? item.text, textRu:item.textRu ?? item.text, at: clamp(item.at, 0, duration), duration: Math.max(.1, item.duration), align: item.align ?? 'center', maxWidth: item.maxWidth ?? 86, lineHeight: item.lineHeight ?? 1.08, letterSpacing: item.letterSpacing ?? -2.5, animation: item.animation ?? 'none'}));
   project.audio = project.audio.map((item) => ({...item, at: clamp(item.at, 0, duration), duration: Math.max(.01, item.duration), fadeIn: Math.max(0, item.fadeIn ?? 0), fadeOut: Math.max(0, item.fadeOut ?? 0), category:item.category ?? (item.label.toLowerCase().includes('voice')?'voice':item.duration>4?'music':'sfx'), beatInterval:Math.max(0,item.beatInterval??0)}));
@@ -81,16 +85,148 @@ const paceMap = {
 
 export const arrangeFrames = (project: EditorProject, pace: keyof typeof paceMap = 'balanced') => {
   const settings = paceMap[pace];
+  const profile:MotionProfile=pace==='slow'?'cinematic':pace==='punchy'?'snappy':'balanced';
   let at = 0;
+  let previousScroll=0;
   project.frames.sort((a, b) => a.scrollY - b.scrollY).forEach((frame, index) => {
     frame.at = roundToFrame(at, project.fps);
-    frame.duration = index === 0 ? 0 : settings.move;
+    frame.duration = index === 0 ? 0 : estimateScrollDuration(frame.scrollY-previousScroll,project.viewport.height,profile);
     frame.hold = settings.hold;
     frame.easing = settings.easing;
+    frame.motionProfile=profile;
     at += frame.duration + frame.hold;
+    previousScroll=frame.scrollY;
   });
+  project.motionProfile=profile;
   project.duration = Math.max(3, Math.ceil(at * 2) / 2);
   project.exportRange = {in: 0, out: project.duration};
+  return project;
+};
+
+export type CaptureDirectionReport={score:number;duration:number;sceneCount:number;actionCount:number;warnings:string[]};
+
+export const buildDirectedCapturePlan=(project:EditorProject,sections:CaptureSection[],targets:CaptureTarget[],profile:MotionProfile='balanced')=>{
+  const ordered=[...sections].sort((a,b)=>a.scrollY-b.scrollY);
+  const stamp=Date.now();
+  const grouped=new Map<string,CaptureTarget[]>();
+  for(const target of targets){
+    const section=ordered.reduce((nearest,candidate)=>Math.abs(candidate.scrollY-target.pageY)<Math.abs(nearest.scrollY-target.pageY)?candidate:nearest,ordered[0]);
+    if(!section)continue;
+    const list=grouped.get(section.id)??[];
+    if(list.length<2)list.push(target);
+    grouped.set(section.id,list);
+  }
+  let at=profile==='cinematic'?.45:.28;
+  let previousScroll=0;
+  let previousPointer={x:project.viewport.width*.82,y:project.viewport.height*.82};
+  const pointer:EditorProject['pointer']=[];
+  project.frames=ordered.map((section,index)=>{
+    const actions=grouped.get(section.id)??[];
+    const duration=index===0?0:estimateScrollDuration(section.scrollY-previousScroll,project.viewport.height,profile);
+    const baseHold=recommendedHold(profile,actions.length);
+    const frameAt=roundToFrame(at,project.fps);
+    let actionAt=frameAt+duration+(profile==='cinematic'?.42:.3);
+    for(const [actionIndex,target] of actions.entries()){
+      const destination={x:clamp(target.x,24,project.viewport.width-24),y:clamp(target.pageY-section.scrollY,24,project.viewport.height-24)};
+      const moveDuration=estimatePointerDuration(Math.hypot(destination.x-previousPointer.x,destination.y-previousPointer.y),Math.hypot(project.viewport.width,project.viewport.height),profile);
+      const kind=/button|tab|switch|checkbox/i.test(target.role)?'click' as const:'hover' as const;
+      const settle=kind==='click'?(profile==='cinematic'?.26:profile==='snappy'?.18:.22):0;
+      pointer.push({id:`cursor-${stamp}-${index}-${actionIndex}`,label:target.label,targetLabel:target.label,at:roundToFrame(actionAt,project.fps),duration:moveDuration+settle,kind,x:destination.x,y:destination.y,selector:target.selector,easing:'easeOut',visible:true,clickEffect:kind==='click'?'ring':'none',path:'human',settle});
+      actionAt+=moveDuration+settle+(profile==='cinematic'?.42:.28);
+      previousPointer=destination;
+    }
+    const requiredHold=Math.max(baseHold,actionAt-(frameAt+duration)+(actions.length ? .3 : 0));
+    const frame={id:`scene-${stamp}-${index}`,label:section.label,at:frameAt,scrollY:section.scrollY,duration,hold:Math.round(requiredHold*100)/100,easing:'easeInOut' as EasingName,motionProfile:profile};
+    at=frameAt+duration+frame.hold;
+    previousScroll=section.scrollY;
+    return frame;
+  });
+  project.pointer=pointer;
+  project.motionProfile=profile;
+  project.duration=Math.max(3,Math.ceil((at+(profile==='cinematic'?.5:.3))*project.fps)/project.fps);
+  project.exportRange={in:0,out:project.duration};
+  project.transitions=[{id:`transition-finish-${stamp}`,label:'Мягкое завершение',at:Math.max(0,project.duration-.65),duration:.65,kind:'fade',strength:.72}];
+  return project;
+};
+
+export const polishMotionProject=(project:EditorProject,profile:MotionProfile=project.motionProfile??'balanced')=>{
+  const frames=[...project.frames].sort((a,b)=>a.at-b.at);
+  const oldFrames=frames.map((frame)=>({...frame}));
+  const actionsByFrame=new Map<string,EditorProject['pointer']>();
+  for(const action of [...project.pointer].sort((a,b)=>a.at-b.at)){
+    const frame=oldFrames.reduce((active,candidate)=>action.at>=candidate.at-.01?candidate:active,oldFrames[0]);
+    if(!frame)continue;
+    const list=actionsByFrame.get(frame.id)??[];
+    list.push(action);
+    actionsByFrame.set(frame.id,list);
+  }
+  let at=profile==='cinematic'?.45:.28;
+  let previousScroll=frames[0]?.scrollY??0;
+  let previousPointer={x:project.viewport.width*.82,y:project.viewport.height*.82};
+  for(const [index,frame] of frames.entries()){
+    const actions=actionsByFrame.get(frame.id)??[];
+    frame.at=roundToFrame(at,project.fps);
+    frame.duration=index===0?0:estimateScrollDuration(frame.scrollY-previousScroll,project.viewport.height,profile);
+    frame.motionProfile=profile;
+    frame.easing='easeInOut';
+    let actionAt=frame.at+frame.duration+(profile==='cinematic'?.42:.3);
+    for(const action of actions){
+      const move=estimatePointerDuration(Math.hypot(action.x-previousPointer.x,action.y-previousPointer.y),Math.hypot(project.viewport.width,project.viewport.height),profile);
+      const settle=action.kind==='click'?(profile==='cinematic'?.26:profile==='snappy'?.18:.22):0;
+      action.at=roundToFrame(actionAt,project.fps);
+      action.duration=move+settle;
+      action.path='human';
+      action.easing='easeOut';
+      action.settle=settle;
+      actionAt+=action.duration+(profile==='cinematic'?.42:.28);
+      previousPointer={x:action.x,y:action.y};
+    }
+    frame.hold=Math.round(Math.max(recommendedHold(profile,actions.length),actionAt-(frame.at+frame.duration)+(actions.length ? .3 : 0))*100)/100;
+    at=frame.at+frame.duration+frame.hold;
+    previousScroll=frame.scrollY;
+  }
+  project.frames=frames;
+  project.motionProfile=profile;
+  project.duration=Math.max(3,Math.ceil((at+(profile==='cinematic'?.5:.3))*project.fps)/project.fps);
+  project.exportRange={in:0,out:project.duration};
+  const finalTransition=project.transitions.find((item)=>item.label==='Мягкое завершение');
+  if(finalTransition)finalTransition.at=Math.max(0,project.duration-finalTransition.duration);
+  return project;
+};
+
+export const captureDirectionReport=(project:EditorProject):CaptureDirectionReport=>{
+  const warnings:string[]=[];
+  const frames=[...project.frames].sort((a,b)=>a.at-b.at);
+  if(frames.length<3)warnings.push('Для истории нужно хотя бы три сцены');
+  if(frames.length>8)warnings.push('Больше восьми сцен трудно прочитать в одном ролике');
+  const overlaps=frames.filter((frame,index)=>index>0&&itemEnd(frames[index-1])>frame.at+.01).length;
+  if(overlaps)warnings.push(`Пересекаются сцены: ${overlaps}`);
+  const rushed=frames.filter((frame)=>frame.hold<.65).length;
+  if(rushed)warnings.push(`Слишком короткие паузы: ${rushed}`);
+  const roboticMoves=project.pointer.filter((event)=>event.path==='direct'||event.easing==='linear').length;
+  if(roboticMoves)warnings.push(`Прямолинейные движения курсора: ${roboticMoves}`);
+  const outside=project.pointer.filter((event)=>event.at+event.duration>project.duration+.01).length;
+  if(outside)warnings.push(`Действия за пределами ролика: ${outside}`);
+  const score=clamp(100-warnings.length*12-(overlaps+rushed+roboticMoves+outside)*4,0,100);
+  return {score,duration:project.duration,sceneCount:frames.length,actionCount:project.pointer.length,warnings};
+};
+
+export const updateFrameWithRipple=(project:EditorProject,id:string,patch:Partial<EditorProject['frames'][number]>)=>{
+  const frame=project.frames.find((item)=>item.id===id);
+  if(!frame)return project;
+  const oldDuration=frame.duration;
+  const oldEnd=itemEnd(frame);
+  Object.assign(frame,patch);
+  const durationDelta=frame.duration-oldDuration;
+  const totalDelta=itemEnd(frame)-oldEnd;
+  const timed=[...project.pointer,...project.transitions,...project.captions,...project.audio,...(project.overlays??[]),...(project.markers??[])];
+  for(const item of timed){
+    if(item.at>=oldEnd-.02)item.at=Math.max(0,item.at+totalDelta);
+    else if(durationDelta&&item.at>=frame.at+oldDuration-.001)item.at=Math.max(frame.at,item.at+durationDelta);
+  }
+  for(const candidate of project.frames){if(candidate.id!==id&&candidate.at>=oldEnd-.02)candidate.at=Math.max(0,candidate.at+totalDelta);}
+  project.duration=Math.max(1,project.duration+totalDelta);
+  project.exportRange={in:project.exportRange?.in??0,out:project.duration};
   return project;
 };
 

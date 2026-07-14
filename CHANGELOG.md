@@ -1,5 +1,16 @@
 # Changelog
 
+## 0.6.0 — Natural motion output
+
+- Added one shared motion-kinematics engine for editor preview, Playwright capture, and Remotion output so cursor timing no longer changes between surfaces.
+- Replaced straight cursor interpolation with deterministic human arcs, distance-aware duration, target settling, readable click feedback, optional trail, and per-action trajectory controls.
+- Reworked browser scrolling with distance-aware scene timing, quintic acceleration and braking, and subtle deterministic velocity variation.
+- Added cinematic, balanced, and snappy directing profiles plus one-click rhythm polishing for existing projects.
+- Replaced storyboard crossfades with animated full-page capture simulation before recording.
+- Added ripple timing edits, scene scroll/hold controls in Capture Director, timeline rhythm bands, and a live direction-quality score.
+- Made discovered links hover by default while buttons and controls click, preventing accidental navigation during a showcase recording.
+- Added motion-kinematics QA and exercised Capture Director in the production browser workflow.
+
 ## 0.5.2 — Employee document pipeline
 
 - Added the Autocubes employee profile as a first-class Documents template with editable team, contact, stack, language, photo, and experience fields.

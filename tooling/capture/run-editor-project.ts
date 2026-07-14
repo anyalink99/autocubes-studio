@@ -3,6 +3,7 @@ import path from 'node:path';
 import {chromium, Page} from 'playwright';
 import {EditorProject, EasingName, PointerEvent, ScrollFrame} from '../../packages/core/editor-project';
 import {migrateEditorProject} from '../../packages/core/editor-operations';
+import {cursorStateAt} from '../../packages/core/motion-kinematics';
 import {ensureCleanDir, sleep} from './utils';
 
 const projectPath = path.resolve(process.argv[2] ?? 'data/projects/flowline.editor.json');
@@ -11,9 +12,9 @@ let pendingOutput: string | undefined;
 const scrollTo = async (page: Page, y: number, duration: number, easing: EasingName) => {
   await page.evaluate(`
     new Promise((resolve) => {
-      const targetY = ${JSON.stringify(y)};
-      const durationMs = ${JSON.stringify(duration * 1000)};
-      const easingName = ${JSON.stringify(easing)};
+      const targetY=${JSON.stringify(y)};
+      const durationMs=${JSON.stringify(duration*1000)};
+      const easingName=${JSON.stringify(easing)};
       const startY = window.scrollY;
       const distance = targetY - startY;
       const started = performance.now();
@@ -22,17 +23,31 @@ const scrollTo = async (page: Page, y: number, duration: number, easing: EasingN
         if (easingName === 'easeIn') return value ** 3;
         if (easingName === 'easeOut') return 1 - (1 - value) ** 3;
         if (easingName === 'spring') return 1 - Math.exp(-7 * value) * Math.cos(value * Math.PI * 2.4);
-        return value < 0.5 ? 4 * value ** 3 : 1 - Math.pow(-2 * value + 2, 3) / 2;
+        return value < 0.5 ? 16 * value ** 5 : 1 - Math.pow(-2 * value + 2, 5) / 2;
       };
       const tick = (now) => {
         const raw = Math.min(1, (now - started) / Math.max(1, durationMs));
-        window.scrollTo(0, startY + distance * apply(raw));
+        const eased=apply(raw);
+        const humanDrift=Math.sin(raw*Math.PI)*Math.sin(raw*Math.PI*3)*Math.min(7,Math.abs(distance)*.0025);
+        window.scrollTo(0, startY + distance * eased + Math.sign(distance) * humanDrift);
         if (raw < 1) requestAnimationFrame(tick);
         else resolve();
       };
       requestAnimationFrame(tick);
     })
   `);
+};
+
+const movePointerNaturally=async(page:Page,project:EditorProject,action:PointerEvent)=>{
+  const settle=action.kind==='click'?Math.max(.04,action.settle??.2):0;
+  const moveDuration=Math.max(.06,action.duration-settle);
+  const steps=Math.max(8,Math.round(moveDuration*60));
+  const stepDuration=moveDuration/steps;
+  for(let index=1;index<=steps;index+=1){
+    const state=cursorStateAt(project.pointer,action.at+index/steps*moveDuration,project.viewport);
+    await page.mouse.move(state.x,state.y);
+    await sleep(stepDuration*1000);
+  }
 };
 
 const pointerTarget = async (page: Page, action: PointerEvent) => {
@@ -73,6 +88,7 @@ const main = async () => {
   await page.waitForLoadState('networkidle', {timeout: 8000}).catch(() => undefined);
   await page.addStyleTag({content: '* { cursor: none !important; } html { scroll-behavior: auto !important; }'});
   await page.evaluate(() => window.scrollTo(0, 0));
+  await page.mouse.move(project.viewport.width*.82,project.viewport.height*.82);
   await sleep(500);
 
   const pageHeight = await page.evaluate(() => Math.max(document.body.scrollHeight, document.documentElement.scrollHeight));
@@ -96,12 +112,17 @@ const main = async () => {
     } else {
       const action = event.value;
       const target = await pointerTarget(page, action);
-      await page.mouse.move(target.x, target.y, {steps: Math.max(3, Math.round(action.duration * 35))});
+      action.x=target.x;
+      action.y=target.y;
+      await movePointerNaturally(page,project,action);
       if (action.kind === 'click') {
+        const settleMs=Math.max(170,(action.settle??.2)*1000);
+        const leadIn=Math.max(30,(settleMs-80)*.45);
+        await sleep(leadIn);
         await page.mouse.down();
-        await sleep(70);
+        await sleep(80);
         await page.mouse.up();
-        await sleep(120);
+        await sleep(Math.max(20,settleMs-leadIn-80));
       }
       console.log(`[${event.at.toFixed(2)}с] ${action.kind === 'click' ? 'клик' : action.kind === 'hover' ? 'наведение' : 'движение'} «${action.targetLabel || action.label}» → ${Math.round(target.x)}, ${Math.round(target.y)}`);
     }

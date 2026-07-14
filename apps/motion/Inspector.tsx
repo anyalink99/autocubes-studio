@@ -42,7 +42,7 @@ const SelectField = ({label, value, options, onChange}: {label: string; value: s
   <label className="field">
     <span>{label}</span>
     <select value={value} onChange={(event) => onChange(event.target.value)}>
-      {options.map((option) => <option key={option} value={option}>{({en:'English',ru:'Русский',linear:'Равномерно',easeIn:'Разгон',easeOut:'Торможение',easeInOut:'Плавно',spring:'Пружина',move:'Перемещение',hover:'Наведение',click:'Клик',pulse:'Импульс',ring:'Кольцо',top:'Сверху',center:'По центру',bottom:'Снизу',clean:'Без фона',boxed:'На плашке',accent:'Акцентный',left:'Слева',right:'Справа',none:'Без анимации',fade:'Проявление',rise:'Подъём',scale:'Масштаб',words:'По словам',music:'Музыка',voice:'Голос',sfx:'Эффект',cut:'Без перехода',blur:'Размытие',dipBlack:'Через чёрный',dipWhite:'Через белый',wipe:'Шторка',slide:'Сдвиг',zoomBlur:'Зум-размытие',flash:'Вспышка',up:'Вверх',down:'Вниз',logo:'Логотип',progress:'Прогресс',label:'Метка',cta:'Призыв',frame:'Рамка',grain:'Шум',timecode:'Таймкод',seconds:'Секунды',frames:'Кадры'} as Record<string,string>)[option]??option}</option>)}
+      {options.map((option) => <option key={option} value={option}>{({en:'English',ru:'Русский',linear:'Равномерно',easeIn:'Разгон',easeOut:'Торможение',easeInOut:'Плавно',spring:'Пружина',move:'Перемещение',hover:'Наведение',click:'Клик',pulse:'Импульс',ring:'Кольцо',top:'Сверху',center:'По центру',bottom:'Снизу',clean:'Без фона',boxed:'На плашке',accent:'Акцентный',left:'Слева',right:'Справа',none:'Без анимации',fade:'Проявление',rise:'Подъём',scale:'Масштаб',words:'По словам',music:'Музыка',voice:'Голос',sfx:'Эффект',cut:'Без перехода',blur:'Размытие',dipBlack:'Через чёрный',dipWhite:'Через белый',wipe:'Шторка',slide:'Сдвиг',zoomBlur:'Зум-размытие',flash:'Вспышка',up:'Вверх',down:'Вниз',logo:'Логотип',progress:'Прогресс',label:'Метка',cta:'Призыв',frame:'Рамка',grain:'Шум',timecode:'Таймкод',seconds:'Секунды',frames:'Кадры',cinematic:'Кинематографично',balanced:'Сбалансированно',snappy:'Динамично',human:'Естественная дуга',arc:'Выразительная дуга',direct:'Прямая линия'} as Record<string,string>)[option]??option}</option>)}
     </select>
   </label>
 );
@@ -111,6 +111,12 @@ export const Inspector = ({project, selection, assets, capturingFrame, onChangeP
             <NumberField label="Смещение видео" value={project.videoOffset ?? 0} min={0} onChange={(videoOffset) => patch({videoOffset})} />
             <div className="field-grid"><SelectField label="Отображение времени" value={project.timeDisplay ?? 'timecode'} options={['timecode','seconds','frames']} onChange={(timeDisplay) => patch({timeDisplay})}/><SelectField label="Скорость просмотра" value={String(project.playbackRate ?? 1)} options={['0.25','0.5','0.75','1','1.25','1.5','2']} onChange={(playbackRate) => patch({playbackRate:Number(playbackRate)})}/></div>
             <SelectField label="Язык результата" value={project.outputLanguage ?? 'en'} options={['en','ru']} onChange={(outputLanguage)=>patch({outputLanguage})}/>
+            <section className="inspector-section motion-character">
+              <div className="section-label"><span>Характер движения</span><b>Capture + MP4</b></div>
+              <SelectField label="Режиссёрский профиль" value={project.motionProfile ?? 'balanced'} options={['cinematic','balanced','snappy']} onChange={(motionProfile)=>patch({motionProfile})}/>
+              <label className="field range-field"><span>Размер курсора <b>{Math.round((project.cursorScale ?? 1)*100)}%</b></span><input type="range" min={.65} max={1.5} step={.05} value={project.cursorScale ?? 1} onChange={(event)=>patch({cursorScale:Number(event.target.value)})}/></label>
+              <label className="toggle-field"><input type="checkbox" checked={project.cursorTrail !== false} onChange={(event)=>patch({cursorTrail:event.target.checked})}/><span>Мягкий шлейф при быстром движении</span></label>
+            </section>
             <label className="field range-field"><span>Общая громкость <b>{Math.round((project.masterVolume ?? 1) * 100)}%</b></span><input type="range" min={0} max={1.5} step={.01} value={project.masterVolume ?? 1} onChange={(event) => patch({masterVolume:Number(event.target.value)})}/></label>
             <div className="field-grid"><NumberField label="Начало экспорта" value={project.exportRange?.in ?? 0} min={0} max={project.duration} onChange={(value) => patch({exportRange:{in:value,out:project.exportRange?.out ?? project.duration}})}/><NumberField label="Конец экспорта" value={project.exportRange?.out ?? project.duration} min={0} max={project.duration} onChange={(value) => patch({exportRange:{in:project.exportRange?.in ?? 0,out:value}})}/></div>
             <label className="toggle-field"><input type="checkbox" checked={project.guides !== false} onChange={(event) => patch({guides: event.target.checked})} /><span>Показывать безопасные зоны</span></label>
@@ -148,6 +154,8 @@ export const Inspector = ({project, selection, assets, capturingFrame, onChangeP
             </div>
             <NumberField label="Время движения" value={pointerItem.duration} min={0.05} onChange={(duration) => patch({duration})} />
             <EasingControl value={pointerItem.easing} onChange={(easing)=>patch({easing})}/>
+            <SelectField label="Траектория" value={pointerItem.path ?? 'human'} options={['human','arc','direct']} onChange={(path)=>patch({path})}/>
+            <div className="field-grid"><NumberField label="Изгиб траектории" value={pointerItem.curve ?? 0} min={-240} max={240} step={1} onChange={(curve)=>patch({curve:curve||undefined})}/><NumberField label="Пауза перед кликом" value={pointerItem.settle ?? .2} min={0} max={.5} step={.01} onChange={(settle)=>patch({settle})}/></div>
             <div className="field-grid">
               <NumberField label="X" value={pointerItem.x} min={0} max={project.viewport.width} step={1} onChange={(x) => patch({x})} />
               <NumberField label="Y" value={pointerItem.y} min={0} max={project.viewport.height} step={1} onChange={(y) => patch({y})} />

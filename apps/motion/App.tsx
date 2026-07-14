@@ -33,8 +33,8 @@ import {Timeline} from './Timeline';
 import {ShotLibrary} from './ShotLibrary';
 import {CaptionLibrary} from './CaptionLibrary';
 import {CaptureDirector} from './CaptureDirector';
-import {AssetLibrary, CaptureSection, CaptureTarget, EditorProject, JobState, ProjectSummary, Selection} from '../../packages/core/editor-project';
-import {applyRecipe, arrangeFrames, clamp, duplicateTimelineItem, formatEditorTime, migrateEditorProject, MotionRecipeId} from '../../packages/core/editor-operations';
+import {AssetLibrary, CaptureSection, CaptureTarget, EditorProject, JobState, MotionProfile, ProjectSummary, Selection} from '../../packages/core/editor-project';
+import {applyRecipe, arrangeFrames, buildDirectedCapturePlan, clamp, duplicateTimelineItem, formatEditorTime, migrateEditorProject, MotionRecipeId, polishMotionProject, updateFrameWithRipple} from '../../packages/core/editor-operations';
 
 const emptyAssets: AssetLibrary = {audio: [], images: [], videos: []};
 const clone = <T,>(value: T): T => structuredClone(value);
@@ -298,7 +298,7 @@ export const App = () => {
     const id = uid(track);
     commit((draft) => {
       if (track === 'frames') draft.frames.push({id, label: 'New frame', at: currentTime, scrollY: 0, duration: 1, hold: 1, easing: 'easeInOut', thumbnail: draft.frames[0]?.thumbnail});
-      if (track === 'pointer') draft.pointer.push({id, label: 'Действие курсора', at: currentTime, duration: 0.55, kind: 'move', x: draft.viewport.width / 2, y: draft.viewport.height / 2, easing: 'easeOut', visible: true});
+      if (track === 'pointer') draft.pointer.push({id, label: 'Действие курсора', at: currentTime, duration: 0.72, kind: 'move', x: draft.viewport.width / 2, y: draft.viewport.height / 2, easing: 'easeOut', visible: true, path:'human', settle:.2, clickEffect:'ring'});
       if (track === 'transitions') draft.transitions.push({id, label: 'Смена сцены', at: currentTime, duration: 0.6, kind: 'fade', strength: 0.7});
       if (track === 'captions') draft.captions.push({id, label: 'Текст', text: draft.outputLanguage==='ru'?'Ваше сообщение':'Your message', textEn:'Your message', textRu:'Ваше сообщение', at: currentTime, duration: 2.5, position: 'bottom', style: 'boxed', size: 54});
       if (track === 'audio') {
@@ -465,22 +465,11 @@ export const App = () => {
     } finally {setAnalyzingPage(false);}
   },[commit,project]);
 
-  const buildCapturePlan=useCallback((sections:CaptureSection[],targets:CaptureTarget[])=>{
+  const buildCapturePlan=useCallback((sections:CaptureSection[],targets:CaptureTarget[],profile:MotionProfile)=>{
     if(!project)return;
-    commit((draft)=>{
-      const ordered=[...sections].sort((a,b)=>a.scrollY-b.scrollY);
-      draft.frames=ordered.map((section,index)=>({id:`scene-${Date.now()}-${index}`,label:section.label,at:0,scrollY:section.scrollY,duration:index===0?0:.9,hold:1.1,easing:'easeInOut'}));
-      arrangeFrames(draft,'balanced');
-      draft.pointer=targets.map((target,index)=>{
-        const section=ordered.reduce((nearest,candidate)=>Math.abs(candidate.scrollY-target.pageY)<Math.abs(nearest.scrollY-target.pageY)?candidate:nearest,ordered[0]);
-        const scene=draft.frames[ordered.indexOf(section)];
-        return {id:`cursor-${Date.now()}-${index}`,label:target.label,targetLabel:target.label,at:Math.min(draft.duration-.2,scene.at+scene.duration+Math.min(.55,scene.hold*.45)),duration:.5,kind:'click',x:clamp(target.x,20,draft.viewport.width-20),y:clamp(target.pageY-section.scrollY,20,draft.viewport.height-20),selector:target.selector,easing:'easeOut',visible:true,clickEffect:'ring'};
-      });
-      draft.transitions=[{id:`transition-finish-${Date.now()}`,label:'Мягкое завершение',at:Math.max(0,draft.duration-.7),duration:.7,kind:'fade',strength:.82}];
-      return draft;
-    });
+    commit((draft)=>buildDirectedCapturePlan(draft,sections,targets,profile));
     setCurrentTime(0);setSelection({track:'frames'});setPreviewMode('storyboard');
-    setNotice({tone:'ok',message:'Сценарий готов. Проверьте сцены и курсор до записи.'});
+    setNotice({tone:'ok',message:'Сценарий отрежиссирован: скролл, паузы и курсор рассчитаны по дистанции.'});
   },[commit,project]);
 
   const autoArrangeFrames = useCallback((pace: 'slow' | 'balanced' | 'punchy' = 'balanced') => {
@@ -678,7 +667,7 @@ export const App = () => {
       <Timeline project={project} currentTime={currentTime} selection={selection} pixelsPerSecond={zoom} onSeek={(time) => {setPlaying(false); setCurrentTime(time);}} onSelect={setSelection} onMoveItem={(track, id, at) => {setSelection({track, id, ids:[id]}); changeItemFor(track, id, {at});}} onResizeItem={(track, id, duration) => {setSelection({track,id,ids:[id]}); if (track === 'frames') {const frame = project.frames.find((item) => item.id === id); changeItemFor(track,id,{hold: Math.max(0, duration - (frame?.duration ?? 0))});} else changeItemFor(track,id,{duration});}} onAdd={addItem} onToggleSnap={() => commit((draft) => {draft.snap = draft.snap === false; return draft;})} onZoom={setZoom} onSplit={splitSelected} onAddMarker={addMarker} onResizeHeight={(height)=>{setTimelineHeight(height);localStorage.setItem('motion-desk-timeline-height',String(height));}} />
 
       {notice ? <div className={`editor-toast ${notice.tone}`}>{notice.message}</div> : null}
-      {showCaptureDirector?<CaptureDirector project={project} analysis={project.captureAnalysis} analyzing={analyzingPage} recording={job?.status==='running'&&job.kind==='capture'} onChangeUrl={(url)=>commit((draft)=>{draft.url=url;draft.captureAnalysis=undefined;return draft;})} onAnalyze={()=>void analyzeCaptureSource()} onBuild={buildCapturePlan} onChangeFrame={(id,scrollY)=>commit((draft)=>{const frame=draft.frames.find((item)=>item.id===id);if(frame)frame.scrollY=clamp(scrollY,0,Math.max(0,draft.pageHeight-draft.viewport.height));return draft;},`capture-frame:${id}`)} onRecord={()=>{setShowCaptureDirector(false);void runJob('capture');}} onClose={()=>setShowCaptureDirector(false)}/>:null}
+      {showCaptureDirector?<CaptureDirector project={project} analysis={project.captureAnalysis} analyzing={analyzingPage} recording={job?.status==='running'&&job.kind==='capture'} onChangeUrl={(url)=>commit((draft)=>{draft.url=url;draft.captureAnalysis=undefined;return draft;})} onAnalyze={()=>void analyzeCaptureSource()} onBuild={buildCapturePlan} onPolish={(profile)=>commit((draft)=>polishMotionProject(draft,profile),'capture-polish')} onChangeFrame={(id,patch)=>commit((draft)=>updateFrameWithRipple(draft,id,{...patch,...(patch.scrollY===undefined?{}:{scrollY:clamp(patch.scrollY,0,Math.max(0,draft.pageHeight-draft.viewport.height))})}),`capture-frame:${id}:${Object.keys(patch).join(',')}`)} onRecord={()=>{setShowCaptureDirector(false);void runJob('capture');}} onClose={()=>setShowCaptureDirector(false)}/>:null}
 
       {showShortcuts ? <div className="shortcut-backdrop" onClick={() => setShowShortcuts(false)}><section className="shortcut-card" onClick={(event) => event.stopPropagation()}><div><span>Motion Desk</span><h2>Горячие клавиши</h2><button onClick={() => setShowShortcuts(false)}><X size={15}/></button></div><dl><dt><kbd>Space</kbd></dt><dd>Воспроизведение или пауза</dd><dt><kbd>L</kbd></dt><dd>Повторять ролик</dd><dt><kbd>←</kbd> <kbd>→</kbd></dt><dd>Сдвиг на один кадр</dd><dt><kbd>Shift</kbd> + <kbd>←</kbd>/<kbd>→</kbd></dt><dd>Сдвиг на секунду</dd><dt><kbd>+</kbd> / <kbd>−</kbd></dt><dd>Масштаб монтажа</dd><dt><kbd>C</kbd></dt><dd>Добавить текст</dd><dt><kbd>S</kbd></dt><dd>Разрезать элемент</dd><dt><kbd>Ctrl</kbd> + <kbd>C</kbd>/<kbd>V</kbd></dt><dd>Копировать или вставить</dd><dt><kbd>Ctrl</kbd> + <kbd>S</kbd></dt><dd>Сохранить</dd><dt><kbd>Ctrl</kbd> + <kbd>Z</kbd></dt><dd>Отменить</dd><dt><kbd>Ctrl</kbd> + <kbd>D</kbd></dt><dd>Создать копию элемента</dd><dt><kbd>Delete</kbd></dt><dd>Удалить выбранное</dd><dt><kbd>Home</kbd> / <kbd>End</kbd></dt><dd>Начало или конец ролика</dd></dl></section></div> : null}
 
@@ -693,6 +682,7 @@ export const App = () => {
 
   function changeItemFor(track: Exclude<Selection['track'], 'project'>, id: string, patch: Record<string, unknown>) {
     commit((draft) => {
+      if(track==='frames'&&('duration' in patch||'hold' in patch))return updateFrameWithRipple(draft,id,patch);
       const item = draft[track]?.find((candidate) => candidate.id === id);
       if (item) Object.assign(item, patch);
       return draft;

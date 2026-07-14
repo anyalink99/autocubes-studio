@@ -1,4 +1,6 @@
 export type EasingName = 'linear' | 'easeIn' | 'easeOut' | 'easeInOut' | 'spring';
+export type MotionProfile = 'cinematic' | 'balanced' | 'snappy';
+export type PointerPath = 'human' | 'arc' | 'direct';
 export type TransitionKind = 'cut' | 'fade' | 'blur' | 'dipBlack' | 'dipWhite' | 'wipe' | 'slide' | 'zoomBlur' | 'flash';
 export type PointerKind = 'move' | 'click' | 'hover';
 export type OutputLanguage = 'en' | 'ru';
@@ -26,6 +28,7 @@ export type ScrollFrame = {
   duration: number;
   hold: number;
   easing: EasingName;
+  motionProfile?: MotionProfile;
   thumbnail?: string;
 };
 
@@ -42,6 +45,9 @@ export type PointerEvent = {
   visible: boolean;
   targetLabel?: string;
   clickEffect?: 'pulse' | 'ring' | 'none';
+  path?: PointerPath;
+  curve?: number;
+  settle?: number;
 };
 
 export type TransitionEvent = {
@@ -126,6 +132,9 @@ export type EditorProject = {
   masterVolume?: number;
   exportRange?: {in: number; out: number};
   outputLanguage?: OutputLanguage;
+  motionProfile?: MotionProfile;
+  cursorScale?: number;
+  cursorTrail?: boolean;
   captureAnalysis?: CaptureAnalysis;
   pageHeight: number;
   previewVideo?: string;

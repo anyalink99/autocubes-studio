@@ -1,8 +1,12 @@
 import { chromium } from "playwright";
-
-const baseUrl = process.env.STUDIO_URL || "http://127.0.0.1:4178";
+import path from "node:path";
+import { createServer } from "vite";
 
 const main = async () => {
+  const port = 4195;
+  const baseUrl = process.env.STUDIO_URL || `http://127.0.0.1:${port}`;
+  const server = process.env.STUDIO_URL ? undefined : await createServer({configFile:path.resolve('vite.config.ts'),server:{host:'127.0.0.1',port,strictPort:true,open:false}});
+  await server?.listen();
   const browser = await chromium.launch({ headless: true });
   const page = await browser.newPage({
     viewport: { width: 1440, height: 900 },
@@ -128,6 +132,7 @@ const main = async () => {
     );
   } finally {
     await browser.close();
+    await server?.close();
   }
 };
 

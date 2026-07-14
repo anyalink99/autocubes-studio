@@ -58,6 +58,15 @@ const main=async()=>{
     if(await page.locator('.track-frames .timeline-clip.selected').count()!==2)throw new Error('Timeline multi-selection failed');
     if(Number.parseInt(await page.locator('.position-input-row input').inputValue(),10)<=0)throw new Error('Page Position readout did not follow timeline selection');
     await page.screenshot({path:path.resolve('out/qa/motion-workflow.png')});
+    await page.getByRole('button',{name:/Проверить захват|Настроить захват/}).click();
+    if(!await page.locator('.capture-director').isVisible())throw new Error('Capture Director did not open');
+    await page.locator('.capture-profile-picker button').filter({hasText:'Кинематографично'}).click();
+    if(!await page.locator('.capture-profile-picker button.active').getByText('Кинематографично').isVisible())throw new Error('Capture rhythm profile did not respond');
+    if(!await page.locator('.review-timing-controls').isVisible())throw new Error('Capture timing controls are missing');
+    await page.getByRole('button',{name:/Применить ритм/}).click();
+    if(Number(await page.locator('.capture-score>b').textContent())<85)throw new Error('Capture rhythm polish did not improve the direction score');
+    await page.screenshot({path:path.resolve('out/qa/capture-director.png')});
+    await page.locator('.capture-director-head').getByRole('button',{name:'Закрыть'}).click();
 
     await page.goto(`${baseUrl}/apps/identity/identity-lab.html`,{waitUntil:'networkidle'});
     await page.locator('#openBrandKit').click();

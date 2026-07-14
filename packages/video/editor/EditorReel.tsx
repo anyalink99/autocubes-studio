@@ -1,39 +1,10 @@
 import React from 'react';
 import {AbsoluteFill, Audio, interpolate, Sequence, staticFile, useCurrentFrame, Video} from 'remotion';
 import projectData from '../../../data/generated/editor-project.json';
-import {EditorProject, EasingName} from '../../core/editor-project';
+import {EditorProject} from '../../core/editor-project';
+import {cursorStateAt} from '../../core/motion-kinematics';
 
 const project = projectData as EditorProject;
-
-const applyEasing = (value: number, easing: EasingName) => {
-  if (easing === 'linear') return value;
-  if (easing === 'easeIn') return value ** 3;
-  if (easing === 'easeOut') return 1 - (1 - value) ** 3;
-  if (easing === 'spring') return 1 - Math.exp(-7 * value) * Math.cos(value * Math.PI * 2.4);
-  return value < 0.5 ? 4 * value ** 3 : 1 - Math.pow(-2 * value + 2, 3) / 2;
-};
-
-const cursorAt = (time: number) => {
-  const events = [...project.pointer].filter((event) => event.visible).sort((a, b) => a.at - b.at);
-  let previous = {x: project.viewport.width * 0.86, y: project.viewport.height * 0.86, visible: false, clicking: false};
-
-  for (const event of events) {
-    if (time < event.at) return previous;
-    const end = event.at + Math.max(0.01, event.duration);
-    if (time <= end) {
-      const raw = Math.max(0, Math.min(1, (time - event.at) / (end - event.at)));
-      const amount = applyEasing(raw, event.easing);
-      return {
-        x: previous.x + (event.x - previous.x) * amount,
-        y: previous.y + (event.y - previous.y) * amount,
-        visible: true,
-        clicking: event.kind === 'click' && raw > 0.76,
-      };
-    }
-    previous = {x: event.x, y: event.y, visible: true, clicking: false};
-  }
-  return previous;
-};
 
 const TransitionLayer = ({time}: {time: number}) => {
   const transition = project.transitions.find((item) => time >= item.at && time <= item.at + item.duration);
@@ -54,7 +25,7 @@ const TransitionLayer = ({time}: {time: number}) => {
 export const EditorReel = () => {
   const frame = useCurrentFrame();
   const time = frame / project.fps;
-  const cursor = cursorAt(time);
+  const cursor = cursorStateAt(project.pointer,time,project.viewport);
   const caption = project.captions.find((item) => time >= item.at && time <= item.at + item.duration);
   const overlay = (project.overlays ?? []).find((item) => time >= item.at && time <= item.at + item.duration);
   const captionProgress = caption ? Math.max(0, Math.min(1, (time - caption.at) / Math.min(.4, caption.duration / 2))) : 1;
@@ -71,7 +42,9 @@ export const EditorReel = () => {
       ) : null}
 
       {cursor.visible ? (
-        <div style={{position: 'absolute', left: cursor.x, top: cursor.y, width: 58, height: 68, transform: `translate(-7px,-6px) scale(${cursor.clicking ? 0.82 : 1})`, filter: 'drop-shadow(0 12px 18px rgba(0,0,0,.34))'}}>
+        <div style={{position:'absolute',left:cursor.x,top:cursor.y,width:58,height:68,zIndex:8,transform:`translate(-7px,-6px) scale(${(project.cursorScale??1)*(cursor.clicking?.9:1)})`,transformOrigin:'7px 6px',filter:'drop-shadow(0 12px 18px rgba(0,0,0,.34))'}}>
+          {project.cursorTrail!==false&&cursor.speed>.002?<div style={{position:'absolute',left:-18,top:-18,width:48,height:48,borderRadius:'50%',background:'rgba(255,91,34,.16)',filter:'blur(12px)',opacity:Math.min(.62,cursor.speed*22)}}/>:null}
+          {cursor.effect!=='none'&&cursor.clickProgress>0?<div style={{position:'absolute',left:-25,top:-25,width:54,height:54,borderRadius:'50%',border:cursor.effect==='ring'?'3px solid rgba(255,91,34,.9)':undefined,background:cursor.effect==='pulse'?'rgba(255,91,34,.26)':undefined,opacity:1-cursor.clickProgress,transform:`scale(${.45+cursor.clickProgress*1.2})`}}/>:null}
           <svg width="58" height="68" viewBox="0 0 58 68" fill="none">
             <path d="M9 5L48 41L31 43.8L24.4 62L9 5Z" fill="#0b0c10" stroke="#fff" strokeWidth="4" strokeLinejoin="round" />
             <path d="M31 44L42 58" stroke="#ff5b22" strokeWidth="5" strokeLinecap="round" />

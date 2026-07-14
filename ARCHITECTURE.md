@@ -29,7 +29,7 @@ Rules:
 
 ### Operations Desk
 
-The root application is the studio operating layer. It owns four connected local-first domains:
+The `/operations.html` application is the studio operating layer. It owns four connected local-first domains:
 
 - CRM leads move through a small explicit pipeline and always carry a next action. A won lead can create a project without re-entering client context.
 - Project OS uses the shared brief-to-support phase model. Tasks, owners, deadlines, deliverables, health, and activity remain attached to the project.
@@ -40,13 +40,13 @@ Operations data is cached under `autocubes-operations-v1`, can be imported or ex
 
 ### Studio
 
-The legacy launch dashboard remains in `apps/studio` for reference while Operations Desk is the root launch surface. Motion, Identity, and Documents remain independent production applications linked from its tool rail.
+The animated tool dashboard in `apps/studio` is the root launch surface. Motion, Identity, Documents, and Operations remain independent production applications linked from it.
 
 ### Motion Desk
 
 The editor modifies `data/projects/*.editor.json` through the local API. Capture jobs use Playwright; render jobs synchronize the selected project into `data/generated/editor-project.json` before invoking Remotion.
 
-Motion schema version 3 migrates through `packages/core/editor-operations.ts`. Portable operations own clamping, time formatting, page-position parsing, frame arrangement, recipes, and snapping. Capture Director uses a lightweight Playwright analysis endpoint to discover sections and targets before a recording job is authorized. Recording writes to a staging directory and atomically replaces the last successful capture. Page Map, Shot Library, Timeline, Caption Library, Preview, and Inspector consume those contracts without importing Node infrastructure.
+Motion schema version 3 migrates through `packages/core/editor-operations.ts`. Portable operations own clamping, time formatting, page-position parsing, frame arrangement, directing profiles, ripple edits, quality reports, recipes, and snapping. `packages/core/motion-kinematics.ts` is the single deterministic source for cursor paths, click timing, and distance-aware motion; Preview, Playwright capture, and Remotion consume the same contract. Capture Director uses a lightweight Playwright analysis endpoint to discover sections and targets before a recording job is authorized. Recording writes to a revision directory and switches the project to the successful capture only after completion. Page Map, Shot Library, Timeline, Caption Library, Preview, and Inspector consume those contracts without importing Node infrastructure.
 
 ### Documents
 
@@ -62,7 +62,7 @@ Identity export runs in the browser. `html-to-image` rasterizes the active artbo
 
 ## Quality gates
 
-`npm run qa:smoke` verifies core export and API paths. `npm run qa:identity` stresses variant paging, zoom, and responsive geometry. `npm run qa:workflows` covers Motion Page Map and Timeline, Identity Brand Kit and Carousel Builder, Documents blocks and export, and Studio Project Hub. `npm run check` runs all suites plus TypeScript, production build, and Remotion composition discovery.
+`npm run qa:motion` verifies distance-aware direction, curved cursor paths, exact target landing, ripple edits, and quality scoring. `npm run qa:smoke` verifies core export and API paths. `npm run qa:identity` stresses variant paging, zoom, and responsive geometry. `npm run qa:workflows` covers Motion Page Map, Timeline, and Capture Director, Identity Brand Kit and Carousel Builder, Documents blocks and export, and Studio Project Hub. `npm run check` runs all suites plus TypeScript, production build, and Remotion composition discovery.
 
 ## Persistence and collaboration
 

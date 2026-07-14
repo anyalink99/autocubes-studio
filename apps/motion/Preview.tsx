@@ -4,6 +4,7 @@ import {Crosshair, Download, Film, Image as ImageIcon, LayoutGrid, Maximize2, Zo
 import {EditorProject, Selection} from '../../packages/core/editor-project';
 import {findMediaPreset, formatRatio, mediaPresets} from '../../packages/core/media-presets';
 import {maxScroll, scrollPercent} from '../../packages/core/editor-operations';
+import {cursorStateAt, motionEase} from '../../packages/core/motion-kinematics';
 
 type Props = {
   project: EditorProject;
@@ -17,8 +18,6 @@ type Props = {
   onToggleGuides: () => void;
   onChangeFramePosition: (scrollY: number) => void;
 };
-
-const ease = (value: number) => value < 0.5 ? 4 * value ** 3 : 1 - Math.pow(-2 * value + 2, 3) / 2;
 
 export const Preview = ({project, currentTime, playing, mode, selection, onModeChange, onPickPointer, onChangeViewport, onToggleGuides, onChangeFramePosition}: Props) => {
   const videoRef = useRef<HTMLVideoElement>(null);
@@ -51,27 +50,11 @@ export const Preview = ({project, currentTime, playing, mode, selection, onModeC
         blend = frame.duration === 0 ? 1 : Math.max(0, Math.min(1, (currentTime - frame.at) / frame.duration));
       }
     }
-    return {current, previous, blend: ease(blend)};
+    const eased=motionEase(blend,current?.easing);
+    return {current, previous, blend:eased,scrollY:(previous?.scrollY??0)+((current?.scrollY??0)-(previous?.scrollY??0))*eased};
   }, [currentTime, sortedFrames]);
 
-  const pointer = useMemo(() => {
-    const events = [...project.pointer].filter((event) => event.visible).sort((a, b) => a.at - b.at);
-    let position = {x: project.viewport.width * 0.86, y: project.viewport.height * 0.86, visible: false, click: false, effect:'ring'};
-    for (let index = 0; index < events.length; index += 1) {
-      const event = events[index];
-      const previous = events[index - 1];
-      if (currentTime < event.at) break;
-      const end = event.at + Math.max(0.01, event.duration);
-      const fromX = previous?.x ?? position.x;
-      const fromY = previous?.y ?? position.y;
-      if (currentTime <= end) {
-        const amount = ease(Math.max(0, Math.min(1, (currentTime - event.at) / (end - event.at))));
-        return {x: fromX + (event.x - fromX) * amount, y: fromY + (event.y - fromY) * amount, visible: true, click: event.kind === 'click' && currentTime > end - 0.14, effect:event.clickEffect ?? 'ring'};
-      }
-      position = {x: event.x, y: event.y, visible: true, click: false, effect:event.clickEffect ?? 'ring'};
-    }
-    return position;
-  }, [currentTime, project.pointer, project.viewport.height, project.viewport.width]);
+  const pointer = useMemo(() => cursorStateAt(project.pointer,currentTime,project.viewport), [currentTime, project.pointer, project.viewport]);
 
   const transition = project.transitions.find((item) => currentTime >= item.at && currentTime <= item.at + item.duration);
   const transitionProgress = transition ? (currentTime - transition.at) / Math.max(0.01, transition.duration) : 0;
@@ -140,12 +123,14 @@ export const Preview = ({project, currentTime, playing, mode, selection, onModeC
         <div ref={stageRef} className={`stage ${selection.track === 'pointer' ? 'is-picking' : ''} ${selectedFrame ? 'is-positioning' : ''}`} style={{aspectRatio: `${project.viewport.width} / ${project.viewport.height}`, transform:`scale(${canvasZoom / 100})`}} onClick={handlePick}>
           {mode === 'capture' && project.previewVideo ? <video ref={videoRef} src={project.previewVideo} muted playsInline/> : (
             <>
-              {frameState.previous?.thumbnail ? <img src={frameState.previous.thumbnail} alt="" style={{opacity: 1 - frameState.blend}}/> : null}
-              {frameState.current?.thumbnail ? <img src={frameState.current.thumbnail} alt="" style={{opacity: frameState.blend}}/> : <div className="stage-empty">Сначала разберите страницу или обновите снимок сцены</div>}
+              {project.captureAnalysis?.fullPageImage?<div className="stage-page-simulator"><img src={project.captureAnalysis.fullPageImage} alt="" style={{height:`${project.pageHeight/project.viewport.height*100}%`,top:`${-frameState.scrollY/project.viewport.height*100}%`}}/></div>:<>
+                {frameState.previous?.thumbnail ? <img src={frameState.previous.thumbnail} alt="" style={{opacity: 1 - frameState.blend}}/> : null}
+                {frameState.current?.thumbnail ? <img src={frameState.current.thumbnail} alt="" style={{opacity: frameState.blend}}/> : <div className="stage-empty">Сначала разберите страницу или обновите снимок сцены</div>}
+              </>}
             </>
           )}
           {selection.track==='pointer'&&project.pointer.length?<svg className="pointer-path" viewBox={`0 0 ${project.viewport.width} ${project.viewport.height}`} preserveAspectRatio="none" aria-hidden="true"><polyline points={[...project.pointer].sort((a,b)=>a.at-b.at).map((item)=>`${item.x},${item.y}`).join(' ')}/>{project.pointer.map((item)=><circle key={item.id} cx={item.x} cy={item.y} r={item.id===selection.id?18:11} className={item.id===selection.id?'selected':''}/>)}</svg>:null}
-          {pointer.visible ? <div className={`preview-cursor effect-${pointer.effect} ${pointer.click ? 'clicking' : ''}`} style={{left: `${(pointer.x / project.viewport.width) * 100}%`, top: `${(pointer.y / project.viewport.height) * 100}%`}}><svg viewBox="0 0 34 40" aria-hidden="true"><path d="M4 3L29 26L18 28L14 38L4 3Z"/></svg></div> : null}
+          {pointer.visible ? <div className={`preview-cursor effect-${pointer.effect} ${pointer.clicking ? 'clicking' : ''} ${project.cursorTrail!==false&&pointer.speed>.002?'has-trail':''}`} style={{left: `${(pointer.x / project.viewport.width) * 100}%`, top: `${(pointer.y / project.viewport.height) * 100}%`, '--cursor-scale':project.cursorScale??1,'--click-progress':pointer.clickProgress} as React.CSSProperties}><i className="cursor-trail"/><i className="cursor-feedback"/><svg viewBox="0 0 34 40" aria-hidden="true"><path d="M4 3L29 26L18 28L14 38L4 3Z"/></svg></div> : null}
           {transition ? <div className={`transition-preview transition-${transition.kind} direction-${transition.direction ?? 'left'}`} style={{opacity: transitionOpacity, backgroundColor:transition.color, backdropFilter: transition.kind === 'blur' || transition.kind === 'zoomBlur' ? `blur(${transitionOpacity * 14}px)` : undefined, clipPath:transition.kind === 'wipe' ? `inset(0 ${100 - transitionProgress * 100}% 0 0)` : undefined, transform:transition.kind === 'slide' ? `translateX(${(1-transitionProgress) * (transition.direction === 'right' ? -100 : 100)}%)` : transition.kind === 'zoomBlur' ? `scale(${1 + transitionOpacity * .08})` : undefined}}/> : null}
           {caption ? <div className={`preview-caption position-${caption.position} style-${caption.style} animation-${caption.animation ?? 'none'} ${selection.id === caption.id ? 'is-selected' : ''}`} style={{fontSize:`${caption.size / project.viewport.width * 100}cqw`, textAlign:caption.align ?? 'center', maxWidth:`${caption.maxWidth ?? 86}%`, lineHeight:caption.lineHeight ?? 1.08, letterSpacing:`${(caption.letterSpacing ?? -2.5) / 100}em`, color:caption.color, backgroundColor:caption.background}}>{project.outputLanguage==='ru'?(caption.textRu??caption.text):(caption.textEn??caption.text)}</div> : null}
           {overlay ? <div className={`preview-overlay overlay-${overlay.kind} ${selection.id === overlay.id ? 'is-selected' : ''}`} style={{left:`${overlay.x}%`,top:`${overlay.y}%`,opacity:overlay.opacity,transform:`scale(${overlay.scale})`,color:overlay.color}}>{overlay.kind === 'progress' ? <i style={{width:`${currentTime / project.duration * 100}%`}}/> : project.outputLanguage==='ru'?(overlay.textRu??overlay.text):(overlay.textEn??overlay.text)}</div> : null}
