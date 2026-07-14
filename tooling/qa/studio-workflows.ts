@@ -61,7 +61,8 @@ const main=async()=>{
     await page.getByRole('button',{name:/Проверить захват|Настроить захват/}).click();
     if(!await page.locator('.capture-director').isVisible())throw new Error('Capture Director did not open');
     if(!await page.locator('.review-timing-controls').isVisible()){
-      await page.route('**/api/capture/analyze',(route)=>route.fulfill({status:200,contentType:'application/json',body:JSON.stringify(analysis)}));
+      const directorAnalysis={...analysis,url:baseUrl,title:'QA showcase',pageHeight:7200,analyzedAt:new Date().toISOString(),sections:[{id:'qa-hero',label:'Hero',selector:'body',scrollY:0,level:1},{id:'qa-story',label:'Story',selector:'main',scrollY:2400,level:2},{id:'qa-final',label:'Final',selector:'footer',scrollY:4800,level:2}],targets:[]};
+      await page.route('**/api/capture/analyze',(route)=>route.fulfill({status:200,contentType:'application/json',body:JSON.stringify(directorAnalysis)}));
       await page.locator('.capture-source .capture-primary').click();
       await page.locator('.capture-planner').waitFor();
       await page.locator('.capture-director-actions .capture-primary').click();
