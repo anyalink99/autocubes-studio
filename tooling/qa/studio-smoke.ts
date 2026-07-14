@@ -3,6 +3,7 @@ import path from 'node:path';
 import {chromium} from 'playwright';
 import {createServer} from 'vite';
 import JSZip from 'jszip';
+import {EditorProject} from '../../packages/core/editor-project';
 
 const main = async () => {
   const port = 4190;
@@ -111,8 +112,15 @@ const main = async () => {
     const projectDownload = await projectDownloadPromise;
     const projectExportPath = path.resolve('out/qa/project.editor.json');
     await projectDownload.saveAs(projectExportPath);
-    const projectExport = JSON.parse(await fs.readFile(projectExportPath, 'utf8')) as {title?: string};
+    const projectExport = JSON.parse(await fs.readFile(projectExportPath, 'utf8')) as EditorProject;
     if (!projectExport.title) throw new Error('Motion project export is invalid');
+    if (!await page.getByTitle('Магнит к плейхеду, маркерам и краям').isVisible()) throw new Error('Timeline magnet control is missing');
+    if (!await page.getByTitle('Ripple: сдвигать всё после правой обрезки').isVisible()) throw new Error('Timeline ripple control is missing');
+    if (!await page.locator('.clip-handle-start').count() || !await page.locator('.clip-handle-end').count()) throw new Error('Timeline must expose both trim handles');
+    const analysisResponse=await page.request.post(`${baseUrl}/api/capture/analyze`,{data:{project:{...projectExport,id:'qa-live-preview',url:`${baseUrl}/operations.html`,viewport:{width:1080,height:900}}}});
+    if(!analysisResponse.ok())throw new Error(`Capture analysis returned ${analysisResponse.status()}`);
+    const analysis=await analysisResponse.json() as {previewFrames?:Array<{image:string;scrollY:number}>};
+    if((analysis.previewFrames?.length??0)<2)throw new Error('Capture analysis did not store live viewport states');
     await page.locator('.preview-format').selectOption('instagram-portrait');
     const stageRatio = await page.locator('.stage').evaluate((element) => getComputedStyle(element).aspectRatio);
     if (!stageRatio.includes('1080') || !stageRatio.includes('1350')) throw new Error(`Motion format did not change: ${stageRatio}`);

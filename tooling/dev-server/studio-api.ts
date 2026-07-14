@@ -75,7 +75,9 @@ const analyzePage = async (project: EditorProject): Promise<CaptureAnalysis> => 
       const visible = (element:Element) => {
         const rect=(element as HTMLElement).getBoundingClientRect();
         const style=getComputedStyle(element);
-        return rect.width>4&&rect.height>4&&style.display!=='none'&&style.visibility!=='hidden'&&Number(style.opacity)>0;
+        // Opacity is deliberately ignored: scroll-reveal libraries often start
+        // useful content at opacity:0 and reveal it only after IntersectionObserver fires.
+        return rect.width>4&&rect.height>4&&style.display!=='none'&&style.visibility!=='hidden';
       };
       const selectorFor=(element:Element) => {
         const escaped=(value:string)=>CSS.escape(value);
@@ -94,9 +96,33 @@ const analyzePage = async (project: EditorProject): Promise<CaptureAnalysis> => 
     });
     const directory=path.join(editorFramesDirectory,project.id);
     await fs.mkdir(directory,{recursive:true});
+    await page.addStyleTag({content:'html { scroll-behavior: auto !important; } * { cursor: none !important; }'});
+    const maxY=Math.max(0,result.pageHeight-project.viewport.height);
+    const sweepStep=Math.max(320,Math.round(project.viewport.height*.72));
+    const sweepPositions=[0,...Array.from({length:Math.min(20,Math.ceil(maxY/sweepStep)+1)},(_,index)=>Math.min(maxY,index*sweepStep)),...result.sections.map((section)=>Math.min(maxY,section.scrollY)),maxY]
+      .filter((value,index,array)=>array.indexOf(value)===index)
+      .sort((a,b)=>a-b);
+    for(const scrollY of sweepPositions){
+      await page.evaluate((target)=>window.scrollTo(0,target),scrollY);
+      await page.waitForTimeout(180);
+    }
+    const previewPositions=[0,...result.sections.map((section)=>Math.min(maxY,section.scrollY)),maxY]
+      .filter((value,index,array)=>array.indexOf(value)===index)
+      .sort((a,b)=>a-b)
+      .filter((_,index,array)=>array.length<=12||index===0||index===array.length-1||index%Math.ceil(array.length/12)===0);
+    const version=Date.now();
+    const previewFrames=[];
+    for(const [index,scrollY] of previewPositions.entries()){
+      await page.evaluate((target)=>window.scrollTo(0,target),scrollY);
+      await page.waitForTimeout(260);
+      const previewFilename=`page-preview-${index}.png`;
+      await page.screenshot({path:path.join(directory,previewFilename)});
+      const nearest=result.sections.reduce((best,section)=>Math.abs(section.scrollY-scrollY)<Math.abs(best.scrollY-scrollY)?section:best,result.sections[0]);
+      previewFrames.push({id:`preview-${index}`,label:nearest?.label??`Viewport ${index+1}`,scrollY,image:`/editor-frames/${project.id}/${previewFilename}?v=${version}`});
+    }
     const filename='page-analysis.png';
     await page.screenshot({path:path.join(directory,filename),fullPage:true});
-    return {url:project.url,title:result.title,pageHeight:result.pageHeight,sections:result.sections,targets:result.targets,analyzedAt:new Date().toISOString(),fullPageImage:`/editor-frames/${project.id}/${filename}?v=${Date.now()}`};
+    return {url:project.url,title:result.title,pageHeight:result.pageHeight,sections:result.sections,targets:result.targets,previewFrames,analyzedAt:new Date().toISOString(),fullPageImage:`/editor-frames/${project.id}/${filename}?v=${version}`};
   } finally {await browser.close();}
 };
 

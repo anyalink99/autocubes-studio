@@ -68,13 +68,63 @@ export const migrateEditorProject = (source: EditorProject): EditorProject => {
 
 export const itemEnd = (item: {at: number; duration: number; hold?: number}) => item.at + item.duration + (item.hold ?? 0);
 
-export const snapTime = (project: EditorProject, value: number, pixelsPerSecond: number, excludedId?: string) => {
-  if (project.snap === false) return clamp(value, 0, project.duration);
-  const frame = roundToFrame(value, project.fps);
+export type SnapResult={time:number; snapped:boolean; label?:string; source?:'edge'|'marker'|'playhead'|'range'};
+
+export const magneticSnap = (project: EditorProject, value: number, pixelsPerSecond: number, options: {excludedIds?:string[]; playhead?:number} = {}):SnapResult => {
+  const bounded=clamp(value,0,project.duration);
+  const frame=roundToFrame(bounded,project.fps);
+  if(project.snap===false)return {time:frame,snapped:false};
+  const excluded=new Set(options.excludedIds??[]);
   const all = [...project.frames, ...project.pointer, ...project.transitions, ...project.captions, ...project.audio, ...(project.overlays ?? [])];
-  const points = [0, project.duration, ...(project.markers ?? []).map((marker) => marker.at), ...all.filter((item) => item.id !== excludedId).flatMap((item) => [item.at, itemEnd(item)])];
-  const nearest = points.reduce((best, point) => Math.abs(point - value) < Math.abs(best - value) ? point : best, frame);
-  return Math.abs(nearest - value) <= Math.max(1 / project.fps, 8 / pixelsPerSecond) ? nearest : frame;
+  const points:Array<{time:number;label:string;source:NonNullable<SnapResult['source']>}>= [
+    {time:0,label:'Начало',source:'range'},
+    {time:project.duration,label:'Конец',source:'range'},
+    ...(options.playhead===undefined?[]:[{time:options.playhead,label:'Плейхед',source:'playhead' as const}]),
+    ...(project.markers??[]).map((marker)=>({time:marker.at,label:marker.label||'Маркер',source:'marker' as const})),
+    ...all.filter((item)=>!excluded.has(item.id)).flatMap((item)=>[
+      {time:item.at,label:'Начало клипа',source:'edge' as const},
+      {time:itemEnd(item),label:'Конец клипа',source:'edge' as const},
+    ]),
+  ];
+  const nearest=points.reduce((best,point)=>Math.abs(point.time-bounded)<Math.abs(best.time-bounded)?point:best,points[0]);
+  const threshold=Math.max(1/project.fps,12/Math.max(1,pixelsPerSecond));
+  return Math.abs(nearest.time-bounded)<=threshold?{time:nearest.time,snapped:true,label:nearest.label,source:nearest.source}:{time:frame,snapped:false};
+};
+
+export const snapTime = (project: EditorProject, value: number, pixelsPerSecond: number, excludedId?: string) => magneticSnap(project,value,pixelsPerSecond,{excludedIds:excludedId?[excludedId]:[]}).time;
+
+export const moveTimelineItems=(project:EditorProject,track:TimelineTrack,updates:Array<{id:string;at:number}>)=>{
+  const list=project[track] as Array<{id:string;at:number;duration:number;hold?:number}>|undefined;
+  if(!list)return project;
+  const byId=new Map(updates.map((item)=>[item.id,item.at]));
+  for(const item of list){const at=byId.get(item.id);if(at!==undefined)item.at=roundToFrame(Math.max(0,at),project.fps);}
+  project.duration=Math.max(project.duration,...list.map(itemEnd));
+  project.exportRange={in:project.exportRange?.in??0,out:Math.max(project.exportRange?.out??project.duration,project.duration)};
+  return project;
+};
+
+export const trimTimelineItem=(project:EditorProject,track:TimelineTrack,id:string,at:number,totalDuration:number,ripple=false)=>{
+  const list=project[track] as Array<{id:string;at:number;duration:number;hold?:number}>|undefined;
+  const item=list?.find((candidate)=>candidate.id===id);
+  if(!item)return project;
+  const previousProjectDuration=project.duration;
+  const oldEnd=itemEnd(item);
+  item.at=roundToFrame(Math.max(0,at),project.fps);
+  const total=Math.max(1/project.fps,roundToFrame(totalDuration,project.fps));
+  if(track==='frames'){
+    item.duration=Math.min(item.duration,total);
+    item.hold=Math.max(0,total-item.duration);
+  }else item.duration=total;
+  const newEnd=itemEnd(item);
+  const delta=newEnd-oldEnd;
+  if(ripple&&Math.abs(delta)>.0001){
+    const timed=[...project.frames,...project.pointer,...project.transitions,...project.captions,...project.audio,...(project.overlays??[]),...(project.markers??[])];
+    for(const candidate of timed)if(candidate.id!==id&&candidate.at>=oldEnd-1/project.fps)candidate.at=roundToFrame(Math.max(0,candidate.at+delta),project.fps);
+  }
+  const contentEnd=Math.max(1,...[...project.frames,...project.pointer,...project.transitions,...project.captions,...project.audio,...(project.overlays??[])].map(itemEnd));
+  project.duration=ripple?contentEnd:Math.max(previousProjectDuration,contentEnd);
+  project.exportRange={in:Math.min(project.exportRange?.in??0,project.duration),out:project.duration};
+  return project;
 };
 
 const paceMap = {
@@ -136,7 +186,8 @@ export const buildDirectedCapturePlan=(project:EditorProject,sections:CaptureSec
       previousPointer=destination;
     }
     const requiredHold=Math.max(baseHold,actionAt-(frameAt+duration)+(actions.length ? .3 : 0));
-    const frame={id:`scene-${stamp}-${index}`,label:section.label,at:frameAt,scrollY:section.scrollY,duration,hold:Math.round(requiredHold*100)/100,easing:'easeInOut' as EasingName,motionProfile:profile};
+    const preview=project.captureAnalysis?.previewFrames?.reduce((nearest,candidate)=>Math.abs(candidate.scrollY-section.scrollY)<Math.abs(nearest.scrollY-section.scrollY)?candidate:nearest,project.captureAnalysis.previewFrames[0]);
+    const frame={id:`scene-${stamp}-${index}`,label:section.label,at:frameAt,scrollY:section.scrollY,duration,hold:Math.round(requiredHold*100)/100,easing:'easeInOut' as EasingName,motionProfile:profile,thumbnail:preview?.image};
     at=frameAt+duration+frame.hold;
     previousScroll=section.scrollY;
     return frame;
@@ -145,7 +196,7 @@ export const buildDirectedCapturePlan=(project:EditorProject,sections:CaptureSec
   project.motionProfile=profile;
   project.duration=Math.max(3,Math.ceil((at+(profile==='cinematic'?.5:.3))*project.fps)/project.fps);
   project.exportRange={in:0,out:project.duration};
-  project.transitions=[{id:`transition-finish-${stamp}`,label:'Мягкое завершение',at:Math.max(0,project.duration-.65),duration:.65,kind:'fade',strength:.72}];
+  project.transitions=[{id:`transition-finish-${stamp}`,label:'Мягкое завершение',at:Math.max(0,project.duration-.72),duration:.72,kind:'fade',strength:1}];
   return project;
 };
 
@@ -190,7 +241,7 @@ export const polishMotionProject=(project:EditorProject,profile:MotionProfile=pr
   project.duration=Math.max(3,Math.ceil((at+(profile==='cinematic'?.5:.3))*project.fps)/project.fps);
   project.exportRange={in:0,out:project.duration};
   const finalTransition=project.transitions.find((item)=>item.label==='Мягкое завершение');
-  if(finalTransition)finalTransition.at=Math.max(0,project.duration-finalTransition.duration);
+  if(finalTransition){finalTransition.at=Math.max(0,project.duration-finalTransition.duration);finalTransition.strength=1;}
   return project;
 };
 

@@ -135,12 +135,14 @@ const CaptureViewport = ({project, analysis, frame, onChange}: {project: EditorP
     window.addEventListener('pointerup', up);
   };
   const pointers = project.pointer.filter((item) => item.at >= frame.at && item.at < frame.at + frame.duration + frame.hold);
+  const livePreview=analysis.previewFrames?.reduce((nearest,candidate)=>Math.abs(candidate.scrollY-frame.scrollY)<Math.abs(nearest.scrollY-frame.scrollY)?candidate:nearest,analysis.previewFrames[0]);
   return <section className="review-canvas">
     <header><div><span>Точный viewport записи</span><strong>{frame.label}</strong></div><div><b>{project.viewport.width} × {project.viewport.height}</b><span>{Math.round(frame.scrollY)}px</span></div></header>
     <div className="browser-capture-shell">
       <div className="browser-capture-bar"><i/><i/><i/><span>{project.url}</span></div>
       <div className="browser-capture-viewport" style={{aspectRatio: `${project.viewport.width} / ${project.viewport.height}`}} onPointerDown={beginDrag} onWheel={(event) => {event.preventDefault(); onChange({scrollY:clamp(frame.scrollY + event.deltaY * 2, 0, maximum)});}}>
         <img src={analysis.fullPageImage} alt="Копия страницы для настройки захвата" draggable={false} style={{transform: `translateY(-${frame.scrollY / analysis.pageHeight * 100}%)`}}/>
+        {livePreview?<img className="capture-live-preview" src={livePreview.image} alt={`Живое состояние: ${livePreview.label}`} draggable={false}/>:null}
         <div className="review-safe-frame"/>
         {pointers.map((pointer) => <i key={pointer.id} className={`review-pointer ${pointer.kind}`} style={{left: `${pointer.x / project.viewport.width * 100}%`, top: `${pointer.y / project.viewport.height * 100}%`}}><MousePointer2 size={15}/></i>)}
         <div className="review-drag-hint"><GripVertical size={14}/>Тяните страницу или прокручивайте колесом</div>

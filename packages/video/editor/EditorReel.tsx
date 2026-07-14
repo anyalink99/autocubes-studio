@@ -2,7 +2,7 @@ import React from 'react';
 import {AbsoluteFill, Audio, interpolate, Sequence, staticFile, useCurrentFrame, Video} from 'remotion';
 import projectData from '../../../data/generated/editor-project.json';
 import {EditorProject} from '../../core/editor-project';
-import {cursorStateAt} from '../../core/motion-kinematics';
+import {cursorStateAt, transitionAmountAt} from '../../core/motion-kinematics';
 
 const project = projectData as EditorProject;
 
@@ -10,12 +10,12 @@ const TransitionLayer = ({time}: {time: number}) => {
   const transition = project.transitions.find((item) => time >= item.at && time <= item.at + item.duration);
   if (!transition || transition.kind === 'cut') return null;
   const progress = (time - transition.at) / Math.max(0.01, transition.duration);
-  const opacity = Math.sin(Math.PI * progress) * transition.strength;
+  const opacity = transitionAmountAt(transition.kind, progress, transition.strength);
   const background = transition.color ?? (transition.kind === 'dipWhite' || transition.kind === 'flash' ? '#fff' : transition.kind === 'blur' || transition.kind === 'zoomBlur' ? 'rgba(255,255,255,.02)' : '#000');
   const horizontal = transition.direction !== 'up' && transition.direction !== 'down';
   const sign = transition.direction === 'right' || transition.direction === 'down' ? -1 : 1;
   return <div style={{
-    position: 'absolute', inset: 0, opacity, background,
+    position: 'absolute', inset: 0, zIndex: 50, opacity, background,
     backdropFilter: transition.kind === 'blur' || transition.kind === 'zoomBlur' ? `blur(${opacity * 18}px)` : undefined,
     clipPath: transition.kind === 'wipe' ? horizontal ? `inset(0 ${100 - progress * 100}% 0 0)` : `inset(0 0 ${100 - progress * 100}% 0)` : undefined,
     transform: transition.kind === 'slide' ? `translate${horizontal ? 'X' : 'Y'}(${(1-progress) * sign * 100}%)` : transition.kind === 'zoomBlur' ? `scale(${1 + opacity * .08})` : undefined,
@@ -52,8 +52,6 @@ export const EditorReel = () => {
         </div>
       ) : null}
 
-      <TransitionLayer time={time} />
-
       {caption ? (
         <div style={{
           position: 'absolute',
@@ -83,6 +81,8 @@ export const EditorReel = () => {
       ) : null}
 
       {overlay ? <div style={{position:'absolute', left:`${overlay.x}%`, top:`${overlay.y}%`, zIndex:6, color:overlay.color, opacity:overlay.opacity, transform:`scale(${overlay.scale})`, transformOrigin:'top left', padding:overlay.kind === 'label' || overlay.kind === 'cta' ? '10px 16px' : 0, border:overlay.kind === 'label' ? `2px solid ${overlay.color}` : undefined, background:overlay.kind === 'cta' ? overlay.color : undefined, fontFamily:'Arial,sans-serif', fontSize:42, fontWeight:750, letterSpacing:'.04em', textTransform:'uppercase'}}>{overlay.kind === 'progress' ? <div style={{position:'fixed',left:0,right:0,bottom:0,height:7,background:'rgba(255,255,255,.2)'}}><i style={{display:'block',width:`${time/project.duration*100}%`,height:'100%',background:overlay.color}}/></div> : overlay.kind === 'frame' ? <div style={{position:'fixed',inset:'4%',border:`2px solid ${overlay.color}`}}/> : project.outputLanguage === 'ru' ? (overlay.textRu ?? overlay.text) : (overlay.textEn ?? overlay.text)}</div> : null}
+
+      <TransitionLayer time={time} />
 
       {project.audio.filter((item) => item.enabled && item.asset).map((item) => (
         <Sequence key={item.id} from={Math.round(item.at * project.fps)} durationInFrames={Math.max(1, Math.round(item.duration * project.fps))}>

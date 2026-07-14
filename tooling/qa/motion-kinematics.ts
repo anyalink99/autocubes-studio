@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
-import {buildDirectedCapturePlan,captureDirectionReport,migrateEditorProject,updateFrameWithRipple} from '../../packages/core/editor-operations';
-import {cursorStateAt} from '../../packages/core/motion-kinematics';
+import {buildDirectedCapturePlan,captureDirectionReport,magneticSnap,migrateEditorProject,moveTimelineItems,trimTimelineItem,updateFrameWithRipple} from '../../packages/core/editor-operations';
+import {cursorStateAt,transitionAmountAt} from '../../packages/core/motion-kinematics';
 import {CaptureSection,CaptureTarget,EditorProject} from '../../packages/core/editor-project';
 
 const project=migrateEditorProject({
@@ -25,6 +25,9 @@ assert.equal(project.pointer.length,2);
 assert.ok(project.frames[2].duration>project.frames[1].duration,'Longer scroll must receive more time');
 assert.ok(project.frames.every((frame,index)=>index===0||frame.at>=project.frames[index-1].at+project.frames[index-1].duration+project.frames[index-1].hold-.02),'Scenes must not overlap');
 assert.ok(project.pointer.every((event)=>event.path==='human'&&event.duration>.6),'Directed cursor moves must use readable human paths');
+assert.equal(project.transitions[0]?.strength,1,'The directed outro must finish at full black');
+assert.ok(transitionAmountAt('fade',1,1)>.999,'Fade must remain black at its end');
+assert.ok(transitionAmountAt('dipBlack',1,1)<.001,'Dip must intentionally return to the image');
 
 const event=project.pointer[0];
 const before=cursorStateAt(project.pointer,event.at,project.viewport);
@@ -42,4 +45,17 @@ assert.ok(Math.abs(project.duration-durationBefore-.5)<.001,'Ripple edit must up
 
 const report=captureDirectionReport(project);
 assert.ok(report.score>=85,`Directed plan quality is too low: ${report.score}`);
+
+project.markers=[{id:'marker-qa',label:'Key beat',at:project.frames[2].at+.25}];
+const snapped=magneticSnap(project,project.markers[0].at+.03,100,{playhead:project.frames[1].at});
+assert.equal(snapped.time,project.markers[0].at,'Magnet must prefer a nearby marker');
+assert.equal(snapped.source,'marker');
+const groupBefore=project.frames.slice(0,2).map((frame)=>frame.at);
+moveTimelineItems(project,'frames',project.frames.slice(0,2).map((frame)=>({id:frame.id,at:frame.at+.2})));
+assert.ok(project.frames.slice(0,2).every((frame,index)=>Math.abs(frame.at-groupBefore[index]-.2)<.02),'Group movement must preserve relative timing');
+const laterBefore=project.frames[3].at;
+const trimmed=project.frames[2];
+trimTimelineItem(project,'frames',trimmed.id,trimmed.at,trimmed.duration+trimmed.hold+.3,true);
+assert.ok(Math.abs(project.frames[3].at-laterBefore-.3)<.02,'Ripple trim must shift later clips');
+
 console.log(`Motion kinematics passed · ${project.frames.length} scenes · ${project.pointer.length} actions · score ${report.score}`);

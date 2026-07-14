@@ -4,7 +4,7 @@ import {Crosshair, Download, Film, Image as ImageIcon, LayoutGrid, Maximize2, Zo
 import {EditorProject, Selection} from '../../packages/core/editor-project';
 import {findMediaPreset, formatRatio, mediaPresets} from '../../packages/core/media-presets';
 import {maxScroll, scrollPercent} from '../../packages/core/editor-operations';
-import {cursorStateAt, motionEase} from '../../packages/core/motion-kinematics';
+import {cursorStateAt, motionEase, transitionAmountAt} from '../../packages/core/motion-kinematics';
 
 type Props = {
   project: EditorProject;
@@ -58,10 +58,15 @@ export const Preview = ({project, currentTime, playing, mode, selection, onModeC
 
   const transition = project.transitions.find((item) => currentTime >= item.at && currentTime <= item.at + item.duration);
   const transitionProgress = transition ? (currentTime - transition.at) / Math.max(0.01, transition.duration) : 0;
-  const transitionOpacity = transition ? Math.sin(Math.PI * transitionProgress) * transition.strength : 0;
+  const transitionOpacity = transition ? transitionAmountAt(transition.kind, transitionProgress, transition.strength) : 0;
   const caption = project.captions.find((item) => currentTime >= item.at && currentTime <= item.at + item.duration);
   const overlay = (project.overlays ?? []).find((item) => currentTime >= item.at && currentTime <= item.at + item.duration);
   const selectedFrame = selection.track === 'frames' ? project.frames.find((item) => item.id === selection.id) : undefined;
+  const livePreview = useMemo(() => {
+    const previews = project.captureAnalysis?.previewFrames;
+    if (!previews?.length) return undefined;
+    return previews.reduce((nearest, candidate) => Math.abs(candidate.scrollY - frameState.scrollY) < Math.abs(nearest.scrollY - frameState.scrollY) ? candidate : nearest, previews[0]);
+  }, [frameState.scrollY, project.captureAnalysis?.previewFrames]);
 
   const handlePick = (event: React.MouseEvent<HTMLDivElement>) => {
     if (selection.track !== 'pointer') return;
@@ -123,7 +128,7 @@ export const Preview = ({project, currentTime, playing, mode, selection, onModeC
         <div ref={stageRef} className={`stage ${selection.track === 'pointer' ? 'is-picking' : ''} ${selectedFrame ? 'is-positioning' : ''}`} style={{aspectRatio: `${project.viewport.width} / ${project.viewport.height}`, transform:`scale(${canvasZoom / 100})`}} onClick={handlePick}>
           {mode === 'capture' && project.previewVideo ? <video ref={videoRef} src={project.previewVideo} muted playsInline/> : (
             <>
-              {project.captureAnalysis?.fullPageImage?<div className="stage-page-simulator"><img src={project.captureAnalysis.fullPageImage} alt="" style={{height:`${project.pageHeight/project.viewport.height*100}%`,top:`${-frameState.scrollY/project.viewport.height*100}%`}}/></div>:<>
+              {project.captureAnalysis?.fullPageImage?<><div className="stage-page-simulator"><img src={project.captureAnalysis.fullPageImage} alt="" style={{height:`${project.pageHeight/project.viewport.height*100}%`,top:`${-frameState.scrollY/project.viewport.height*100}%`}}/></div>{livePreview?<img className="stage-live-preview" src={livePreview.image} alt="" style={{opacity:Math.max(0,Math.min(1,(frameState.blend-.55)/.45))}}/>:null}</>:<>
                 {frameState.previous?.thumbnail ? <img src={frameState.previous.thumbnail} alt="" style={{opacity: 1 - frameState.blend}}/> : null}
                 {frameState.current?.thumbnail ? <img src={frameState.current.thumbnail} alt="" style={{opacity: frameState.blend}}/> : <div className="stage-empty">Сначала разберите страницу или обновите снимок сцены</div>}
               </>}
@@ -131,9 +136,9 @@ export const Preview = ({project, currentTime, playing, mode, selection, onModeC
           )}
           {selection.track==='pointer'&&project.pointer.length?<svg className="pointer-path" viewBox={`0 0 ${project.viewport.width} ${project.viewport.height}`} preserveAspectRatio="none" aria-hidden="true"><polyline points={[...project.pointer].sort((a,b)=>a.at-b.at).map((item)=>`${item.x},${item.y}`).join(' ')}/>{project.pointer.map((item)=><circle key={item.id} cx={item.x} cy={item.y} r={item.id===selection.id?18:11} className={item.id===selection.id?'selected':''}/>)}</svg>:null}
           {pointer.visible ? <div className={`preview-cursor effect-${pointer.effect} ${pointer.clicking ? 'clicking' : ''} ${project.cursorTrail!==false&&pointer.speed>.002?'has-trail':''}`} style={{left: `${(pointer.x / project.viewport.width) * 100}%`, top: `${(pointer.y / project.viewport.height) * 100}%`, '--cursor-scale':project.cursorScale??1,'--click-progress':pointer.clickProgress} as React.CSSProperties}><i className="cursor-trail"/><i className="cursor-feedback"/><svg viewBox="0 0 34 40" aria-hidden="true"><path d="M4 3L29 26L18 28L14 38L4 3Z"/></svg></div> : null}
-          {transition ? <div className={`transition-preview transition-${transition.kind} direction-${transition.direction ?? 'left'}`} style={{opacity: transitionOpacity, backgroundColor:transition.color, backdropFilter: transition.kind === 'blur' || transition.kind === 'zoomBlur' ? `blur(${transitionOpacity * 14}px)` : undefined, clipPath:transition.kind === 'wipe' ? `inset(0 ${100 - transitionProgress * 100}% 0 0)` : undefined, transform:transition.kind === 'slide' ? `translateX(${(1-transitionProgress) * (transition.direction === 'right' ? -100 : 100)}%)` : transition.kind === 'zoomBlur' ? `scale(${1 + transitionOpacity * .08})` : undefined}}/> : null}
           {caption ? <div className={`preview-caption position-${caption.position} style-${caption.style} animation-${caption.animation ?? 'none'} ${selection.id === caption.id ? 'is-selected' : ''}`} style={{fontSize:`${caption.size / project.viewport.width * 100}cqw`, textAlign:caption.align ?? 'center', maxWidth:`${caption.maxWidth ?? 86}%`, lineHeight:caption.lineHeight ?? 1.08, letterSpacing:`${(caption.letterSpacing ?? -2.5) / 100}em`, color:caption.color, backgroundColor:caption.background}}>{project.outputLanguage==='ru'?(caption.textRu??caption.text):(caption.textEn??caption.text)}</div> : null}
           {overlay ? <div className={`preview-overlay overlay-${overlay.kind} ${selection.id === overlay.id ? 'is-selected' : ''}`} style={{left:`${overlay.x}%`,top:`${overlay.y}%`,opacity:overlay.opacity,transform:`scale(${overlay.scale})`,color:overlay.color}}>{overlay.kind === 'progress' ? <i style={{width:`${currentTime / project.duration * 100}%`}}/> : project.outputLanguage==='ru'?(overlay.textRu??overlay.text):(overlay.textEn??overlay.text)}</div> : null}
+          {transition ? <div className={`transition-preview transition-${transition.kind} direction-${transition.direction ?? 'left'}`} style={{opacity: transitionOpacity, backgroundColor:transition.color, backdropFilter: transition.kind === 'blur' || transition.kind === 'zoomBlur' ? `blur(${transitionOpacity * 14}px)` : undefined, clipPath:transition.kind === 'wipe' ? `inset(0 ${100 - transitionProgress * 100}% 0 0)` : undefined, transform:transition.kind === 'slide' ? `translateX(${(1-transitionProgress) * (transition.direction === 'right' ? -100 : 100)}%)` : transition.kind === 'zoomBlur' ? `scale(${1 + transitionOpacity * .08})` : undefined}}/> : null}
           {project.guides !== false ? <div className="safe-zone-overlay" style={{inset: `${safeArea.top}% ${safeArea.right}% ${safeArea.bottom}% ${safeArea.left}%`}}><span>safe area</span></div> : null}
         </div>
         {selectedFrame ? <aside className="preview-position-rail">

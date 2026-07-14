@@ -7,12 +7,14 @@ export type OutputLanguage = 'en' | 'ru';
 
 export type CaptureSection = {id:string; label:string; selector:string; scrollY:number; level:number};
 export type CaptureTarget = {id:string; label:string; selector:string; role:string; x:number; y:number; pageY:number; width:number; height:number};
+export type CapturePreviewFrame = {id:string; label:string; scrollY:number; image:string};
 export type CaptureAnalysis = {
   url:string;
   title:string;
   pageHeight:number;
   analyzedAt:string;
   fullPageImage:string;
+  previewFrames?:CapturePreviewFrame[];
   sections:CaptureSection[];
   targets:CaptureTarget[];
 };

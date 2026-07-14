@@ -1,4 +1,4 @@
-import {EasingName, MotionProfile, PointerEvent} from './editor-project';
+import {EasingName, MotionProfile, PointerEvent, TransitionKind} from './editor-project';
 
 export type CursorState = {
   x: number;
@@ -20,6 +20,19 @@ export const motionEase = (value: number, easing: EasingName = 'easeInOut') => {
   if (easing === 'easeOut') return 1 - (1 - t) ** 4;
   if (easing === 'spring') return 1 - Math.exp(-7 * t) * Math.cos(t * Math.PI * 2.4);
   return t < .5 ? 16 * t ** 5 : 1 - Math.pow(-2 * t + 2, 5) / 2;
+};
+
+/**
+ * A fade is an exit: once the image has gone dark it must stay dark.
+ * Dip/flash effects are pulses and intentionally return to the source image.
+ * Keeping this rule in core prevents the editor preview and Remotion render
+ * from silently developing different transition semantics.
+ */
+export const transitionAmountAt = (kind: TransitionKind, progress: number, strength = 1) => {
+  const amount = kind === 'fade'
+    ? motionEase(progress, 'easeInOut')
+    : Math.sin(Math.PI * clamp01(progress));
+  return clamp01(amount * clamp01(strength));
 };
 
 const hash = (source: string) => {
