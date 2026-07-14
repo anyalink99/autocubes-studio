@@ -67,6 +67,10 @@ export const Preview = ({project, currentTime, playing, mode, selection, onModeC
     if (!previews?.length) return undefined;
     return previews.reduce((nearest, candidate) => Math.abs(candidate.scrollY - frameState.scrollY) < Math.abs(nearest.scrollY - frameState.scrollY) ? candidate : nearest, previews[0]);
   }, [frameState.scrollY, project.captureAnalysis?.previewFrames]);
+  const settledPreview=frameState.current?.thumbnail??livePreview?.image;
+  const departingPreview=frameState.previous?.id!==frameState.current?.id?frameState.previous?.thumbnail:undefined;
+  const settledOpacity=Math.max(0,Math.min(1,(frameState.blend-.55)/.45));
+  const departingOpacity=Math.max(0,Math.min(1,1-frameState.blend/.35));
 
   const handlePick = (event: React.MouseEvent<HTMLDivElement>) => {
     if (selection.track !== 'pointer') return;
@@ -128,7 +132,7 @@ export const Preview = ({project, currentTime, playing, mode, selection, onModeC
         <div ref={stageRef} className={`stage ${selection.track === 'pointer' ? 'is-picking' : ''} ${selectedFrame ? 'is-positioning' : ''}`} style={{aspectRatio: `${project.viewport.width} / ${project.viewport.height}`, transform:`scale(${canvasZoom / 100})`}} onClick={handlePick}>
           {mode === 'capture' && project.previewVideo ? <video ref={videoRef} src={project.previewVideo} muted playsInline/> : (
             <>
-              {project.captureAnalysis?.fullPageImage?<><div className="stage-page-simulator"><img src={project.captureAnalysis.fullPageImage} alt="" style={{height:`${project.pageHeight/project.viewport.height*100}%`,top:`${-frameState.scrollY/project.viewport.height*100}%`}}/></div>{livePreview?<img className="stage-live-preview" src={livePreview.image} alt="" style={{opacity:Math.max(0,Math.min(1,(frameState.blend-.55)/.45))}}/>:null}</>:<>
+              {project.captureAnalysis?.fullPageImage?<><div className="stage-page-simulator"><img src={project.captureAnalysis.fullPageImage} alt="" style={{height:`${project.pageHeight/project.viewport.height*100}%`,top:`${-frameState.scrollY/project.viewport.height*100}%`}}/></div>{departingPreview?<img className="stage-live-preview stage-departing-preview" src={departingPreview} alt="" style={{opacity:departingOpacity}}/>:null}{settledPreview?<img className="stage-live-preview stage-settled-preview" src={settledPreview} alt="" style={{opacity:settledOpacity}}/>:null}</>:<>
                 {frameState.previous?.thumbnail ? <img src={frameState.previous.thumbnail} alt="" style={{opacity: 1 - frameState.blend}}/> : null}
                 {frameState.current?.thumbnail ? <img src={frameState.current.thumbnail} alt="" style={{opacity: frameState.blend}}/> : <div className="stage-empty">Сначала разберите страницу или обновите снимок сцены</div>}
               </>}

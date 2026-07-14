@@ -114,6 +114,17 @@ const main = async () => {
     await projectDownload.saveAs(projectExportPath);
     const projectExport = JSON.parse(await fs.readFile(projectExportPath, 'utf8')) as EditorProject;
     if (!projectExport.title) throw new Error('Motion project export is invalid');
+    if(projectExport.captureAnalysis?.fullPageImage&&projectExport.frames[0]?.thumbnail&&!await page.locator('.stage-settled-preview').isVisible())throw new Error('Storyboard did not prefer the exact captured scene over the page map');
+    const settledTarget=projectExport.frames[4]??projectExport.frames.at(-1);
+    if(settledTarget?.thumbnail){
+      const targetTime=settledTarget.at+settledTarget.duration+.05;
+      await page.locator('.timeline-ruler').evaluate((ruler,time)=>{const canvas=ruler.closest('.timeline-canvas');const marks=[...ruler.querySelectorAll<HTMLElement>('.ruler-mark')];if(!canvas||marks.length<2)throw new Error('Timeline ruler is incomplete');const pixelsPerSecond=marks[1].offsetLeft-marks[0].offsetLeft;const bounds=canvas.getBoundingClientRect();ruler.dispatchEvent(new MouseEvent('click',{bubbles:true,clientX:bounds.left+time*pixelsPerSecond,clientY:bounds.top+8}));},targetTime);
+      await page.waitForTimeout(100);
+      const settledSource=await page.locator('.stage-settled-preview').getAttribute('src');
+      const settledOpacity=Number(await page.locator('.stage-settled-preview').evaluate((node)=>getComputedStyle(node).opacity));
+      if(!settledSource?.includes(settledTarget.thumbnail.split('?')[0])||settledOpacity<.99)throw new Error('Storyboard replaced an exact settled scene with a blank page-map region');
+      await page.locator('.stage').screenshot({path:path.resolve('out/qa/motion-storyboard-settled.png')});
+    }
     if (!await page.getByTitle('Магнит к плейхеду, маркерам и краям').isVisible()) throw new Error('Timeline magnet control is missing');
     if (!await page.getByTitle('Ripple: сдвигать всё после правой обрезки').isVisible()) throw new Error('Timeline ripple control is missing');
     if (!await page.locator('.clip-handle-start').count() || !await page.locator('.clip-handle-end').count()) throw new Error('Timeline must expose both trim handles');
