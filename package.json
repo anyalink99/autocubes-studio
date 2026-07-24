@@ -27,7 +27,7 @@
     "capture:flowline": "tsx tooling/capture/run.ts flowline",
     "render:flowline": "remotion render packages/video/index.ts FlowlineReel out/flowline-reel.mp4 --codec=h264 --pixel-format=yuv420p",
     "still:flowline": "remotion still packages/video/index.ts FlowlineReel out/flowline-preview.png --frame=150",
-    "make:flowline": "npm run capture:flowline && npm run render:flowline",
+    "make:flowline": "npm run capture:flowline && npm run qa:capture:flowline && npm run render:flowline && npm run qa:render:flowline",
     "remotion:studio": "remotion studio packages/video/index.ts",
     "typecheck": "tsc --noEmit",
     "qa:smoke": "tsx tooling/qa/studio-smoke.ts",
@@ -36,6 +36,8 @@
     "qa:operations": "tsx tooling/qa/operations-smoke.ts",
     "qa:sync": "tsx tooling/qa/sync-smoke.ts",
     "qa:motion": "tsx tooling/qa/motion-kinematics.ts",
+    "qa:capture:flowline": "tsx tooling/qa/video-cadence.ts flowline",
+    "qa:render:flowline": "tsx tooling/qa/video-cadence.ts --video out/flowline-reel.mp4 --fps 30 --allow-static",
     "qa:assistant": "tsx tooling/qa/assistant-api.ts",
     "video:check": "remotion compositions packages/video/index.ts",
     "check": "npm run typecheck && npm run build && npm run qa:motion && npm run qa:assistant && npm run qa:smoke && npm run qa:identity && npm run qa:workflows && npm run qa:operations && npm run video:check"

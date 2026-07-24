@@ -26,6 +26,25 @@ Useful keys inside the editor: arrow keys nudge a layer, `Shift` increases the n
 
 Press `?` for the shortcut map. The main keys are `Space` for playback, `L` for loop, `C` for a caption, `S` to split, arrows for frame stepping, `Cmd/Ctrl+C` and `Cmd/Ctrl+V` for clips, and `Cmd/Ctrl+D` for duplication.
 
+### Frame-locked live-site capture
+
+This workflow extends the upstream [Remotion Agent Skills](https://github.com/remotion-dev/skills). Install them in a new agent environment with `npx skills add remotion-dev/skills .`, then use them together with the versioned `.agents/skills/autocubes-video-pipeline` skill.
+
+Use `CaptureScenario.frameLocked` for the presentation pass. Playwright `recordVideo` remains available for rough scenarios, but it is not a stable final source: a normal container FPS can still contain repeated compositor frames.
+
+The frame-locked pass prewarms lazy sections, advances browser animation time from the existing monotonic clock, verifies the real scroll position, reloads newly mounted carousel videos, awaits every media seek, writes one JPEG per output frame, and encodes the sequence as CFR H.264.
+
+For Flowline, run:
+
+```powershell
+npm run capture:flowline
+npm run qa:capture:flowline
+npm run render:flowline
+npm run qa:render:flowline
+```
+
+`npm run make:flowline` runs all four stages. Capture QA rejects duplicate frames, freeze events, wrong frame counts, and nominal/average FPS mismatches. Render QA allows intentional static edit holds such as an end card but still verifies CFR. The reusable agent workflow is stored in `.agents/skills/autocubes-video-pipeline`.
+
 ## Create and approve a studio document
 
 1. Choose one of the 15 templates or open a document linked to a Studio project.

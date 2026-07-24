@@ -14,8 +14,8 @@ import {loadFlowlineManifest, shotAsset} from './manifest';
 const manifest = loadFlowlineManifest();
 const fps = 30;
 const videoStart = 45;
-const sourceStart = 14.2;
-const playbackRate = 1.1;
+const sourceStart = 0;
+const playbackRate = 1;
 const finalStart = 495;
 const clamp = {extrapolateLeft: 'clamp' as const, extrapolateRight: 'clamp' as const};
 

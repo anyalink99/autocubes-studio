@@ -2,7 +2,7 @@
 
 Local-first creative production workspace for Autocubes. It combines a project dashboard, browser-based motion editing, identity exploration, document production, website capture, and Remotion rendering without coupling those concerns into one application.
 
-The canonical private repository is `https://git.autocubes.site/stas/autocubes-studio`. Work in feature branches and merge through GitLab; `main` is protected and requires a successful pipeline. The former GitHub repository is retained only as a legacy remote and is not a second source of truth.
+The canonical private repository is `https://git.autocubes.site/stas/autocubes-studio`. Work in feature branches and merge through GitLab; `main` is protected and requires a successful pipeline. `https://github.com/anyalink99/autocubes-studio` is the synchronized GitHub mirror used for external access and backup, not an independent source of truth.
 
 ## Quick start
 
@@ -14,6 +14,18 @@ npm run dev
 On Windows, double-click `start-studio.bat`. It checks Node.js, dependencies, and the Playwright browser before starting the workspace. An alternative port can be passed as the first argument: `start-studio.bat 4190`.
 
 The studio opens at `http://127.0.0.1:4178/`.
+
+## Agent video skills
+
+Video work combines the upstream [Remotion Agent Skills](https://github.com/remotion-dev/skills) with the project-specific [`autocubes-video-pipeline`](./.agents/skills/autocubes-video-pipeline/SKILL.md). The upstream skills provide Remotion composition, timing, media, and render practices. The local skill adds the frame-locked browser-capture workflow and the failure modes learned from production Autocubes reels.
+
+Install the upstream collection in a new agent environment from the repository root:
+
+```bash
+npx skills add remotion-dev/skills .
+```
+
+Keep both layers active when creating or repairing a reel. The project skill is versioned with this repository; the upstream Remotion skills are maintained at their linked source and may need to be installed again on a new workstation.
 
 ## Applications
 
@@ -73,7 +85,7 @@ npm run editor             # open Motion Desk
 npm run remotion:studio    # inspect video compositions
 npm run capture:editor     # capture the default editable project
 npm run render:editor      # render the default editable project
-npm run make:flowline      # capture and render the Flowline case
+npm run make:flowline      # frame-locked capture, QA, render, and render QA
 ```
 
 Motion projects are JSON files in ignored `data/projects/`. A clean clone seeds its first runtime project and Remotion snapshots from `data/examples/` without overwriting existing work.

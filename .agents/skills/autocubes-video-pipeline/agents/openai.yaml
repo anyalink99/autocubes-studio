@@ -1,0 +1,4 @@
+interface:
+  display_name: "Autocubes Video Pipeline"
+  short_description: "Frame-locked browser reels without freezes"
+  default_prompt: "Use $autocubes-video-pipeline to capture and render a smooth browser reel."

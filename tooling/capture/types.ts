@@ -17,6 +17,25 @@ export type CaptureApi = {
   clickBest: (selectors: string[], label: string) => Promise<boolean>;
 };
 
+export type ScrollKeyframe = {
+  frame: number;
+  y: number;
+};
+
+export type FrameLockedCaptureConfig = {
+  fps: number;
+  frames: number;
+  scrollKeyframes: ScrollKeyframe[];
+  jpegQuality?: number;
+  preloadMarginPx?: number;
+  warmupStepPx?: number;
+  videoReadyTimeoutMs?: number;
+  crf?: number;
+  keepFrames?: boolean;
+  maxDuplicateFrames?: number;
+  maxFreezeEvents?: number;
+};
+
 export type CaptureScenario = {
   site: string;
   title: string;
@@ -28,5 +47,6 @@ export type CaptureScenario = {
     deviceScaleFactor: number;
   };
   run: (api: CaptureApi) => Promise<void>;
+  frameLocked?: FrameLockedCaptureConfig;
   buildManifest?: (base: CaptureManifest) => CaptureManifest;
 };

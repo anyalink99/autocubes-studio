@@ -48,6 +48,8 @@ The editor modifies `data/projects/*.editor.json` through the local API. Capture
 
 Motion schema version 3 migrates through `packages/core/editor-operations.ts`. Portable operations own clamping, time formatting, page-position parsing, frame arrangement, directing profiles, ripple edits, quality reports, recipes, and snapping. `packages/core/motion-kinematics.ts` is the single deterministic source for cursor paths, click timing, and distance-aware motion; Preview, Playwright capture, and Remotion consume the same contract. Capture Director uses a lightweight Playwright analysis endpoint to discover sections and targets before a recording job is authorized. Recording writes to a revision directory and switches the project to the successful capture only after completion. Page Map, Shot Library, Timeline, Caption Library, Preview, and Inspector consume those contracts without importing Node infrastructure.
 
+Final live-site presentation passes use `tooling/capture/frame-locked.ts`, not Playwright `recordVideo`. The module prewarms lazy layout, advances a monotonic virtual browser clock, verifies scroll position, waits for remounted embedded-video frames, encodes a CFR image sequence, and runs cadence QA. Agent-assisted reel work uses the upstream [Remotion Agent Skills](https://github.com/remotion-dev/skills) together with the repository-owned `.agents/skills/autocubes-video-pipeline`; the upstream collection can be installed with `npx skills add remotion-dev/skills .`.
+
 ### Documents
 
 Documents are structured React state cached under `autocubes-documents-v2` and synchronized through the `documents` server channel. Legacy sections migrate into typed blocks. Each document contains independent `ru` and `en` content snapshots; Russian is the authoring default and bilingual ZIP is the normal handoff boundary. HTML is standalone and print-ready; Markdown and JSON remain portable interchange formats. Employee profiles use a dedicated A4 data model and the `/api/documents/pdf` browser-print pipeline.
@@ -62,7 +64,7 @@ Identity export runs in the browser. `html-to-image` rasterizes the active artbo
 
 ## Quality gates
 
-`npm run qa:motion` verifies distance-aware direction, curved cursor paths, exact target landing, ripple edits, and quality scoring. `npm run qa:smoke` verifies core export and API paths. `npm run qa:identity` stresses variant paging, zoom, and responsive geometry. `npm run qa:workflows` covers Motion Page Map, Timeline, and Capture Director, Identity Brand Kit and Carousel Builder, Documents blocks and export, and Studio Project Hub. `npm run check` runs all suites plus TypeScript, production build, and Remotion composition discovery.
+`npm run qa:motion` verifies distance-aware direction, curved cursor paths, exact target landing, ripple edits, and quality scoring. `npm run qa:smoke` verifies core export and API paths. `npm run qa:identity` stresses variant paging, zoom, and responsive geometry. `npm run qa:workflows` covers Motion Page Map, Timeline, and Capture Director, Identity Brand Kit and Carousel Builder, Documents blocks and export, and Studio Project Hub. `npm run qa:capture:flowline` rejects capture FPS drift, frame-count mismatches, duplicate decoded frames, and freezes; `npm run qa:render:flowline` verifies the final CFR render while allowing intentional edit holds. `npm run check` runs the shared suites plus TypeScript, production build, and Remotion composition discovery.
 
 ## Persistence and collaboration
 

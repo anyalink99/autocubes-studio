@@ -3,6 +3,7 @@ import path from 'node:path';
 import {chromium} from 'playwright';
 import {manifestPath, publicDir, rootDir, shotDir} from '../../packages/core/paths';
 import {CaptureApi} from './types';
+import {captureFrameLockedBrowser} from './frame-locked';
 import {ensureCleanDir, fileExists, normalizePath, scrollPageTo, sleep} from './utils';
 import {scenarios} from './scenarios';
 
@@ -40,13 +41,17 @@ const main = async () => {
       height: scenario.viewport.height,
     },
     deviceScaleFactor: scenario.viewport.deviceScaleFactor,
-    recordVideo: {
-      dir: videoDir,
-      size: {
-        width: scenario.viewport.width,
-        height: scenario.viewport.height,
-      },
-    },
+    ...(scenario.frameLocked
+      ? {}
+      : {
+          recordVideo: {
+            dir: videoDir,
+            size: {
+              width: scenario.viewport.width,
+              height: scenario.viewport.height,
+            },
+          },
+        }),
   });
 
   const page = await context.newPage();
@@ -190,23 +195,40 @@ const main = async () => {
     },
   };
 
-  try {
-    await scenario.run(api);
-  } finally {
-    await page.close();
-    await context.close();
-    await browser.close();
-  }
-
-  const videoFiles = await fs.readdir(videoDir);
-  const firstVideo = videoFiles.find((name) => name.endsWith('.webm'));
   let video: string | undefined;
+  let durationSeconds = scenario.durationSeconds;
 
-  if (firstVideo) {
-    const source = path.join(videoDir, firstVideo);
-    const target = path.join(root, 'capture.webm');
-    await fs.rename(source, target);
-    video = normalizePath(path.relative(root, target));
+  try {
+    try {
+      await scenario.run(api);
+    } finally {
+      await page.close();
+      await context.close();
+    }
+
+    if (scenario.frameLocked) {
+      const result = await captureFrameLockedBrowser({
+        browser,
+        url: scenario.url,
+        root,
+        viewport: scenario.viewport,
+        config: scenario.frameLocked,
+        notes,
+      });
+      video = result.video;
+      durationSeconds = result.durationSeconds;
+    } else {
+      const videoFiles = await fs.readdir(videoDir);
+      const firstVideo = videoFiles.find((name) => name.endsWith('.webm'));
+      if (firstVideo) {
+        const source = path.join(videoDir, firstVideo);
+        const target = path.join(root, 'capture.webm');
+        await fs.rename(source, target);
+        video = normalizePath(path.relative(root, target));
+      }
+    }
+  } finally {
+    await browser.close();
   }
 
   const base = {
@@ -216,7 +238,7 @@ const main = async () => {
     capturedAt: new Date().toISOString(),
     viewport: scenario.viewport,
     video,
-    durationSeconds: scenario.durationSeconds,
+    durationSeconds,
     stills,
     actions,
     notes,
