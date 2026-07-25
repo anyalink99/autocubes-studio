@@ -35,6 +35,7 @@ const main = async () => {
     expectedFrames,
     maxDuplicateFrames: allowStatic ? Number.POSITIVE_INFINITY : 0,
     maxFreezeEvents: allowStatic ? Number.POSITIVE_INFINITY : 0,
+    maxTemporalSpikeEvents: allowStatic ? Number.POSITIVE_INFINITY : 0,
   });
   console.log(JSON.stringify(report, null, 2));
 };

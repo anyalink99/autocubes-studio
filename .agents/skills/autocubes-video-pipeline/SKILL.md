@@ -18,8 +18,8 @@ Read [references/frame-locked-capture.md](references/frame-locked-capture.md) be
 3. Define a deliberate scroll curve with frame/y keyframes. Prewarm the full page, then capture a JPEG sequence at the composition FPS.
 4. Preserve the browser's monotonic timestamp when enabling the virtual clock. Advance `requestAnimationFrame` twice per output frame at half-frame intervals.
 5. Reassert the requested `scrollY` after stepping animation callbacks and fail if actual scroll differs from the clamped target.
-6. On every frame, rediscover near-visible `<video>` nodes in both axes. Await `loadeddata` or `canplay`, set the deterministic media time, and await `seeked` before screenshotting.
-7. Encode the sequence to H.264 CFR with `yuv420p`; run cadence QA before the clip enters Remotion.
+6. On every frame, rediscover near-visible `<video>` nodes in both axes. Seek the decoder, but never screenshot the repeatedly-seeked browser video surface directly. Hide it and draw the decoded frame into a retained root-level canvas proxy that survives transient carousel remounts.
+7. Encode the sequence to H.264 CFR with `yuv420p`; run cadence and temporal-discontinuity QA before the clip enters Remotion.
 8. Keep Remotion timing frame-driven. Avoid `playbackRate` or arbitrary source offsets used to conceal capture defects.
 9. Render the final MP4 and run cadence QA again. Static end cards may opt into `--allow-static`; live browser captures may not.
 
@@ -50,5 +50,6 @@ Use `npm run make:flowline` for the complete sequence.
 - Source and decoded frame duplicate counts stay within the scenario limit.
 - Live capture has zero `freezedetect` events.
 - Every visible embedded video reaches `readyState >= 2`; no load or seek timeout is accepted.
+- Consecutive-frame difference analysis reports no isolated temporal spikes. Frame uniqueness alone does not detect alternating empty compositor surfaces.
 - Contact sheets cover the heaviest sections: 3D/globe, carousel/media, phones, reviews, and final page.
 - Typecheck succeeds before a full render.
