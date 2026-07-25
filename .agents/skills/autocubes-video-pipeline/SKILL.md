@@ -18,10 +18,11 @@ Read [references/frame-locked-capture.md](references/frame-locked-capture.md) be
 3. Define a deliberate scroll curve with frame/y keyframes. Prewarm the full page, then capture a JPEG sequence at the composition FPS.
 4. Preserve the browser's monotonic timestamp when enabling the virtual clock. Advance `requestAnimationFrame` twice per output frame at half-frame intervals.
 5. Reassert the requested `scrollY` after stepping animation callbacks and fail if actual scroll differs from the clamped target.
-6. On every frame, rediscover near-visible `<video>` nodes in both axes. Use the DOM video only for layout: never seek an autoplaying site element. Give each source a retained, paused decoder and a local time origin at its first near-visible frame; do not derive looping media time from the global capture frame. Normalize lower-FPS sources when their 3:2 cadence remains visible, sample at the center of each local frame interval, and draw the paused decoder into a retained root-level canvas proxy that survives transient carousel remounts.
-7. Encode the sequence to H.264 CFR with `yuv420p`; run cadence and temporal-discontinuity QA before the clip enters Remotion.
-8. Keep Remotion timing frame-driven. Avoid `playbackRate` or arbitrary source offsets used to conceal capture defects.
-9. Render the final MP4 and run cadence QA again. Static end cards may opt into `--allow-static`; live browser captures may not.
+6. Use DOM videos only for layout. Normalize every featured source to the output FPS, extract it once into a cached JPEG sequence, and never depend on a repeatedly-seeked Chromium surface for final footage.
+7. Rediscover all connected `<video>` nodes every frame. Give every responsive/carousel clone its own persistent canvas and never move one canvas between clones. Insert each proxy beside its video so ancestor clipping, transforms, opacity, border radii, and stacking remain intact. Keep horizontal clones alive even when offscreen; only skip cached-frame loading when the entire source is vertically away from the viewport. For autoplay carousels, snap the media list transform to a complete slide once, retain that first locked transform, and reassert the exact same value on every frame. Never recompute the nearest slide from a moving autoplay phase. Force every clone ancestor inside that list to `visibility: visible` and `opacity: 1`; the outer carousel still clips distant clones, while the virtual-clock start phase can no longer expose a one-card transitional state. Explicitly disable native video controls.
+8. Encode the sequence to H.264 CFR with `yuv420p`; run cadence and temporal-discontinuity QA before the clip enters Remotion.
+9. Keep Remotion timing frame-driven. Avoid `playbackRate` or arbitrary source offsets used to conceal capture defects.
+10. Render the final MP4 and run cadence QA again. Static end cards may opt into `--allow-static`; live browser captures may not.
 
 ## Project Commands
 
@@ -49,8 +50,11 @@ Use `npm run make:flowline` for the complete sequence.
 - Capture reports the configured frame count and identical nominal/average FPS.
 - Source and decoded frame duplicate counts stay within the scenario limit.
 - Live capture has zero `freezedetect` events.
-- Every visible embedded video reaches `readyState >= 2`; no load or seek timeout is accepted.
-- Track `requestVideoFrameCallback` media timestamps per embedded source. Reject backwards media-time steps and a repeated-media ratio above the scenario limit even when page scrolling makes every screenshot globally unique.
-- Consecutive-frame difference analysis reports no isolated temporal spikes. Frame uniqueness alone does not detect alternating empty compositor surfaces.
+- Every active cached media frame loads and decodes; no missing JPEG, load error, or timeout is accepted. Any unconfigured fallback decoder must still reach `readyState >= 2`.
+- Proxy canvases remain inside the source video's DOM container. Root-level media overlays are invalid because they bypass ancestor masks, transforms, and stacking.
+- Each connected DOM clone gets its own persistent proxy canvas. Sharing one canvas between responsive/carousel clones, or deleting canvases by horizontal viewport filtering, makes media alternate between visible and opacity-zero ancestor trees.
+- Native video controls are disabled before every capture frame.
+- Track cached-frame media timestamps per embedded source. Reject backwards media-time steps except an exact declared loop wrap, and reject a repeated-media ratio above the scenario limit even when page scrolling makes every screenshot globally unique.
+- Consecutive-frame difference analysis reports no unexpected isolated temporal spikes. A scenario budget is allowed only for visually verified hard cuts or section boundaries; duplicate and freeze budgets stay zero.
 - Contact sheets cover the heaviest sections: 3D/globe, carousel/media, phones, reviews, and final page.
 - Typecheck succeeds before a full render.

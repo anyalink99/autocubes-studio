@@ -30,11 +30,28 @@ export const flowlineScenario: CaptureScenario = {
     crf: 16,
     maxDuplicateFrames: 0,
     maxFreezeEvents: 0,
+    maxTemporalSpikeEvents: 0,
     maxEmbeddedDuplicateRatio: 0.25,
     embeddedVideoNormalizations: [
       {
         src: 'https://framerusercontent.com/assets/PRGg2Q31L3cBm9aIlNsOfMD8QL8.mp4',
         sourceFps: 24,
+      },
+      {
+        src: 'https://framerusercontent.com/assets/TwMQMPf1H0P9cYfxE88cxOnb0qU.mp4',
+        sourceFps: 30,
+      },
+      {
+        src: 'https://framerusercontent.com/assets/nG8aNSXF9bVc3wia1eVPP35Z5c8.mp4',
+        sourceFps: 30,
+      },
+      {
+        src: 'https://framerusercontent.com/assets/wBHfmVdBC9k7z6MAlqRq6AD7ZWw.mp4',
+        sourceFps: 30,
+      },
+      {
+        src: 'https://framerusercontent.com/assets/yjuD7GFXupvQlqYR8xjXBuh5oc.mp4',
+        sourceFps: 30,
       },
     ],
   },

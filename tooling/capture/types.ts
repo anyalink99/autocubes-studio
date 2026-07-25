@@ -34,6 +34,7 @@ export type FrameLockedCaptureConfig = {
   keepFrames?: boolean;
   maxDuplicateFrames?: number;
   maxFreezeEvents?: number;
+  maxTemporalSpikeEvents?: number;
   maxEmbeddedDuplicateRatio?: number;
   embeddedVideoNormalizations?: {
     src: string;

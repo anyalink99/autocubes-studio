@@ -3,6 +3,7 @@ import path from 'node:path';
 import {CaptureManifest} from '../../packages/core/manifest';
 import {manifestPath, rootDir, shotDir} from '../../packages/core/paths';
 import {inspectVideoCadence} from '../capture/frame-locked';
+import {scenarios} from '../capture/scenarios';
 
 const args = process.argv.slice(2);
 const option = (name: string) => {
@@ -35,7 +36,9 @@ const main = async () => {
     expectedFrames,
     maxDuplicateFrames: allowStatic ? Number.POSITIVE_INFINITY : 0,
     maxFreezeEvents: allowStatic ? Number.POSITIVE_INFINITY : 0,
-    maxTemporalSpikeEvents: allowStatic ? Number.POSITIVE_INFINITY : 0,
+    maxTemporalSpikeEvents: allowStatic
+      ? Number.POSITIVE_INFINITY
+      : (scenarios[site]?.frameLocked?.maxTemporalSpikeEvents ?? 0),
   });
   console.log(JSON.stringify(report, null, 2));
 };
