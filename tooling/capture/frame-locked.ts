@@ -501,7 +501,7 @@ const stabilizeVisibleVideoFrames = async (
             width: right - left,
             height: bottom - top,
             active: verticallyActive,
-            firstSeenFrame: frame,
+            firstActiveFrame: verticallyActive ? frame : null,
             lastSeen: frame,
           };
           state.items.set(src, item);
@@ -513,6 +513,9 @@ const stabilizeVisibleVideoFrames = async (
         item.width = right - left;
         item.height = bottom - top;
         item.active = verticallyActive;
+        if (verticallyActive && !Number.isFinite(item.firstActiveFrame)) {
+          item.firstActiveFrame = frame;
+        }
         item.lastSeen = frame;
         item.loop = candidates.some((candidate) => candidate.loop);
 
@@ -571,7 +574,13 @@ const stabilizeVisibleVideoFrames = async (
         let drawable = null;
         let videoWidth = 1;
         let videoHeight = 1;
-        const localFrame = Math.max(0, frame - item.firstSeenFrame);
+        const localFrame = Math.max(
+          0,
+          frame -
+            (Number.isFinite(item.firstActiveFrame)
+              ? item.firstActiveFrame
+              : frame),
+        );
 
         if (item.frameOverride) {
           const frameIndex = item.loop
@@ -1061,6 +1070,7 @@ export const captureFrameLockedBrowser = async ({
         comparisons: number;
         duplicates: number;
         backwards: number;
+        loopWraps: number;
         lastFrame: number;
         lastMediaTime: number;
       }
@@ -1125,6 +1135,7 @@ export const captureFrameLockedBrowser = async ({
             comparisons: 0,
             duplicates: 0,
             backwards: 0,
+            loopWraps: 0,
             lastFrame: frame,
             lastMediaTime: mediaTime,
           });
@@ -1146,6 +1157,9 @@ export const captureFrameLockedBrowser = async ({
             !expectedLoopWrap
           ) {
             previous.backwards += 1;
+          }
+          if (expectedLoopWrap) {
+            previous.loopWraps += 1;
           }
         }
         previous.lastFrame = frame;
@@ -1178,6 +1192,7 @@ export const captureFrameLockedBrowser = async ({
           comparisons: cadence.comparisons,
           duplicates: cadence.duplicates,
           backwards: cadence.backwards,
+          loopWraps: cadence.loopWraps,
           ratio: cadence.duplicates / cadence.comparisons,
         },
       ];
@@ -1198,10 +1213,19 @@ export const captureFrameLockedBrowser = async ({
         `Embedded video direction ${reversingEmbeddedVideo.src}: ${reversingEmbeddedVideo.backwards} backwards media-time steps`,
       );
     }
+    const maxEmbeddedLoopWraps = config.maxEmbeddedLoopWraps ?? 0;
+    const wrappingEmbeddedVideo = embeddedReports.find(
+      (report) => report.loopWraps > maxEmbeddedLoopWraps,
+    );
+    if (wrappingEmbeddedVideo) {
+      throw new Error(
+        `Embedded video loop ${wrappingEmbeddedVideo.src}: ${wrappingEmbeddedVideo.loopWraps} visible loop wraps; allowed ${maxEmbeddedLoopWraps}`,
+      );
+    }
     notes.push(
       ...embeddedReports.map(
         (report) =>
-          `embedded-cadence:${report.src}:duplicates=${report.duplicates}/${report.comparisons}:backwards=${report.backwards}`,
+          `embedded-cadence:${report.src}:duplicates=${report.duplicates}/${report.comparisons}:backwards=${report.backwards}:loop-wraps=${report.loopWraps}`,
       ),
     );
   } finally {

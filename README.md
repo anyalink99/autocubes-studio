@@ -17,7 +17,7 @@ The studio opens at `http://127.0.0.1:4178/`.
 
 ## Agent video skills
 
-Video work combines the upstream [Remotion Agent Skills](https://github.com/remotion-dev/skills) with the project-specific [`autocubes-video-pipeline`](./.agents/skills/autocubes-video-pipeline/SKILL.md). The upstream skills provide Remotion composition, timing, media, and render practices. The local skill adds frame-locked browser capture, cached CFR/JPEG extraction for embedded media, one persistent DOM-local canvas per Framer clone, native mask/stacking preservation, per-source direction/cadence checks, temporal-continuity QA, and the failure modes learned from production Autocubes reels.
+Video work combines the upstream [Remotion Agent Skills](https://github.com/remotion-dev/skills) with the project-specific [`autocubes-video-pipeline`](./.agents/skills/autocubes-video-pipeline/SKILL.md). The upstream skills provide Remotion composition, timing, media, and render practices. The local skill adds frame-locked browser capture, cached CFR/JPEG extraction for embedded media, first-visible media clocks, zero-by-default visible loop wraps, one persistent DOM-local canvas per Framer clone, native mask/stacking preservation, stable continuous Remotion playback, per-source direction/cadence checks, temporal-continuity QA, and the failure modes learned from production Autocubes reels.
 
 Install the upstream collection in a new agent environment from the repository root:
 

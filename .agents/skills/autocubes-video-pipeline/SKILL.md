@@ -18,10 +18,10 @@ Read [references/frame-locked-capture.md](references/frame-locked-capture.md) be
 3. Define a deliberate scroll curve with frame/y keyframes. Prewarm the full page, then capture a JPEG sequence at the composition FPS.
 4. Preserve the browser's monotonic timestamp when enabling the virtual clock. Advance `requestAnimationFrame` twice per output frame at half-frame intervals.
 5. Reassert the requested `scrollY` after stepping animation callbacks and fail if actual scroll differs from the clamped target.
-6. Use DOM videos only for layout. Normalize every featured source to the output FPS, extract it once into a cached JPEG sequence, and never depend on a repeatedly-seeked Chromium surface for final footage.
+6. Use DOM videos only for layout. Normalize every featured source to the output FPS, extract it once into a cached JPEG sequence, and never depend on a repeatedly-seeked Chromium surface for final footage. Anchor media time to the first frame where the source becomes vertically active, not the frame where an offscreen DOM clone was discovered. A visible presentation source must not wrap unless the scenario explicitly permits a visually verified seamless loop.
 7. Rediscover all connected `<video>` nodes every frame. Give every responsive/carousel clone its own persistent canvas and never move one canvas between clones. Insert each proxy beside its video so ancestor clipping, transforms, opacity, border radii, and stacking remain intact. Keep horizontal clones alive even when offscreen; only skip cached-frame loading when the entire source is vertically away from the viewport. For autoplay carousels, snap the media list transform to a complete slide once, retain that first locked transform, and reassert the exact same value on every frame. Never recompute the nearest slide from a moving autoplay phase. Force every clone ancestor inside that list to `visibility: visible` and `opacity: 1`; the outer carousel still clips distant clones, while the virtual-clock start phase can no longer expose a one-card transitional state. Explicitly disable native video controls.
 8. Encode the sequence to H.264 CFR with `yuv420p`; run cadence and temporal-discontinuity QA before the clip enters Remotion.
-9. Keep Remotion timing frame-driven. Avoid `playbackRate` or arbitrary source offsets used to conceal capture defects.
+9. Keep Remotion timing frame-driven. A contiguous live-site range must stay inside one continuous `OffthreadVideo`; do not remount it or reset a camera transform at chapter-label boundaries. Avoid fractional `playbackRate` or arbitrary source offsets used to conceal capture defects.
 10. Render the final MP4 and run cadence QA again. Static end cards may opt into `--allow-static`; live browser captures may not.
 
 ## Project Commands
@@ -55,6 +55,7 @@ Use `npm run make:flowline` for the complete sequence.
 - Each connected DOM clone gets its own persistent proxy canvas. Sharing one canvas between responsive/carousel clones, or deleting canvases by horizontal viewport filtering, makes media alternate between visible and opacity-zero ancestor trees.
 - Native video controls are disabled before every capture frame.
 - Track cached-frame media timestamps per embedded source. Reject backwards media-time steps except an exact declared loop wrap, and reject a repeated-media ratio above the scenario limit even when page scrolling makes every screenshot globally unique.
+- Count exact loop wraps separately. The default visible-loop budget is zero because a formally correct final-to-first transition may still be an obvious visual jump.
 - Consecutive-frame difference analysis reports no unexpected isolated temporal spikes. A scenario budget is allowed only for visually verified hard cuts or section boundaries; duplicate and freeze budgets stay zero.
 - Contact sheets cover the heaviest sections: 3D/globe, carousel/media, phones, reviews, and final page.
 - Typecheck succeeds before a full render.

@@ -10,7 +10,7 @@
 - Added ripple timing edits, scene scroll/hold controls in Capture Director, timeline rhythm bands, and a live direction-quality score.
 - Made discovered links hover by default while buttons and controls click, preventing accidental navigation during a showcase recording.
 - Added motion-kinematics QA and exercised Capture Director in the production browser workflow.
-- Stabilized frame-locked embedded media with cached lower-FPS motion normalization, external CFR/JPEG frame extraction, one persistent DOM-local canvas per Framer clone, immutable first-frame carousel slide locks, all-clone opacity normalization, explicit control suppression, exact loop-wrap validation, direction/cadence checks, and scenario-aware temporal-spike QA. This removes browser seek/compositor, clone-handoff, and autoplay resnapping races while preserving the site's clipping, transforms, masks, and stacking.
+- Stabilized frame-locked embedded media with cached lower-FPS motion normalization, external CFR/JPEG frame extraction, one persistent DOM-local canvas per Framer clone, first-vertical-activation media clocks, zero-by-default visible loop wraps, immutable first-frame carousel slide locks, all-clone opacity normalization, explicit control suppression, direction/cadence checks, and scenario-aware temporal-spike QA. This removes browser seek/compositor, hidden pre-roll, clone-handoff, and autoplay resnapping races while preserving the site's clipping, transforms, masks, and stacking.
 
 ## 0.5.2 — Employee document pipeline
 

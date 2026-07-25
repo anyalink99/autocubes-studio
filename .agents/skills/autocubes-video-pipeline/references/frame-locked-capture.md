@@ -68,7 +68,7 @@ Do not delete a clone canvas merely because that clone is horizontally outside t
 
 Autoplay phase is another source of nondeterminism. For media carousels, read the list transform once, infer the slide stride from video rectangles, snap horizontal translation to the nearest complete slide, retain that first result, and reassert the exact same transform with `!important` on every frame. Recomputing the nearest slide from the live transform allows a mid-transition phase to cross the rounding boundary and produces a full/one-card/full oscillation. Framer can still toggle clone ancestors independently of that transform, so every clone inside the list must also be forced to `visibility: visible` and `opacity: 1`. Distant clones remain spatially outside the outer carousel clip. Do not change their scale, mask, border radius, or clipping.
 
-Use the global deterministic frame for sources that start with the page. If a DOM video is declared `loop`, modulo by the extracted frame count. Cadence QA may accept only an exact transition from the final interval to the first; any backwards step inside the duration remains an error.
+Set the source time origin on the first frame where any clone becomes vertically active inside the preload margin. Do not start it when an offscreen DOM node is merely discovered during page warmup; Framer often keeps all carousel clones mounted from frame zero. If a DOM video is declared `loop`, modulo by the extracted frame count, but count every exact final-to-first transition. The default visible-loop budget is zero because a mathematically valid wrap can still be a conspicuous jump.
 
 Do not depend on a second screenshot or a fixed delay. A fixed delay is unrelated to whether a browser decoder has presented a frame and is unnecessary for cached images.
 
@@ -91,6 +91,7 @@ Verify:
 - screenshot hashes and decoded `framemd5` hashes satisfy the duplicate limit.
 - `freezedetect=n=0.002:d=0.1` reports no live-capture freezes.
 - cached per-source media timestamps never step backwards except an exact declared loop wrap and stay below the configured consecutive-duplicate ratio.
+- visible embedded media has zero loop wraps unless the scenario explicitly budgets a verified seamless loop.
 - downscaled consecutive-frame differences remain under the scenario's reviewed spike budget. Use `maxTemporalSpikeEvents` only for verified hard cuts or section boundaries; keep duplicate and freeze limits at zero.
 
 Rendered edits can contain intentional holds such as an end card. Use `--allow-static` only for that final render, never for the live browser master.
@@ -101,6 +102,8 @@ Rendered edits can contain intentional holds such as an end card. Use `--allow-s
 - Carousel cards appeared and disappeared even with valid cached frames because horizontal viewport filtering deleted clone canvases immediately before Framer moved those clones into view. Persistent canvases for every connected clone removed the handoff race.
 - Different clean runs still produced different carousel states because the virtual clock inherited a different native-time phase. Capturing one snapped transform per carousel, reasserting it without resnapping, and normalizing visibility/opacity for all clones made capture reproducible.
 - Recomputing the nearest snapped slide on every frame was itself unstable: the hidden autoplay transform crossed a rounding boundary and made the people carousel jump full/one-card/full. The first snapped transform must remain immutable for the whole capture.
+- Offscreen Framer clones were discovered during warmup, so their nominal local clocks still started at capture frame zero. Short clips then performed exact but visually abrupt loop wraps when they finally appeared. Starting media time at first vertical activation removed those hidden pre-rolls; loop-wrap QA now defaults to zero.
+- Splitting one continuous master range into five Remotion `OffthreadVideo` instances reset a per-chapter zoom from roughly `1.01` to `0.975` at every label boundary. One persistent media component with a fixed camera keeps the website trajectory continuous. Fractional `playbackRate` is also forbidden because it necessarily repeats output frames at a 30 fps composition rate.
 - Keeping canvases for every clone is cheap; JPEG loading is skipped only when the entire source is vertically away from the viewport.
 - The phone DOM geometry was smooth. Its apparent drag came from unstable neighboring media/compositor frames, not from the phone transform itself.
 - Starting virtual time at zero hid whole in-view sections. Continuing the browser's monotonic clock fixed the layout and transitions.

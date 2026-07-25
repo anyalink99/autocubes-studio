@@ -32,6 +32,7 @@ export const flowlineScenario: CaptureScenario = {
     maxFreezeEvents: 0,
     maxTemporalSpikeEvents: 0,
     maxEmbeddedDuplicateRatio: 0.25,
+    maxEmbeddedLoopWraps: 0,
     embeddedVideoNormalizations: [
       {
         src: 'https://framerusercontent.com/assets/PRGg2Q31L3cBm9aIlNsOfMD8QL8.mp4',
