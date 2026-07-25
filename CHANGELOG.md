@@ -10,7 +10,7 @@
 - Added ripple timing edits, scene scroll/hold controls in Capture Director, timeline rhythm bands, and a live direction-quality score.
 - Made discovered links hover by default while buttons and controls click, preventing accidental navigation during a showcase recording.
 - Added motion-kinematics QA and exercised Capture Director in the production browser workflow.
-- Stabilized frame-locked embedded media with retained canvas proxies, midpoint media sampling, cached lower-FPS motion normalization, per-source media-time checks, and temporal-spike QA so Chromium video-surface flashes and timestamp-boundary frame repeats cannot pass as valid 30 fps footage.
+- Stabilized frame-locked embedded media with dedicated paused decoders, per-source first-visible time origins, retained canvas proxies, midpoint media sampling, cached lower-FPS motion normalization, direction/cadence checks, and temporal-spike QA so late-source loopbacks, autoplay/seek races, Chromium video-surface flashes, and timestamp-boundary frame repeats cannot pass as valid 30 fps footage.
 
 ## 0.5.2 — Employee document pipeline
 

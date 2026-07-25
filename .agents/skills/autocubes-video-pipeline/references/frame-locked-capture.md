@@ -43,14 +43,19 @@ Initial preloading is insufficient. Carousels and Framer components may remount 
 
 Rediscover candidates on every frame. Filter by both vertical and horizontal geometry; a carousel may contain many offscreen clones with the same vertical rectangle. For each near-visible source:
 
-1. Set `preload="auto"`, `muted`, and `playsInline`.
-2. If metadata or decoded data is unavailable, call `load()` and await `loadeddata` or `canplay`.
-3. Set `currentTime = (frame + 0.5) / fps modulo duration`, sampling the center of the intended output-frame interval.
-4. Register `requestVideoFrameCallback`, set the media time, and await both `seeked` and the decoded-frame callback.
-5. Draw the decoded media frame into one retained root-level `<canvas>` per source.
-6. Hide the original `<video>` surfaces and screenshot the canvas proxies.
+1. Use the discovered DOM video only for geometry and computed visual styles.
+2. Create one retained, hidden decoder per source. Set `preload="auto"`, `muted`, `playsInline`, `autoplay=false`, and keep it paused.
+3. If metadata or decoded data is unavailable, call `load()` and await `loadeddata` or `canplay`.
+4. Store the source's first near-visible capture frame and set `currentTime = (frame - firstSeenFrame + 0.5) / fps`, clamped before the final source frame. Do not modulo global capture time by media duration.
+5. Register `requestVideoFrameCallback`, set the media time, await both `seeked` and the matching decoded-frame callback, then pause again.
+6. Draw the paused decoder into one retained root-level `<canvas>` per source.
+7. Hide the original `<video>` surfaces and screenshot the canvas proxies.
 
 `seeked` only confirms media state. It does not guarantee that Chromium has presented a non-empty compositor surface for a repeatedly-seeked `<video>`. `requestVideoFrameCallback` also does not fix this presentation race. A direct screenshot can therefore alternate between the decoded frame and a blank card even though every readiness check passes.
+
+Never reuse an autoplaying DOM video as the capture decoder. Wall-clock playback can advance it after `seeked` but before `drawImage`; the next deterministic seek then moves backwards, making carousel footage visibly rock forward and back even though its container FPS and frame hashes are valid.
+
+Never derive embedded-media time from the global capture frame. A source entering near the end of its duration can wrap almost immediately from its final frame to its first. Anchor each decoder to the frame where that source first enters the preload margin. For Flowline every source is longer than its visible interval, so local time stays monotonic without a loop or terminal hold.
 
 Do not seek exactly to `frame / fps`. Encoded frame timestamps sit on interval boundaries, and Chromium can resolve a boundary to the preceding decoded frame. In Flowline's nominal 30 fps sources this produced a deterministic `unique, duplicate, unique` cadence — effectively about 20 visual updates per second despite a 30 fps container. Sampling half a frame later produced one unique decoded frame per output frame.
 
@@ -78,7 +83,7 @@ Verify:
 - `nb_frames` equals the requested frame count.
 - screenshot hashes and decoded `framemd5` hashes satisfy the duplicate limit.
 - `freezedetect=n=0.002:d=0.1` reports no live-capture freezes.
-- per-source `requestVideoFrameCallback` media timestamps stay below the configured consecutive-duplicate ratio.
+- per-source `requestVideoFrameCallback` media timestamps never step backwards and stay below the configured consecutive-duplicate ratio.
 - downscaled consecutive-frame differences contain no isolated spikes relative to their local temporal median.
 
 Rendered edits can contain intentional holds such as an end card. Use `--allow-static` only for that final render, never for the live browser master.
@@ -94,3 +99,5 @@ Rendered edits can contain intentional holds such as an end card. Use `--allow-s
 - Another prior source passed FPS, uniqueness, and freeze checks while alternating between valid and blank media surfaces. Local consecutive-frame spike detection closed that gap.
 - Canvas proxies removed flashes but initially still looked choppy because exact timestamp-boundary seeks repeated every third embedded-media frame. Mid-interval sampling fixed the local cadence that whole-frame hashes could not see beneath continuous page scrolling.
 - Flowline's central people clip was genuinely 24 fps. A cached motion-compensated 30 fps decoder override removed its remaining 3:2 cadence without replacing the surrounding site or carousel geometry.
+- Reusing live autoplay DOM videos as decoders made their drawn frame race wall-clock playback against deterministic seeks. Dedicated paused decoders removed the forward/backward rocking that duplicate-frame QA could not detect.
+- Global capture time wrapped the 15.04-second center carousel clip at capture frame 451 and the 9.33-second side clip near frame 560. Per-source local time origins removed those backwards jumps instead of classifying them as acceptable loops.

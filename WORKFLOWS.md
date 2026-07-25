@@ -32,7 +32,7 @@ This workflow extends the upstream [Remotion Agent Skills](https://github.com/re
 
 Use `CaptureScenario.frameLocked` for the presentation pass. Playwright `recordVideo` remains available for rough scenarios, but it is not a stable final source: a normal container FPS can still contain repeated compositor frames.
 
-The frame-locked pass prewarms lazy sections, advances browser animation time from the existing monotonic clock, verifies the real scroll position, normalizes configured lower-FPS embedded sources through a cached motion-compensated decoder, seeks media at the center of each output-frame interval, and draws it into retained canvas proxies before writing one JPEG per output frame and encoding the sequence as CFR H.264. Mid-interval sampling avoids Chromium repeating decoded frames at exact timestamp boundaries; the proxy step prevents empty native video surfaces even after `seeked`.
+The frame-locked pass prewarms lazy sections, advances browser animation time from the existing monotonic clock, verifies the real scroll position, normalizes configured lower-FPS embedded sources through a cached motion-compensated decoder, seeks dedicated paused decoders from a per-source first-visible time origin at the center of each frame interval, and draws them into retained canvas proxies before writing one JPEG per output frame and encoding the sequence as CFR H.264. Local origins prevent short clips from wrapping backwards merely because they entered late in the global capture; separate decoders prevent wall-clock autoplay races.
 
 For Flowline, run:
 
@@ -43,7 +43,7 @@ npm run render:flowline
 npm run qa:render:flowline
 ```
 
-`npm run make:flowline` runs all four stages. Capture QA rejects duplicate frames, excessive repeated embedded-media timestamps, freeze events, isolated temporal discontinuities, wrong frame counts, and nominal/average FPS mismatches. Render QA allows intentional static edit holds such as an end card but still verifies CFR. The reusable agent workflow is stored in `.agents/skills/autocubes-video-pipeline`.
+`npm run make:flowline` runs all four stages. Capture QA rejects backwards media-time steps, duplicate frames, excessive repeated embedded-media timestamps, freeze events, isolated temporal discontinuities, wrong frame counts, and nominal/average FPS mismatches. Render QA allows intentional static edit holds such as an end card but still verifies CFR. The reusable agent workflow is stored in `.agents/skills/autocubes-video-pipeline`.
 
 ## Create and approve a studio document
 

@@ -25,6 +25,7 @@ type CaptureInput = {
 type VideoReadiness = {
   src: string;
   readyState: number;
+  duration: number | null;
   loadResult: 'already' | 'ready' | 'error' | 'timeout';
   seekResult: 'already' | 'ready' | 'error' | 'timeout' | 'unavailable';
   presentResult: 'already' | 'ready' | 'timeout' | 'unsupported';
@@ -226,7 +227,7 @@ const prepareEmbeddedMediaOverrides = async ({
 const stabilizeVisibleVideoFrames = async (
   page: Page,
   frame: number,
-  timeSeconds: number,
+  fps: number,
   margin: number,
   timeoutMs: number,
   mediaOverrides: Record<string, string>,
@@ -241,7 +242,7 @@ const stabilizeVisibleVideoFrames = async (
   const script = `
     (async () => {
       const frame = ${JSON.stringify(frame)};
-      const time = ${JSON.stringify(timeSeconds)};
+      const fps = ${JSON.stringify(fps)};
       const preloadMargin = ${JSON.stringify(margin)};
       const timeout = ${JSON.stringify(timeoutMs)};
       const mediaOverrides = ${JSON.stringify(mediaOverrides)};
@@ -265,7 +266,7 @@ const stabilizeVisibleVideoFrames = async (
           video.addEventListener('error', onError, {once: true});
           timer = setTimeout(() => finish('timeout'), eventTimeout);
         });
-      const waitForPresentedFrame = (video, eventTimeout) =>
+      const waitForPresentedFrame = (video, target, eventTimeout) =>
         new Promise((resolve) => {
           if (typeof video.requestVideoFrameCallback !== 'function') {
             resolve({result: 'unsupported', mediaTime: video.currentTime});
@@ -283,9 +284,16 @@ const stabilizeVisibleVideoFrames = async (
             clearTimeout(timer);
             resolve({result, mediaTime});
           };
-          callbackId = video.requestVideoFrameCallback((_now, metadata) => {
-            finish('ready', metadata.mediaTime);
-          });
+          const request = () => {
+            callbackId = video.requestVideoFrameCallback((_now, metadata) => {
+              if (Math.abs(metadata.mediaTime - target) <= 0.075) {
+                finish('ready', metadata.mediaTime);
+                return;
+              }
+              request();
+            });
+          };
+          request();
           timer = setTimeout(
             () => finish('timeout', video.currentTime),
             eventTimeout,
@@ -361,16 +369,19 @@ const stabilizeVisibleVideoFrames = async (
         if (!item) {
           const canvas = document.createElement('canvas');
           overlay.appendChild(canvas);
-          const decoderSrc = mediaOverrides[src];
-          let decoder = video;
-          if (decoderSrc) {
-            decoder = document.createElement('video');
-            decoder.crossOrigin = 'anonymous';
-            decoder.src = decoderSrc;
-            decoder.style.cssText =
-              'position:fixed;left:-2px;top:-2px;width:1px;height:1px;opacity:0;pointer-events:none;';
-            document.body.appendChild(decoder);
-          }
+          const decoderSrc = mediaOverrides[src] || src;
+          const decoder = document.createElement('video');
+          decoder.crossOrigin = video.crossOrigin || 'anonymous';
+          decoder.src = decoderSrc;
+          decoder.preload = 'auto';
+          decoder.muted = true;
+          decoder.playsInline = true;
+          decoder.autoplay = false;
+          decoder.loop = false;
+          decoder.style.cssText =
+            'position:fixed;left:-2px;top:-2px;width:1px;height:1px;opacity:0;pointer-events:none;';
+          document.body.appendChild(decoder);
+          decoder.pause();
           item = {
             src,
             video,
@@ -381,16 +392,13 @@ const stabilizeVisibleVideoFrames = async (
             top: rect.top,
             width: rect.width,
             height: rect.height,
+            firstSeenFrame: frame,
             lastSeen: frame,
           };
           state.items.set(src, item);
         }
 
         item.video = video;
-        if (!item.decoderSrc && item.decoder !== video) {
-          item.decoder = video;
-          item.presentedMediaTime = undefined;
-        }
         item.left = rect.left;
         item.top = rect.top;
         item.width = rect.width;
@@ -406,7 +414,7 @@ const stabilizeVisibleVideoFrames = async (
           item.top + item.height < -preloadMargin
         ) {
           item.canvas.remove();
-          if (item.decoder !== item.video) item.decoder.remove();
+          item.decoder.remove();
           state.items.delete(src);
           continue;
         }
@@ -417,6 +425,9 @@ const stabilizeVisibleVideoFrames = async (
         video.preload = 'auto';
         video.muted = true;
         video.playsInline = true;
+        video.autoplay = false;
+        video.loop = false;
+        video.pause();
 
         let loadResult = 'already';
         if (
@@ -436,15 +447,23 @@ const stabilizeVisibleVideoFrames = async (
           Number.isFinite(video.duration) &&
           video.duration > 0
         ) {
-          const target = time % video.duration;
+          const localFrame = Math.max(0, frame - item.firstSeenFrame);
+          const lastStableTime = Math.max(0, video.duration - 0.5 / fps);
+          const target = Math.min((localFrame + 0.5) / fps, lastStableTime);
           if (Math.abs(video.currentTime - target) > 0.002) {
-            const presented = waitForPresentedFrame(video, Math.min(timeout, 5000));
+            video.pause();
+            const presented = waitForPresentedFrame(
+              video,
+              target,
+              Math.min(timeout, 5000),
+            );
             const pending = waitForEvent(video, ['seeked'], Math.min(timeout, 5000));
             video.currentTime = target;
             seekResult = await pending;
             const presentation = await presented;
             presentResult = presentation.result;
             presentedMediaTime = presentation.mediaTime;
+            video.pause();
           } else {
             seekResult = 'already';
           }
@@ -500,6 +519,7 @@ const stabilizeVisibleVideoFrames = async (
         results.push({
           src: src.split('/').pop() ?? '',
           readyState: video.readyState,
+          duration: Number.isFinite(video.duration) ? video.duration : null,
           loadResult,
           seekResult,
           presentResult,
@@ -772,6 +792,7 @@ export const captureFrameLockedBrowser = async ({
       {
         comparisons: number;
         duplicates: number;
+        backwards: number;
         lastFrame: number;
         lastMediaTime: number;
       }
@@ -806,7 +827,7 @@ export const captureFrameLockedBrowser = async ({
       const proxyReport = await stabilizeVisibleVideoFrames(
         page,
         frame,
-        (frame + 0.5) / config.fps,
+        config.fps,
         config.preloadMarginPx ?? 500,
         config.videoReadyTimeoutMs ?? 12_000,
         mediaOverrideMap,
@@ -833,6 +854,7 @@ export const captureFrameLockedBrowser = async ({
           embeddedCadence.set(video.src, {
             comparisons: 0,
             duplicates: 0,
+            backwards: 0,
             lastFrame: frame,
             lastMediaTime: mediaTime,
           });
@@ -842,6 +864,9 @@ export const captureFrameLockedBrowser = async ({
           previous.comparisons += 1;
           if (Math.abs(previous.lastMediaTime - mediaTime) < 0.000_001) {
             previous.duplicates += 1;
+          }
+          if (mediaTime < previous.lastMediaTime - 0.000_001) {
+            previous.backwards += 1;
           }
         }
         previous.lastFrame = frame;
@@ -873,6 +898,7 @@ export const captureFrameLockedBrowser = async ({
           src,
           comparisons: cadence.comparisons,
           duplicates: cadence.duplicates,
+          backwards: cadence.backwards,
           ratio: cadence.duplicates / cadence.comparisons,
         },
       ];
@@ -885,10 +911,18 @@ export const captureFrameLockedBrowser = async ({
         `Embedded video cadence ${choppyEmbeddedVideo.src}: ${choppyEmbeddedVideo.duplicates}/${choppyEmbeddedVideo.comparisons} repeated media frames (${(choppyEmbeddedVideo.ratio * 100).toFixed(1)}%); allowed ${(maxEmbeddedDuplicateRatio * 100).toFixed(1)}%`,
       );
     }
+    const reversingEmbeddedVideo = embeddedReports.find(
+      (report) => report.backwards > 0,
+    );
+    if (reversingEmbeddedVideo) {
+      throw new Error(
+        `Embedded video direction ${reversingEmbeddedVideo.src}: ${reversingEmbeddedVideo.backwards} backwards media-time steps`,
+      );
+    }
     notes.push(
       ...embeddedReports.map(
         (report) =>
-          `embedded-cadence:${report.src}:duplicates=${report.duplicates}/${report.comparisons}`,
+          `embedded-cadence:${report.src}:duplicates=${report.duplicates}/${report.comparisons}:backwards=${report.backwards}`,
       ),
     );
   } finally {
