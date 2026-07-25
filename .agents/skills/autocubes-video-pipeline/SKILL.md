@@ -7,7 +7,7 @@ description: Build, repair, capture, render, and QA Autocubes browser-case reels
 
 Create polished case reels from a website without inheriting Playwright `recordVideo` cadence problems. Treat browser motion, Remotion motion, edit timing, and audio timing as one frame-based system.
 
-Use this project skill together with the upstream [Remotion Agent Skills](https://github.com/remotion-dev/skills). Install the upstream collection in a new environment with `npx skills add remotion-dev/skills .`; do not copy or fork upstream instructions into this skill.
+Use this project skill together with the [project-local Remotion Agent Skills](../README.md) vendored in the sibling skill directories. The repository includes the complete upstream collection, so do not depend on a per-user or global skill installation.
 
 Read [references/frame-locked-capture.md](references/frame-locked-capture.md) before changing capture timing, browser animation control, embedded video handling, or video QA.
 
