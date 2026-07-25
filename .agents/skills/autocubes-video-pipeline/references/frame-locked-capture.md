@@ -45,16 +45,24 @@ Rediscover candidates on every frame. Filter by both vertical and horizontal geo
 
 1. Set `preload="auto"`, `muted`, and `playsInline`.
 2. If metadata or decoded data is unavailable, call `load()` and await `loadeddata` or `canplay`.
-3. Set `currentTime = frame / fps modulo duration`.
-4. Await `seeked`.
+3. Set `currentTime = (frame + 0.5) / fps modulo duration`, sampling the center of the intended output-frame interval.
+4. Register `requestVideoFrameCallback`, set the media time, and await both `seeked` and the decoded-frame callback.
 5. Draw the decoded media frame into one retained root-level `<canvas>` per source.
 6. Hide the original `<video>` surfaces and screenshot the canvas proxies.
 
 `seeked` only confirms media state. It does not guarantee that Chromium has presented a non-empty compositor surface for a repeatedly-seeked `<video>`. `requestVideoFrameCallback` also does not fix this presentation race. A direct screenshot can therefore alternate between the decoded frame and a blank card even though every readiness check passes.
 
+Do not seek exactly to `frame / fps`. Encoded frame timestamps sit on interval boundaries, and Chromium can resolve a boundary to the preceding decoded frame. In Flowline's nominal 30 fps sources this produced a deterministic `unique, duplicate, unique` cadence — effectively about 20 visual updates per second despite a 30 fps container. Sampling half a frame later produced one unique decoded frame per output frame.
+
 Retain each proxy across transient React/carousel remounts. If a source disappears from the near-visible DOM for a frame, keep its last media element reference, continue seeking and drawing it, and preserve the proxy geometry until it leaves the viewport margin. Remove the proxy only after its retained rectangle exits that margin.
 
 Do not depend on a second screenshot or a fixed delay. A fixed delay is unrelated to whether the requested media frame was decoded or presented.
+
+### Lower-FPS embedded sources
+
+Midpoint sampling fixes accidental repeats in sources that already match the output FPS. It cannot invent missing frames in a genuine lower-FPS source. If a prominently visible carousel clip is below the capture FPS, list it in `FrameLockedCaptureConfig.embeddedVideoNormalizations` with its real `sourceFps`.
+
+The capture pipeline caches a motion-compensated CFR version, serves it through a same-origin byte-range route, and uses that file only as the hidden proxy decoder. The real DOM video still owns layout and geometry. This keeps the website composition intact while removing visible 24→30 pulldown judder.
 
 ## Encoding and QA
 
@@ -70,6 +78,7 @@ Verify:
 - `nb_frames` equals the requested frame count.
 - screenshot hashes and decoded `framemd5` hashes satisfy the duplicate limit.
 - `freezedetect=n=0.002:d=0.1` reports no live-capture freezes.
+- per-source `requestVideoFrameCallback` media timestamps stay below the configured consecutive-duplicate ratio.
 - downscaled consecutive-frame differences contain no isolated spikes relative to their local temporal median.
 
 Rendered edits can contain intentional holds such as an end card. Use `--allow-static` only for that final render, never for the live browser master.
@@ -83,3 +92,5 @@ Rendered edits can contain intentional holds such as an end card. Use `--allow-s
 - Starting virtual time at zero hid whole in-view sections. Continuing the browser's monotonic clock fixed the layout and transitions.
 - A prior source passed a naive uniqueness check because internal videos moved while the page scroll was frozen. Actual scroll verification closed that gap.
 - Another prior source passed FPS, uniqueness, and freeze checks while alternating between valid and blank media surfaces. Local consecutive-frame spike detection closed that gap.
+- Canvas proxies removed flashes but initially still looked choppy because exact timestamp-boundary seeks repeated every third embedded-media frame. Mid-interval sampling fixed the local cadence that whole-frame hashes could not see beneath continuous page scrolling.
+- Flowline's central people clip was genuinely 24 fps. A cached motion-compensated 30 fps decoder override removed its remaining 3:2 cadence without replacing the surrounding site or carousel geometry.

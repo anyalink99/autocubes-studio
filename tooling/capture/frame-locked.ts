@@ -27,6 +27,8 @@ type VideoReadiness = {
   readyState: number;
   loadResult: 'already' | 'ready' | 'error' | 'timeout';
   seekResult: 'already' | 'ready' | 'error' | 'timeout' | 'unavailable';
+  presentResult: 'already' | 'ready' | 'timeout' | 'unsupported';
+  presentedMediaTime: number | null;
   connected: boolean;
 };
 
@@ -142,12 +144,92 @@ const warmPage = async (page: Page, step: number) => {
   await page.waitForTimeout(350);
 };
 
+type EmbeddedMediaOverride = {
+  src: string;
+  decoderSrc: string;
+  file: string;
+};
+
+const prepareEmbeddedMediaOverrides = async ({
+  pageUrl,
+  root,
+  fps,
+  normalizations,
+  notes,
+}: {
+  pageUrl: string;
+  root: string;
+  fps: number;
+  normalizations: FrameLockedCaptureConfig['embeddedVideoNormalizations'];
+  notes: string[];
+}): Promise<EmbeddedMediaOverride[]> => {
+  if (!normalizations?.length) return [];
+
+  const cacheDir = path.join(path.dirname(root), '.capture-media-cache');
+  await fs.mkdir(cacheDir, {recursive: true});
+  const overrides: EmbeddedMediaOverride[] = [];
+
+  for (const normalization of normalizations) {
+    if (normalization.sourceFps >= fps) continue;
+    const key = crypto
+      .createHash('sha256')
+      .update(`${normalization.src}|${normalization.sourceFps}|${fps}|mci-v1`)
+      .digest('hex')
+      .slice(0, 20);
+    const file = path.join(cacheDir, `${key}-${fps}fps.mp4`);
+    let cached = true;
+    try {
+      await fs.access(file);
+    } catch {
+      cached = false;
+      await execFileAsync(
+        'ffmpeg',
+        [
+          '-hide_banner',
+          '-loglevel',
+          'error',
+          '-y',
+          '-i',
+          normalization.src,
+          '-an',
+          '-vf',
+          `minterpolate=fps=${fps}:mi_mode=mci:mc_mode=aobmc:me_mode=bidir:me=epzs:vsbmc=1`,
+          '-c:v',
+          'libx264',
+          '-preset',
+          'medium',
+          '-crf',
+          '18',
+          '-pix_fmt',
+          'yuv420p',
+          '-movflags',
+          '+faststart',
+          file,
+        ],
+        {maxBuffer: 20 * 1024 * 1024},
+      );
+    }
+
+    const decoderSrc = new URL(
+      `/__autocubes_capture_media/${key}-${fps}fps.mp4`,
+      pageUrl,
+    ).toString();
+    overrides.push({src: normalization.src, decoderSrc, file});
+    notes.push(
+      `embedded-normalization:${normalization.sourceFps}->${fps}:${normalization.src}:${cached ? 'cache' : 'render'}`,
+    );
+  }
+
+  return overrides;
+};
+
 const stabilizeVisibleVideoFrames = async (
   page: Page,
   frame: number,
   timeSeconds: number,
   margin: number,
   timeoutMs: number,
+  mediaOverrides: Record<string, string>,
 ): Promise<VideoProxyReport> => {
   // A successful "seeked" event does not mean Chromium has presented the new
   // frame to the compositor. Showing a repeatedly-seeked <video> directly can
@@ -162,6 +244,7 @@ const stabilizeVisibleVideoFrames = async (
       const time = ${JSON.stringify(timeSeconds)};
       const preloadMargin = ${JSON.stringify(margin)};
       const timeout = ${JSON.stringify(timeoutMs)};
+      const mediaOverrides = ${JSON.stringify(mediaOverrides)};
       const waitForEvent = (video, events, eventTimeout) =>
         new Promise((resolve) => {
           let settled = false;
@@ -181,6 +264,32 @@ const stabilizeVisibleVideoFrames = async (
           }
           video.addEventListener('error', onError, {once: true});
           timer = setTimeout(() => finish('timeout'), eventTimeout);
+        });
+      const waitForPresentedFrame = (video, eventTimeout) =>
+        new Promise((resolve) => {
+          if (typeof video.requestVideoFrameCallback !== 'function') {
+            resolve({result: 'unsupported', mediaTime: video.currentTime});
+            return;
+          }
+          let settled = false;
+          let callbackId;
+          let timer;
+          const finish = (result, mediaTime) => {
+            if (settled) return;
+            settled = true;
+            if (callbackId !== undefined) {
+              video.cancelVideoFrameCallback(callbackId);
+            }
+            clearTimeout(timer);
+            resolve({result, mediaTime});
+          };
+          callbackId = video.requestVideoFrameCallback((_now, metadata) => {
+            finish('ready', metadata.mediaTime);
+          });
+          timer = setTimeout(
+            () => finish('timeout', video.currentTime),
+            eventTimeout,
+          );
         });
 
       let overlay = document.getElementById('__autocubes_capture_video_overlay');
@@ -252,9 +361,21 @@ const stabilizeVisibleVideoFrames = async (
         if (!item) {
           const canvas = document.createElement('canvas');
           overlay.appendChild(canvas);
+          const decoderSrc = mediaOverrides[src];
+          let decoder = video;
+          if (decoderSrc) {
+            decoder = document.createElement('video');
+            decoder.crossOrigin = 'anonymous';
+            decoder.src = decoderSrc;
+            decoder.style.cssText =
+              'position:fixed;left:-2px;top:-2px;width:1px;height:1px;opacity:0;pointer-events:none;';
+            document.body.appendChild(decoder);
+          }
           item = {
             src,
             video,
+            decoder,
+            decoderSrc,
             canvas,
             left: rect.left,
             top: rect.top,
@@ -266,6 +387,10 @@ const stabilizeVisibleVideoFrames = async (
         }
 
         item.video = video;
+        if (!item.decoderSrc && item.decoder !== video) {
+          item.decoder = video;
+          item.presentedMediaTime = undefined;
+        }
         item.left = rect.left;
         item.top = rect.top;
         item.width = rect.width;
@@ -281,37 +406,53 @@ const stabilizeVisibleVideoFrames = async (
           item.top + item.height < -preloadMargin
         ) {
           item.canvas.remove();
+          if (item.decoder !== item.video) item.decoder.remove();
           state.items.delete(src);
           continue;
         }
 
-        const video = item.video;
+        const sourceVideo = item.video;
+        const video = item.decoder;
         if (!groups.has(src)) retainedSources += 1;
         video.preload = 'auto';
         video.muted = true;
         video.playsInline = true;
 
         let loadResult = 'already';
-        if (video.readyState < 2 || !Number.isFinite(video.duration)) {
+        if (
+          (video.readyState < 2 || !Number.isFinite(video.duration)) &&
+          !Number.isFinite(item.presentedMediaTime)
+        ) {
           const pending = waitForEvent(video, ['loadeddata', 'canplay'], timeout);
           video.load();
           loadResult = await pending;
         }
 
         let seekResult = 'unavailable';
-        if (video.readyState >= 2 && Number.isFinite(video.duration) && video.duration > 0) {
+        let presentResult = 'already';
+        let presentedMediaTime = item.presentedMediaTime ?? null;
+        if (
+          (video.readyState >= 2 || Number.isFinite(item.presentedMediaTime)) &&
+          Number.isFinite(video.duration) &&
+          video.duration > 0
+        ) {
           const target = time % video.duration;
           if (Math.abs(video.currentTime - target) > 0.002) {
+            const presented = waitForPresentedFrame(video, Math.min(timeout, 5000));
             const pending = waitForEvent(video, ['seeked'], Math.min(timeout, 5000));
             video.currentTime = target;
             seekResult = await pending;
+            const presentation = await presented;
+            presentResult = presentation.result;
+            presentedMediaTime = presentation.mediaTime;
           } else {
             seekResult = 'already';
           }
         }
+        item.presentedMediaTime = presentedMediaTime;
 
         if (
-          video.readyState >= 2 &&
+          (video.readyState >= 2 || presentResult === 'ready') &&
           Number.isFinite(video.duration) &&
           video.duration > 0
         ) {
@@ -321,7 +462,7 @@ const stabilizeVisibleVideoFrames = async (
           const context = canvas.getContext('2d');
           const videoWidth = video.videoWidth || 1;
           const videoHeight = video.videoHeight || 1;
-          const style = getComputedStyle(video);
+          const style = getComputedStyle(sourceVideo);
           const fit = style.objectFit || 'fill';
 
           canvas.width = width;
@@ -361,7 +502,9 @@ const stabilizeVisibleVideoFrames = async (
           readyState: video.readyState,
           loadResult,
           seekResult,
-          connected: video.isConnected,
+          presentResult,
+          presentedMediaTime,
+          connected: sourceVideo.isConnected,
         });
       }
 
@@ -551,11 +694,55 @@ export const captureFrameLockedBrowser = async ({
   const framesDir = path.join(root, 'frame-locked-frames');
   const output = path.join(root, 'capture.mp4');
   await ensureCleanDir(framesDir);
+  const embeddedMediaOverrides = await prepareEmbeddedMediaOverrides({
+    pageUrl: url,
+    root,
+    fps: config.fps,
+    normalizations: config.embeddedVideoNormalizations,
+    notes,
+  });
+  const mediaOverrideMap = Object.fromEntries(
+    embeddedMediaOverrides.map((override) => [override.src, override.decoderSrc]),
+  );
 
   const context = await browser.newContext({
     viewport: {width: viewport.width, height: viewport.height},
     deviceScaleFactor: viewport.deviceScaleFactor,
   });
+  for (const override of embeddedMediaOverrides) {
+    const mediaBytes = await fs.readFile(override.file);
+    await context.route(override.decoderSrc, async (route) => {
+      const range = route.request().headers().range;
+      const match = range?.match(/^bytes=(\d*)-(\d*)$/);
+      if (match) {
+        const requestedStart = match[1] ? Number(match[1]) : 0;
+        const requestedEnd = match[2] ? Number(match[2]) : mediaBytes.length - 1;
+        const start = Math.max(0, Math.min(requestedStart, mediaBytes.length - 1));
+        const end = Math.max(start, Math.min(requestedEnd, mediaBytes.length - 1));
+        const body = mediaBytes.subarray(start, end + 1);
+        await route.fulfill({
+          status: 206,
+          contentType: 'video/mp4',
+          headers: {
+            'Accept-Ranges': 'bytes',
+            'Content-Length': String(body.length),
+            'Content-Range': `bytes ${start}-${end}/${mediaBytes.length}`,
+          },
+          body,
+        });
+        return;
+      }
+      await route.fulfill({
+        status: 200,
+        contentType: 'video/mp4',
+        headers: {
+          'Accept-Ranges': 'bytes',
+          'Content-Length': String(mediaBytes.length),
+        },
+        body: mediaBytes,
+      });
+    });
+  }
   await addDeterministicClock(context);
   const page = await context.newPage();
 
@@ -580,6 +767,15 @@ export const captureFrameLockedBrowser = async ({
     });
 
     const sourceHashes = new Set<string>();
+    const embeddedCadence = new Map<
+      string,
+      {
+        comparisons: number;
+        duplicates: number;
+        lastFrame: number;
+        lastMediaTime: number;
+      }
+    >();
     for (let frame = 0; frame < config.frames; frame += 1) {
       const targetY = interpolateScroll(frame, config.scrollKeyframes);
       const position = await page.evaluate(
@@ -610,22 +806,46 @@ export const captureFrameLockedBrowser = async ({
       const proxyReport = await stabilizeVisibleVideoFrames(
         page,
         frame,
-        frame / config.fps,
+        (frame + 0.5) / config.fps,
         config.preloadMarginPx ?? 500,
         config.videoReadyTimeoutMs ?? 12_000,
+        mediaOverrideMap,
       );
       const badVideo = proxyReport.videos.find(
         (video) =>
-          video.readyState < 2 ||
+          (video.readyState < 2 && video.presentResult !== 'ready') ||
           video.loadResult === 'timeout' ||
           video.loadResult === 'error' ||
           video.seekResult === 'timeout' ||
-          video.seekResult === 'error',
+          video.seekResult === 'error' ||
+          video.presentResult === 'timeout',
       );
       if (badVideo) {
         throw new Error(
           `Video frame unavailable at ${frame}: ${badVideo.src} (${badVideo.loadResult}/${badVideo.seekResult})`,
         );
+      }
+      for (const video of proxyReport.videos) {
+        if (!Number.isFinite(video.presentedMediaTime)) continue;
+        const mediaTime = video.presentedMediaTime as number;
+        const previous = embeddedCadence.get(video.src);
+        if (!previous) {
+          embeddedCadence.set(video.src, {
+            comparisons: 0,
+            duplicates: 0,
+            lastFrame: frame,
+            lastMediaTime: mediaTime,
+          });
+          continue;
+        }
+        if (previous.lastFrame === frame - 1) {
+          previous.comparisons += 1;
+          if (Math.abs(previous.lastMediaTime - mediaTime) < 0.000_001) {
+            previous.duplicates += 1;
+          }
+        }
+        previous.lastFrame = frame;
+        previous.lastMediaTime = mediaTime;
       }
 
       const frameFile = path.join(framesDir, `frame-${String(frame).padStart(6, '0')}.jpg`);
@@ -644,6 +864,33 @@ export const captureFrameLockedBrowser = async ({
         `${duplicateSourceFrames} duplicate source frames; allowed ${config.maxDuplicateFrames ?? 0}`,
       );
     }
+
+    const maxEmbeddedDuplicateRatio = config.maxEmbeddedDuplicateRatio ?? 0.25;
+    const embeddedReports = [...embeddedCadence].flatMap(([src, cadence]) => {
+      if (cadence.comparisons < 6) return [];
+      return [
+        {
+          src,
+          comparisons: cadence.comparisons,
+          duplicates: cadence.duplicates,
+          ratio: cadence.duplicates / cadence.comparisons,
+        },
+      ];
+    });
+    const choppyEmbeddedVideo = embeddedReports.find(
+      (report) => report.ratio > maxEmbeddedDuplicateRatio,
+    );
+    if (choppyEmbeddedVideo) {
+      throw new Error(
+        `Embedded video cadence ${choppyEmbeddedVideo.src}: ${choppyEmbeddedVideo.duplicates}/${choppyEmbeddedVideo.comparisons} repeated media frames (${(choppyEmbeddedVideo.ratio * 100).toFixed(1)}%); allowed ${(maxEmbeddedDuplicateRatio * 100).toFixed(1)}%`,
+      );
+    }
+    notes.push(
+      ...embeddedReports.map(
+        (report) =>
+          `embedded-cadence:${report.src}:duplicates=${report.duplicates}/${report.comparisons}`,
+      ),
+    );
   } finally {
     await page.close();
     await context.close();

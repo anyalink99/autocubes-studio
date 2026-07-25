@@ -30,6 +30,13 @@ export const flowlineScenario: CaptureScenario = {
     crf: 16,
     maxDuplicateFrames: 0,
     maxFreezeEvents: 0,
+    maxEmbeddedDuplicateRatio: 0.25,
+    embeddedVideoNormalizations: [
+      {
+        src: 'https://framerusercontent.com/assets/PRGg2Q31L3cBm9aIlNsOfMD8QL8.mp4',
+        sourceFps: 24,
+      },
+    ],
   },
   run: async ({
     page,
