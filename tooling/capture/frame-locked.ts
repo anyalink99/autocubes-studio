@@ -486,6 +486,12 @@ export const captureFrameLockedBrowser = async ({
           rotation: number;
           scale: number;
           opacity: number;
+          descendants: {
+            index: number;
+            x: number;
+            y: number;
+            visible: boolean;
+          }[];
         }[],
       }),
     );
@@ -585,13 +591,34 @@ export const captureFrameLockedBrowser = async ({
             rotation: (Math.atan2(matrix.b, matrix.a) * 180) / Math.PI,
             scale: Math.hypot(matrix.a, matrix.b),
             opacity: Number(style.opacity),
+            descendants: track.descendantSelector
+              ? [
+                  ...element.querySelectorAll<HTMLElement>(
+                    track.descendantSelector,
+                  ),
+                ].map((descendant, index) => {
+                  const descendantRect = descendant.getBoundingClientRect();
+                  return {
+                    index,
+                    x: descendantRect.left,
+                    y: descendantRect.top,
+                    visible:
+                      descendantRect.right > 2 &&
+                      descendantRect.left < innerWidth - 2 &&
+                      descendantRect.bottom > 2 &&
+                      descendantRect.top < innerHeight - 2,
+                  };
+                })
+              : [],
           };
         });
       }, config.transformContinuityTracks ?? []);
       for (const [index, sample] of transformSamples.entries()) {
         if (
           !sample ||
-          !Object.values(sample).every((value) => Number.isFinite(value))
+          ![sample.x, sample.y, sample.rotation, sample.scale, sample.opacity].every(
+            (value) => Number.isFinite(value),
+          )
         ) {
           continue;
         }
@@ -758,15 +785,47 @@ export const captureFrameLockedBrowser = async ({
           track.maxOpacityStep !== undefined &&
           Math.abs(delta.opacity) > track.maxOpacityStep,
       );
+      const descendantDeltas = track.samples.flatMap((sample, index) => {
+        if (index === 0) return [];
+        const previous = track.samples[index - 1];
+        if (sample.frame !== previous.frame + 1) return [];
+        return sample.descendants.flatMap((descendant) => {
+          const previousDescendant = previous.descendants.find(
+            (candidate) => candidate.index === descendant.index,
+          );
+          if (
+            !previousDescendant ||
+            !previousDescendant.visible ||
+            !descendant.visible
+          ) {
+            return [];
+          }
+          const dx = descendant.x - previousDescendant.x;
+          const dy = descendant.y - previousDescendant.y;
+          return [
+            track.axis === 'x'
+              ? Math.abs(dx)
+              : track.axis === 'y'
+                ? Math.abs(dy)
+                : Math.hypot(dx, dy),
+          ];
+        });
+      });
+      const descendantViolations = descendantDeltas.filter(
+        (delta) =>
+          track.maxDescendantStep !== undefined &&
+          delta > track.maxDescendantStep,
+      );
       if (
         directionViolations.length > 0 ||
         translationViolations.length > 0 ||
         rotationViolations.length > 0 ||
         scaleViolations.length > 0 ||
-        opacityViolations.length > 0
+        opacityViolations.length > 0 ||
+        descendantViolations.length > 0
       ) {
         throw new Error(
-          `Transform track ${track.id}: direction=${directionViolations.length}, translation=${translationViolations.length}, rotation=${rotationViolations.length}, scale=${scaleViolations.length}, opacity=${opacityViolations.length}`,
+          `Transform track ${track.id}: direction=${directionViolations.length}, translation=${translationViolations.length}, rotation=${rotationViolations.length}, scale=${scaleViolations.length}, opacity=${opacityViolations.length}, descendants=${descendantViolations.length}`,
         );
       }
       const xValues = track.samples.map((sample) => sample.x);
@@ -795,7 +854,7 @@ export const captureFrameLockedBrowser = async ({
         );
       }
       notes.push(
-        `transform-track:${track.id}:samples=${track.samples.length}:translation-range=${translationRange.toFixed(3)}:opacity-range=${opacityRange.toFixed(3)}:max-step=${Math.max(0, ...deltas.map((delta) => delta.translation)).toFixed(3)}:max-rotation-step=${Math.max(0, ...deltas.map((delta) => Math.abs(delta.rotation))).toFixed(3)}`,
+        `transform-track:${track.id}:samples=${track.samples.length}:translation-range=${translationRange.toFixed(3)}:opacity-range=${opacityRange.toFixed(3)}:max-step=${Math.max(0, ...deltas.map((delta) => delta.translation)).toFixed(3)}:max-rotation-step=${Math.max(0, ...deltas.map((delta) => Math.abs(delta.rotation))).toFixed(3)}:max-descendant-step=${Math.max(0, ...descendantDeltas).toFixed(3)}`,
       );
     }
   } finally {

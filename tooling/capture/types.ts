@@ -52,6 +52,8 @@ export type FrameLockedCaptureConfig = {
     maxRotationStepDeg?: number;
     maxScaleStep?: number;
     maxOpacityStep?: number;
+    descendantSelector?: string;
+    maxDescendantStep?: number;
     minSamples?: number;
     minOpacityRange?: number;
     minTranslationRange?: number;

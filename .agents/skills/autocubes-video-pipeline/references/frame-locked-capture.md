@@ -99,10 +99,22 @@ Verify:
 - visible embedded media has zero loop wraps unless the scenario explicitly budgets a verified seamless loop.
 - downscaled consecutive-frame differences remain under the scenario's reviewed spike budget. Use `maxTemporalSpikeEvents` only for verified hard cuts or section boundaries; keep duplicate and freeze limits at zero.
 - known DOM motion is sampled directly. `transformContinuityTracks` rejects direction reversals and per-frame translation, rotation, scale, or opacity jumps even when every screenshot remains globally unique.
+- looping ticker tracks can additionally sample their direct descendants. Compare only descendants visible in both consecutive frames: legitimate offscreen recycling stays allowed, while a visible one-card teleport fails.
 - expected in-view reveals declare minimum opacity and/or translation ranges. A capture that accidentally consumed the reveal during warmup therefore fails instead of silently producing a static section.
 - QA reads DOM state only; it never reasserts transforms or visibility.
 
 Rendered edits can contain intentional holds such as an end card. Use `--allow-static` only for that final render, never for the live browser master.
+
+## Isolated final-frame repair
+
+Use this only after the capture and final edit have otherwise passed visual review and the defect is confined to one compositor frame.
+
+1. Extract the bad frame and its immediate neighbors losslessly.
+2. Verify the same region is continuous in both neighbors and measure its expected translation.
+3. Copy only that region from the preceding or following clean frame, offset by the measured motion. Do not interpolate or replace unrelated pixels.
+4. Overlay the repaired still only at the exact bad frame while re-encoding H.264 CFR and stream-copying the original audio.
+5. Inspect the three-frame sequence at full resolution and compare local frame differences before and after. The repair must reduce the discontinuity without introducing a seam.
+6. Keep descendant-coordinate QA enabled so a future capture fails instead of silently requiring the same repair.
 
 ## Lessons from Flowline
 
@@ -117,6 +129,7 @@ Rendered edits can contain intentional holds such as an end card. Use `--allow-s
 - The phone, reveal wrappers, people carousel, and video carousel now have observation-only transform QA. Flowline rejects a direction reversal, teleport, rotation jump, opacity jump, or missing reveal instead of assuming globally unique frames imply smooth object motion.
 - Starting virtual time at zero hid whole in-view sections. Continuing the browser's monotonic clock fixed the layout and transitions.
 - Warming the final page itself also hid once-only in-view sections: the warmup scroll had already completed every reveal. A disposable warmup page primes assets, while the fresh capture page preserves the original scroll-trigger lifecycle.
+- Flowline's top hero ticker jumped by one card between master frames 147 and 148 although the ticker list transform looked plausible and global temporal QA stayed below its spike threshold. Native smooth-scroll tracing had no jump. Timing guesses around synthetic rAF merely moved the transient and sometimes exposed a different Framer projection state, so they were removed. Per-visible-child coordinate QA now catches any recurrence. For an otherwise approved final, the isolated bad region was replaced from the adjacent clean frame with the known scroll displacement; the rest of the frame and audio stayed untouched.
 - A prior source passed a naive uniqueness check because internal videos moved while the page scroll was frozen. Actual scroll verification closed that gap.
 - Another prior source passed FPS, uniqueness, and freeze checks while alternating between valid and blank media surfaces. Local consecutive-frame spike detection closed that gap.
 - Flowline's central people clip was genuinely 24 fps. Cached motion-compensated 30 fps normalization removed its 3:2 cadence without replacing the surrounding site or carousel geometry.

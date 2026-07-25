@@ -35,6 +35,26 @@ export const flowlineScenario: CaptureScenario = {
     maxEmbeddedLoopWraps: 0,
     transformContinuityTracks: [
       {
+        id: 'hero-ticker-top',
+        selector: '.framer-8cgpnt ul',
+        axis: 'x',
+        direction: 'negative',
+        maxTranslationStep: 1.5,
+        descendantSelector: ':scope > li',
+        maxDescendantStep: 1.5,
+        minSamples: 100,
+      },
+      {
+        id: 'hero-ticker-bottom',
+        selector: '.framer-zz21zt ul',
+        axis: 'x',
+        direction: 'positive',
+        maxTranslationStep: 1.5,
+        descendantSelector: ':scope > li',
+        maxDescendantStep: 1.5,
+        minSamples: 100,
+      },
+      {
         id: 'flexible-rules-reveal',
         selector: '.framer-10mq33a',
         maxTranslationStep: 12,
