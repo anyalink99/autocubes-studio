@@ -41,18 +41,20 @@ export type FrameLockedCaptureConfig = {
     src: string;
     sourceFps: number;
   }[];
-  stableElementTransforms?: {
-    selector: string;
-    ancestorLevels?: number;
-    transform: string;
-  }[];
-  monotonicTransformTracks?: {
+  transformContinuityTracks?: {
     id: string;
     selector: string;
-    axis: 'x' | 'y';
-    direction: 'positive' | 'negative';
-    maxStep: number;
+    ancestorLevels?: number;
+    viewportMarginPx?: number;
+    axis?: 'x' | 'y';
+    direction?: 'positive' | 'negative';
+    maxTranslationStep?: number;
+    maxRotationStepDeg?: number;
+    maxScaleStep?: number;
+    maxOpacityStep?: number;
     minSamples?: number;
+    minOpacityRange?: number;
+    minTranslationRange?: number;
   }[];
 };
 

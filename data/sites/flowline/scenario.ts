@@ -33,22 +33,53 @@ export const flowlineScenario: CaptureScenario = {
     maxTemporalSpikeEvents: 0,
     maxEmbeddedDuplicateRatio: 0.25,
     maxEmbeddedLoopWraps: 0,
-    stableElementTransforms: [
+    transformContinuityTracks: [
       {
+        id: 'flexible-rules-reveal',
+        selector: '.framer-10mq33a',
+        maxTranslationStep: 12,
+        maxOpacityStep: 0.4,
+        minSamples: 30,
+        minOpacityRange: 0.8,
+        minTranslationRange: 15,
+      },
+      {
+        id: 'phone-reveal',
         selector:
           'img[src*="otkB8TZsvM2ULa0N3ALnKskG5ag"][alt="Phone"]',
         ancestorLevels: 2,
-        transform: 'rotate(-22deg)',
+        maxTranslationStep: 45,
+        maxRotationStepDeg: 3,
+        maxOpacityStep: 0.4,
+        minSamples: 30,
+        minOpacityRange: 0.8,
+        minTranslationRange: 50,
       },
-    ],
-    monotonicTransformTracks: [
+      {
+        id: 'globe-reveal',
+        selector:
+          'video[src*="yjuD7GFXupvQlqYR8xjXBuh5oc"]',
+        ancestorLevels: 3,
+        maxTranslationStep: 12,
+        maxOpacityStep: 0.4,
+        minSamples: 40,
+        minOpacityRange: 0.8,
+        minTranslationRange: 15,
+      },
       {
         id: 'people-image-carousel',
         selector:
           'ul:has(img[src*="ZzBHGGaTqk0aSLMiZ87omsIk5Yc"])',
         axis: 'x',
         direction: 'negative',
-        maxStep: 2,
+        maxTranslationStep: 2,
+        minSamples: 40,
+      },
+      {
+        id: 'video-carousel',
+        selector:
+          'ul:has(video[src*="PRGg2Q31L3cBm9aIlNsOfMD8QL8"])',
+        maxTranslationStep: 2,
         minSamples: 40,
       },
     ],

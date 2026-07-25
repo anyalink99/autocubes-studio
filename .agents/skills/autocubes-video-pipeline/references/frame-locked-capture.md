@@ -28,7 +28,9 @@ Virtualizing only `requestAnimationFrame` is insufficient. The capture loop can 
 
 ## Scroll and lazy layout
 
-Prewarm the page from top to bottom before enabling the virtual clock. This primes lazy sections and network assets.
+Prewarm a disposable page from top to bottom before opening the capture page. Keep both pages in the same BrowserContext so HTTP/browser caches are shared, then close the warmup page and load a fresh DOM at scroll zero.
+
+Do not prewarm the same DOM that will be captured. IntersectionObserver and Framer `whileInView` animations often run once; scrolling the capture page through every section consumes those reveals before frame zero. Asset warmup and application-state warmup are different operations.
 
 For every captured frame:
 
@@ -49,9 +51,8 @@ For every configured featured source:
 
 1. Probe its real FPS.
 2. If it is below the capture FPS, cache a motion-compensated CFR normalization.
-3. Transcode the capture source to a seek-safe all-intra intermediate.
-4. Extract that CFR source into a reusable `frame-%06d.jpg` cache with a completion manifest.
-5. Serve requested JPEGs through a same-origin Playwright route.
+3. Extract the source (or its lower-FPS normalization) directly into a reusable CFR `frame-%06d.jpg` cache with a completion manifest.
+4. Serve requested JPEGs through a same-origin Playwright route.
 
 For every captured page frame:
 
@@ -70,7 +71,7 @@ Do not key canvases only by source URL. Framer can keep several clones of the sa
 
 Do not delete a clone canvas merely because that clone is horizontally outside the viewport. Framer may move it into the visible slot between capture frames. Horizontal filtering created the exact full-carousel/one-card alternation seen in Flowline.
 
-Autoplay phase is another source of nondeterminism. For media carousels, read the list transform once, infer the slide stride from video rectangles, snap horizontal translation to the nearest complete slide, retain that first result, and reassert the exact same transform with `!important` on every frame. Recomputing the nearest slide from the live transform allows a mid-transition phase to cross the rounding boundary and produces a full/one-card/full oscillation. Framer can still toggle clone ancestors independently of that transform, so every clone inside the list must also be forced to `visibility: visible` and `opacity: 1`. Distant clones remain spatially outside the outer carousel clip. Do not change their scale, mask, border radius, or clipping.
+Do not “stabilize” a media carousel by snapping its list transform or forcing clone ancestors to `visibility: visible`/`opacity: 1`. Those writes suppress real reveals and can expose multiple responsive/loop clones at once. Preserve the page's transform and visibility tree. Deterministic page time, a fresh capture DOM, and per-instance canvases make the result stable without replacing application state.
 
 Set the source time origin on the first frame where any clone becomes vertically active inside the preload margin. Do not start it when an offscreen DOM node is merely discovered during page warmup; Framer often keeps all carousel clones mounted from frame zero. If a DOM video is declared `loop`, modulo by the extracted frame count, but count every exact final-to-first transition. The default visible-loop budget is zero because a mathematically valid wrap can still be a conspicuous jump.
 
@@ -97,8 +98,9 @@ Verify:
 - cached per-source media timestamps never step backwards except an exact declared loop wrap and stay below the configured consecutive-duplicate ratio.
 - visible embedded media has zero loop wraps unless the scenario explicitly budgets a verified seamless loop.
 - downscaled consecutive-frame differences remain under the scenario's reviewed spike budget. Use `maxTemporalSpikeEvents` only for verified hard cuts or section boundaries; keep duplicate and freeze limits at zero.
-- known continuous DOM motion is sampled directly. `monotonicTransformTracks` rejects direction reversals and per-frame translation jumps even when every screenshot remains globally unique.
-- stable decorative states may use `stableElementTransforms` only after a native smooth-scroll comparison proves the intended transform. Reassert the exact target immediately before each screenshot.
+- known DOM motion is sampled directly. `transformContinuityTracks` rejects direction reversals and per-frame translation, rotation, scale, or opacity jumps even when every screenshot remains globally unique.
+- expected in-view reveals declare minimum opacity and/or translation ranges. A capture that accidentally consumed the reveal during warmup therefore fails instead of silently producing a static section.
+- QA reads DOM state only; it never reasserts transforms or visibility.
 
 Rendered edits can contain intentional holds such as an end card. Use `--allow-static` only for that final render, never for the live browser master.
 
@@ -106,15 +108,15 @@ Rendered edits can contain intentional holds such as an end card. Use `--allow-s
 
 - The globe and carousel still jerked after every seek completed successfully. The real failure was Chromium compositor presentation during repeated seeks. External JPEG extraction removed the browser decoder from the final path.
 - Carousel cards appeared and disappeared even with valid cached frames because horizontal viewport filtering deleted clone canvases immediately before Framer moved those clones into view. Persistent canvases for every connected clone removed the handoff race.
-- Different clean runs still produced different carousel states because the virtual clock inherited a different native-time phase. Capturing one snapped transform per carousel, reasserting it without resnapping, and normalizing visibility/opacity for all clones made capture reproducible.
-- Recomputing the nearest snapped slide on every frame was itself unstable: the hidden autoplay transform crossed a rounding boundary and made the people carousel jump full/one-card/full. The first snapped transform must remain immutable for the whole capture.
+- Carousel transform snapping and forced clone visibility were failed fixes: they replaced native application state, exposed overlapping clones, and consumed the visual logic the reel was meant to show. The final approach leaves DOM motion untouched and rejects discontinuities through observation-only QA.
 - Offscreen Framer clones were discovered during warmup, so their nominal local clocks still started at capture frame zero. Short clips then performed exact but visually abrupt loop wraps when they finally appeared. Starting media time at first vertical activation removed those hidden pre-rolls; loop-wrap QA now defaults to zero.
 - Splitting one continuous master range into five Remotion `OffthreadVideo` instances reset a per-chapter zoom from roughly `1.01` to `0.975` at every label boundary. One persistent media component with a fixed camera keeps the website trajectory continuous. Fractional `playbackRate` is also forbidden because it necessarily repeats output frames at a 30 fps composition rate.
 - Keeping canvases for every clone is cheap; JPEG loading is skipped only when the entire source is vertically away from the viewport.
-- Global FPS and frame-difference QA missed a real phone teleport: the same Framer node rewrote its inline transform from `rotate(-22deg)` to `none` and back with no intermediate angle. Object-level DOM logging exposed the state flip.
-- Virtualizing rAF alone left Framer timers on wall time, so media-cache waits changed application state between output frames. A shared rAF/timeout/interval clock made the failure deterministic; an exact, native-verified phone transform lock removed the remaining component-specific state switch.
-- The people image carousel now has direct monotonic-transform QA. Flowline rejects a sign reversal or a horizontal step above 2 px instead of assuming globally unique frames imply smooth object motion.
+- Global FPS and frame-difference QA missed a real phone teleport. Object-level DOM logging exposed the state flip; a native fresh-page comparison then proved the phone should enter smoothly from `translate(100px, 50px) rotate(-22deg)` to `rotate(-22deg)`. The correct fix was fresh-DOM timing, not a transform lock.
+- Virtualizing rAF alone left Framer timers on wall time, so media-cache waits changed application state between output frames. A shared rAF/timeout/interval clock makes application time deterministic while leaving native transforms intact.
+- The phone, reveal wrappers, people carousel, and video carousel now have observation-only transform QA. Flowline rejects a direction reversal, teleport, rotation jump, opacity jump, or missing reveal instead of assuming globally unique frames imply smooth object motion.
 - Starting virtual time at zero hid whole in-view sections. Continuing the browser's monotonic clock fixed the layout and transitions.
+- Warming the final page itself also hid once-only in-view sections: the warmup scroll had already completed every reveal. A disposable warmup page primes assets, while the fresh capture page preserves the original scroll-trigger lifecycle.
 - A prior source passed a naive uniqueness check because internal videos moved while the page scroll was frozen. Actual scroll verification closed that gap.
 - Another prior source passed FPS, uniqueness, and freeze checks while alternating between valid and blank media surfaces. Local consecutive-frame spike detection closed that gap.
 - Flowline's central people clip was genuinely 24 fps. Cached motion-compensated 30 fps normalization removed its 3:2 cadence without replacing the surrounding site or carousel geometry.
