@@ -33,6 +33,25 @@ export const flowlineScenario: CaptureScenario = {
     maxTemporalSpikeEvents: 0,
     maxEmbeddedDuplicateRatio: 0.25,
     maxEmbeddedLoopWraps: 0,
+    stableElementTransforms: [
+      {
+        selector:
+          'img[src*="otkB8TZsvM2ULa0N3ALnKskG5ag"][alt="Phone"]',
+        ancestorLevels: 2,
+        transform: 'rotate(-22deg)',
+      },
+    ],
+    monotonicTransformTracks: [
+      {
+        id: 'people-image-carousel',
+        selector:
+          'ul:has(img[src*="ZzBHGGaTqk0aSLMiZ87omsIk5Yc"])',
+        axis: 'x',
+        direction: 'negative',
+        maxStep: 2,
+        minSamples: 40,
+      },
+    ],
     embeddedVideoNormalizations: [
       {
         src: 'https://framerusercontent.com/assets/PRGg2Q31L3cBm9aIlNsOfMD8QL8.mp4',

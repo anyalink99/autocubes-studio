@@ -41,6 +41,19 @@ export type FrameLockedCaptureConfig = {
     src: string;
     sourceFps: number;
   }[];
+  stableElementTransforms?: {
+    selector: string;
+    ancestorLevels?: number;
+    transform: string;
+  }[];
+  monotonicTransformTracks?: {
+    id: string;
+    selector: string;
+    axis: 'x' | 'y';
+    direction: 'positive' | 'negative';
+    maxStep: number;
+    minSamples?: number;
+  }[];
 };
 
 export type CaptureScenario = {

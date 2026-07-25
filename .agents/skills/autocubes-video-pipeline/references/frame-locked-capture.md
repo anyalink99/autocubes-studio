@@ -18,9 +18,13 @@ At enable time:
 2. Start virtual time from that value.
 3. Preserve a matching `Date.now()` epoch.
 4. Queue new `requestAnimationFrame` callbacks.
-5. Run two callback batches per output frame, each at half the frame duration.
+5. Move page `setTimeout` and `setInterval` callbacks onto the same virtual timeline, including outstanding timers created during warmup.
+6. Preserve the native timer functions for capture-internal image/video readiness timeouts.
+7. Run two callback/timer batches per output frame, each at half the frame duration.
 
 This maintains monotonic time while still making every output frame deterministic.
+
+Virtualizing only `requestAnimationFrame` is insufficient. The capture loop can spend variable wall time loading cached media. If Framer timers continue on native wall time while animation frames use virtual time, a single DOM node can alternate between two valid inline styles even though the output is CFR. In Flowline, the phone wrapper switched directly between `rotate(-22deg)` and `none`, while image carousels periodically reversed. A shared virtual timer/rAF clock removed the wall-time phase race.
 
 ## Scroll and lazy layout
 
@@ -93,6 +97,8 @@ Verify:
 - cached per-source media timestamps never step backwards except an exact declared loop wrap and stay below the configured consecutive-duplicate ratio.
 - visible embedded media has zero loop wraps unless the scenario explicitly budgets a verified seamless loop.
 - downscaled consecutive-frame differences remain under the scenario's reviewed spike budget. Use `maxTemporalSpikeEvents` only for verified hard cuts or section boundaries; keep duplicate and freeze limits at zero.
+- known continuous DOM motion is sampled directly. `monotonicTransformTracks` rejects direction reversals and per-frame translation jumps even when every screenshot remains globally unique.
+- stable decorative states may use `stableElementTransforms` only after a native smooth-scroll comparison proves the intended transform. Reassert the exact target immediately before each screenshot.
 
 Rendered edits can contain intentional holds such as an end card. Use `--allow-static` only for that final render, never for the live browser master.
 
@@ -105,7 +111,9 @@ Rendered edits can contain intentional holds such as an end card. Use `--allow-s
 - Offscreen Framer clones were discovered during warmup, so their nominal local clocks still started at capture frame zero. Short clips then performed exact but visually abrupt loop wraps when they finally appeared. Starting media time at first vertical activation removed those hidden pre-rolls; loop-wrap QA now defaults to zero.
 - Splitting one continuous master range into five Remotion `OffthreadVideo` instances reset a per-chapter zoom from roughly `1.01` to `0.975` at every label boundary. One persistent media component with a fixed camera keeps the website trajectory continuous. Fractional `playbackRate` is also forbidden because it necessarily repeats output frames at a 30 fps composition rate.
 - Keeping canvases for every clone is cheap; JPEG loading is skipped only when the entire source is vertically away from the viewport.
-- The phone DOM geometry was smooth. Its apparent drag came from unstable neighboring media/compositor frames, not from the phone transform itself.
+- Global FPS and frame-difference QA missed a real phone teleport: the same Framer node rewrote its inline transform from `rotate(-22deg)` to `none` and back with no intermediate angle. Object-level DOM logging exposed the state flip.
+- Virtualizing rAF alone left Framer timers on wall time, so media-cache waits changed application state between output frames. A shared rAF/timeout/interval clock made the failure deterministic; an exact, native-verified phone transform lock removed the remaining component-specific state switch.
+- The people image carousel now has direct monotonic-transform QA. Flowline rejects a sign reversal or a horizontal step above 2 px instead of assuming globally unique frames imply smooth object motion.
 - Starting virtual time at zero hid whole in-view sections. Continuing the browser's monotonic clock fixed the layout and transitions.
 - A prior source passed a naive uniqueness check because internal videos moved while the page scroll was frozen. Actual scroll verification closed that gap.
 - Another prior source passed FPS, uniqueness, and freeze checks while alternating between valid and blank media surfaces. Local consecutive-frame spike detection closed that gap.

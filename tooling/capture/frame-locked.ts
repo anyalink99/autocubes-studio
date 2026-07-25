@@ -84,11 +84,66 @@ const addDeterministicClock = async (context: BrowserContext) => {
       const nativeCancelAnimationFrame = window.cancelAnimationFrame.bind(window);
       const nativePerformanceNow = performance.now.bind(performance);
       const nativeDateNow = Date.now.bind(Date);
+      const nativeSetTimeout = window.setTimeout.bind(window);
+      const nativeClearTimeout = window.clearTimeout.bind(window);
       let enabled = false;
       let virtualTime = 0;
       let epoch = nativeDateNow();
       let nextId = 1;
       const callbacks = new Map();
+      const timers = new Map();
+
+      const invokeTimer = (timer) => {
+        if (typeof timer.callback === 'function') {
+          timer.callback(...timer.args);
+          return;
+        }
+        Function(String(timer.callback))();
+      };
+
+      const scheduleNativeTimer = (id) => {
+        const timer = timers.get(id);
+        if (!timer || enabled) return;
+        const delay = Math.max(0, timer.dueAt - nativePerformanceNow());
+        timer.nativeHandle = nativeSetTimeout(() => {
+          const current = timers.get(id);
+          if (!current || enabled) return;
+          current.nativeHandle = undefined;
+          if (current.interval === null) {
+            timers.delete(id);
+          } else {
+            current.dueAt += current.interval;
+          }
+          invokeTimer(current);
+          if (current.interval !== null && timers.get(id) === current) {
+            scheduleNativeTimer(id);
+          }
+        }, delay);
+      };
+
+      const scheduleTimer = (callback, delay, interval, args) => {
+        const id = nextId++;
+        const numericDelay = Math.max(0, Number(delay) || 0);
+        const timer = {
+          callback,
+          args,
+          interval: interval ? Math.max(1, numericDelay) : null,
+          dueAt: (enabled ? virtualTime : nativePerformanceNow()) + numericDelay,
+          nativeHandle: undefined,
+        };
+        timers.set(id, timer);
+        if (!enabled) scheduleNativeTimer(id);
+        return id;
+      };
+
+      const clearTimer = (id) => {
+        const timer = timers.get(id);
+        if (!timer) return;
+        if (timer.nativeHandle !== undefined) {
+          nativeClearTimeout(timer.nativeHandle);
+        }
+        timers.delete(id);
+      };
 
       try {
         Object.defineProperty(performance, 'now', {
@@ -98,6 +153,12 @@ const addDeterministicClock = async (context: BrowserContext) => {
       } catch {}
 
       Date.now = () => enabled ? Math.round(epoch + virtualTime) : nativeDateNow();
+      window.setTimeout = (callback, delay, ...args) =>
+        scheduleTimer(callback, delay, false, args);
+      window.clearTimeout = clearTimer;
+      window.setInterval = (callback, delay, ...args) =>
+        scheduleTimer(callback, delay, true, args);
+      window.clearInterval = clearTimer;
       window.requestAnimationFrame = (callback) => {
         if (!enabled) return nativeRequestAnimationFrame(callback);
         const id = nextId++;
@@ -115,14 +176,51 @@ const addDeterministicClock = async (context: BrowserContext) => {
         if (enabled) return;
         virtualTime = nativePerformanceNow();
         epoch = nativeDateNow() - virtualTime;
+        for (const timer of timers.values()) {
+          if (timer.nativeHandle !== undefined) {
+            nativeClearTimeout(timer.nativeHandle);
+            timer.nativeHandle = undefined;
+          }
+        }
         enabled = true;
       };
       window.__captureStep = (seconds) => {
-        virtualTime += seconds * 1000;
+        const targetTime = virtualTime + seconds * 1000;
+        let executions = 0;
+        while (true) {
+          let dueId = null;
+          let dueTimer = null;
+          for (const [id, timer] of timers) {
+            if (
+              timer.dueAt <= targetTime &&
+              (!dueTimer ||
+                timer.dueAt < dueTimer.dueAt ||
+                (timer.dueAt === dueTimer.dueAt && id < dueId))
+            ) {
+              dueId = id;
+              dueTimer = timer;
+            }
+          }
+          if (!dueTimer || dueId === null) break;
+          executions += 1;
+          if (executions > 10000) {
+            throw new Error('Deterministic timer runaway');
+          }
+          virtualTime = dueTimer.dueAt;
+          if (dueTimer.interval === null) {
+            timers.delete(dueId);
+          } else {
+            dueTimer.dueAt += dueTimer.interval;
+          }
+          invokeTimer(dueTimer);
+        }
+        virtualTime = targetTime;
         const batch = [...callbacks.values()];
         callbacks.clear();
         for (const callback of batch) callback(virtualTime);
       };
+      window.__captureNativeSetTimeout = nativeSetTimeout;
+      window.__captureNativeClearTimeout = nativeClearTimeout;
       window.__captureFlush = () => {
         void document.documentElement.offsetHeight;
       };
@@ -357,6 +455,10 @@ const stabilizeVisibleVideoFrames = async (
       const preloadMargin = ${JSON.stringify(margin)};
       const timeout = ${JSON.stringify(timeoutMs)};
       const mediaOverrides = ${JSON.stringify(mediaOverrides)};
+      const nativeSetTimeout =
+        window.__captureNativeSetTimeout || window.setTimeout.bind(window);
+      const nativeClearTimeout =
+        window.__captureNativeClearTimeout || window.clearTimeout.bind(window);
       const waitForEvent = (video, events, eventTimeout) =>
         new Promise((resolve) => {
           let settled = false;
@@ -366,7 +468,7 @@ const stabilizeVisibleVideoFrames = async (
             settled = true;
             for (const event of events) video.removeEventListener(event, onReady);
             video.removeEventListener('error', onError);
-            clearTimeout(timer);
+            nativeClearTimeout(timer);
             resolve(result);
           };
           const onReady = () => finish('ready');
@@ -375,7 +477,7 @@ const stabilizeVisibleVideoFrames = async (
             video.addEventListener(event, onReady, {once: true});
           }
           video.addEventListener('error', onError, {once: true});
-          timer = setTimeout(() => finish('timeout'), eventTimeout);
+          timer = nativeSetTimeout(() => finish('timeout'), eventTimeout);
         });
       const waitForPresentedFrame = (video, target, eventTimeout) =>
         new Promise((resolve) => {
@@ -392,7 +494,7 @@ const stabilizeVisibleVideoFrames = async (
             if (callbackId !== undefined) {
               video.cancelVideoFrameCallback(callbackId);
             }
-            clearTimeout(timer);
+            nativeClearTimeout(timer);
             resolve({result, mediaTime});
           };
           const request = () => {
@@ -405,7 +507,7 @@ const stabilizeVisibleVideoFrames = async (
             });
           };
           request();
-          timer = setTimeout(
+          timer = nativeSetTimeout(
             () => finish('timeout', video.currentTime),
             eventTimeout,
           );
@@ -603,12 +705,12 @@ const stabilizeVisibleVideoFrames = async (
                 settled = true;
                 image.onload = null;
                 image.onerror = null;
-                clearTimeout(timer);
+                nativeClearTimeout(timer);
                 resolve(result);
               };
               image.onload = () => finish('ready');
               image.onerror = () => finish('error');
-              timer = setTimeout(() => finish('timeout'), timeout);
+              timer = nativeSetTimeout(() => finish('timeout'), timeout);
               item.imageSrc = frameSrc;
               image.src = frameSrc;
             });
@@ -993,7 +1095,7 @@ export const captureFrameLockedBrowser = async ({
       content: '* { cursor: none !important; } html { scroll-behavior: auto !important; }',
     });
     await warmPage(page, config.warmupStepPx ?? 1000);
-    await page.evaluate(() => {
+    await page.evaluate((stableElementTransforms) => {
       const carouselTransforms = new Map<number, string>();
       (
         window as typeof window & {
@@ -1053,6 +1155,36 @@ export const captureFrameLockedBrowser = async ({
       ).__captureLockMediaCarousels();
       (
         window as typeof window & {
+          __captureStabilizeVisualState: () => void;
+        }
+      ).__captureStabilizeVisualState = () => {
+        for (const lock of stableElementTransforms) {
+          for (const matched of document.querySelectorAll<HTMLElement>(
+            lock.selector,
+          )) {
+            let target: HTMLElement | null = matched;
+            for (
+              let level = 0;
+              target && level < (lock.ancestorLevels ?? 0);
+              level += 1
+            ) {
+              target = target.parentElement;
+            }
+            if (!target) continue;
+            target.dataset.autocubesCaptureTransformLock = 'true';
+            target.style.setProperty('transform', lock.transform, 'important');
+            target.style.setProperty('transition', 'none', 'important');
+            target.style.setProperty('animation', 'none', 'important');
+          }
+        }
+      };
+      (
+        window as typeof window & {
+          __captureStabilizeVisualState: () => void;
+        }
+      ).__captureStabilizeVisualState();
+      (
+        window as typeof window & {
           __captureEnable: () => void;
         }
       ).__captureEnable();
@@ -1061,9 +1193,15 @@ export const captureFrameLockedBrowser = async ({
           __captureFlush: () => void;
         }
       ).__captureFlush();
-    });
+    }, config.stableElementTransforms ?? []);
 
     const sourceHashes = new Set<string>();
+    const transformTracks = (config.monotonicTransformTracks ?? []).map(
+      (track) => ({
+        ...track,
+        samples: [] as {frame: number; value: number}[],
+      }),
+    );
     const embeddedCadence = new Map<
       string,
       {
@@ -1083,11 +1221,13 @@ export const captureFrameLockedBrowser = async ({
             __captureStep: (seconds: number) => void;
             __captureFlush: () => void;
             __captureLockMediaCarousels: () => void;
+            __captureStabilizeVisualState: () => void;
           };
           window.scrollTo(0, y);
           captureWindow.__captureStep(halfStep);
           captureWindow.__captureStep(halfStep);
           captureWindow.__captureLockMediaCarousels();
+          captureWindow.__captureStabilizeVisualState();
           window.scrollTo(0, y);
           captureWindow.__captureFlush();
           const maxScroll =
@@ -1125,6 +1265,38 @@ export const captureFrameLockedBrowser = async ({
         throw new Error(
           `Video frame unavailable at ${frame}: ${badVideo.src} (${badVideo.loadResult}/${badVideo.seekResult})`,
         );
+      }
+      const transformSamples = await page.evaluate((tracks) => {
+        (
+          window as typeof window & {
+            __captureStabilizeVisualState: () => void;
+            __captureFlush: () => void;
+          }
+        ).__captureStabilizeVisualState();
+        (
+          window as typeof window & {
+            __captureFlush: () => void;
+          }
+        ).__captureFlush();
+        return tracks.map((track) => {
+          const element = document.querySelector<HTMLElement>(track.selector);
+          if (!element) return null;
+          const rect = element.getBoundingClientRect();
+          if (
+            rect.width <= 2 ||
+            rect.height <= 2 ||
+            rect.bottom < 0 ||
+            rect.top > innerHeight
+          ) {
+            return null;
+          }
+          const matrix = new DOMMatrixReadOnly(getComputedStyle(element).transform);
+          return track.axis === 'x' ? matrix.m41 : matrix.m42;
+        });
+      }, config.monotonicTransformTracks ?? []);
+      for (const [index, value] of transformSamples.entries()) {
+        if (!Number.isFinite(value)) continue;
+        transformTracks[index].samples.push({frame, value: value as number});
       }
       for (const video of proxyReport.videos) {
         if (!Number.isFinite(video.presentedMediaTime)) continue;
@@ -1226,6 +1398,39 @@ export const captureFrameLockedBrowser = async ({
       ...embeddedReports.map(
         (report) =>
           `embedded-cadence:${report.src}:duplicates=${report.duplicates}/${report.comparisons}:backwards=${report.backwards}:loop-wraps=${report.loopWraps}`,
+      ),
+    );
+    for (const track of transformTracks) {
+      if (track.samples.length < (track.minSamples ?? 2)) {
+        throw new Error(
+          `Transform track ${track.id}: ${track.samples.length} visible samples; expected at least ${track.minSamples ?? 2}`,
+        );
+      }
+      const deltas = track.samples.flatMap((sample, index) => {
+        if (index === 0) return [];
+        const previous = track.samples[index - 1];
+        if (sample.frame !== previous.frame + 1) return [];
+        return [sample.value - previous.value];
+      });
+      const directionViolations = deltas.filter((delta) =>
+        track.direction === 'negative' ? delta > 0.01 : delta < -0.01,
+      );
+      const stepViolations = deltas.filter(
+        (delta) => Math.abs(delta) > track.maxStep,
+      );
+      if (directionViolations.length > 0 || stepViolations.length > 0) {
+        throw new Error(
+          `Transform track ${track.id}: direction violations=${directionViolations.length}, step violations=${stepViolations.length}`,
+        );
+      }
+      notes.push(
+        `transform-track:${track.id}:samples=${track.samples.length}:direction=${track.direction}:max-step=${Math.max(0, ...deltas.map(Math.abs)).toFixed(3)}`,
+      );
+    }
+    notes.push(
+      ...(config.stableElementTransforms ?? []).map(
+        (lock) =>
+          `stable-transform:${lock.selector}:ancestor=${lock.ancestorLevels ?? 0}:${lock.transform}`,
       ),
     );
   } finally {
