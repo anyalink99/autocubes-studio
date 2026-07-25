@@ -27,6 +27,8 @@
     "capture:flowline": "tsx tooling/capture/run.ts flowline",
     "render:flowline": "remotion render packages/video/index.ts FlowlineReel out/flowline-reel.mp4 --codec=h264 --pixel-format=yuv420p",
     "still:flowline": "remotion still packages/video/index.ts FlowlineReel out/flowline-preview.png --frame=150",
+    "render:flowline-case": "remotion render packages/video/index.ts FlowlineCaseReel out/flowline-case-reel.mp4 --codec=h264 --pixel-format=yuv420p --concurrency=2 --timeout=120000",
+    "still:flowline-case": "remotion still packages/video/index.ts FlowlineCaseReel out/flowline-case-preview.png --frame=720",
     "make:flowline": "npm run capture:flowline && npm run qa:capture:flowline && npm run render:flowline && npm run qa:render:flowline",
     "remotion:studio": "remotion studio packages/video/index.ts",
     "typecheck": "tsc --noEmit",
@@ -44,6 +46,7 @@
   },
   "dependencies": {
     "@remotion/cli": "4.0.486",
+    "@remotion/media": "4.0.486",
     "@vitejs/plugin-react": "^4.3.4",
     "html-to-image": "^1.11.13",
     "jszip": "^3.10.1",

@@ -1,0 +1,43 @@
+@font-face {
+  font-family: "Halvar";
+  src: url("../../../public/fonts/flowline-case/HalvarBreit-Bd.woff") format("woff");
+  font-style: normal;
+  font-weight: 800;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: "Dewi";
+  src: url("../../../public/fonts/flowline-case/RFDewi-Regular.ttf") format("truetype");
+  font-style: normal;
+  font-weight: 400;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: "Dewi";
+  src: url("../../../public/fonts/flowline-case/RFDewi-Semibold.ttf") format("truetype");
+  font-style: normal;
+  font-weight: 600;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: "Space Mono";
+  src: url("../../../public/fonts/flowline-case/space-mono-400.woff2") format("woff2");
+  font-style: normal;
+  font-weight: 400;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: "Space Mono";
+  src: url("../../../public/fonts/flowline-case/space-mono-700.woff2") format("woff2");
+  font-style: normal;
+  font-weight: 700;
+  font-display: swap;
+}
+
+* {
+  box-sizing: border-box;
+}

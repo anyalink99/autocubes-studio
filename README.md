@@ -86,9 +86,19 @@ npm run remotion:studio    # inspect video compositions
 npm run capture:editor     # capture the default editable project
 npm run render:editor      # render the default editable project
 npm run make:flowline      # frame-locked capture, QA, render, and render QA
+npm run render:flowline-case # render the editable 46-second Flowline case reel
 ```
 
 Motion projects are JSON files in ignored `data/projects/`. A clean clone seeds its first runtime project and Remotion snapshots from `data/examples/` without overwriting existing work.
+
+The production Flowline case reel is registered as `FlowlineCaseReel`. Its
+chapter scenario lives in
+[`packages/video/flowline-case/Scenario.ts`](./packages/video/flowline-case/Scenario.ts),
+while the synchronized Figma/code assembly steps live in
+[`packages/video/flowline-case/BuildTimeline.ts`](./packages/video/flowline-case/BuildTimeline.ts).
+All fonts, audio, stills, and the repaired frame-locked live-site master are
+stored under `public/`, so this composition does not depend on the earlier
+`remotion-giga-videos` workspace.
 
 Operations and Documents are offline-capable but synchronize through the same-origin `/api/sync/*` service when Studio is running. Server revisions and the latest 25 backups per channel live in ignored `data/runtime/sync/`. Use `npm run build && npm run serve:shared` for a shared instance and mount `data/runtime` as persistent storage. Put the instance behind a private network or reverse-proxy authentication; `STUDIO_SYNC_TOKEN` is available as an additional optional guard.
 
