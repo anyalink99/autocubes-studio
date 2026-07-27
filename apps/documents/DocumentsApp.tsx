@@ -1,6 +1,7 @@
-import React, {useEffect, useMemo, useRef, useState} from 'react';
+import React, {useEffect, useLayoutEffect, useMemo, useRef, useState} from 'react';
 import {ArrowDown, ArrowLeft, ArrowUp, Check, ChevronRight, Copy, Download, FileJson, FilePlus2, FileText, GripVertical, ListTree, Plus, Printer, Redo2, RotateCcw, Save, Search, Trash2, Undo2, X} from 'lucide-react';
 import JSZip from 'jszip';
+import {autocubesMarkSvg} from './brand-assets';
 import {EmployeeProfileData, renderEmployeeProfileHtml} from './employee-profile';
 import {syncStatusLabel, useServerSync} from '../shared/useServerSync';
 import {createBlock, createDocument, DocumentBlock, DocumentBlockType, DocumentComment, DocumentLanguage, migrateDocument, StudioDocument, switchDocumentLocale, syncDocumentLocale, templates} from './templates';
@@ -19,17 +20,117 @@ const loadDocuments=():StudioDocument[]=>{
 
 const renderBlockHtml=(block:DocumentBlock)=>{
   if(block.type==='pageBreak') return '<div class="page-break"></div>';
-  if(block.type==='image') return `<section><h2>${escapeHTML(block.heading)}</h2>${block.url?`<img src="${escapeHTML(block.url)}" alt="${escapeHTML(block.caption??'')}">`:''}<p>${escapeHTML(block.caption??block.body)}</p></section>`;
-  if(block.type==='checklist'||block.type==='deliverables'||block.type==='timeline') return `<section class="block-${block.type}"><h2>${escapeHTML(block.heading)}</h2>${paragraphs(block.body)}<ul>${(block.items??[]).map((item,index)=>`<li>${block.type==='checklist'?`<span>${block.checked?.[index]?'✓':'□'}</span>`:''}${escapeHTML(item)}</li>`).join('')}</ul></section>`;
-  if(block.type==='table'||block.type==='budget') return `<section><h2>${escapeHTML(block.heading)}</h2>${paragraphs(block.body)}<table>${(block.rows??[]).map((row,index)=>`<tr>${row.map((cell)=>`<${index?'td':'th'}>${escapeHTML(cell)}</${index?'td':'th'}>`).join('')}</tr>`).join('')}</table></section>`;
+  if(block.type==='image') return `<section class="block-image"><h2>${escapeHTML(block.heading)}</h2>${block.url?`<img src="${escapeHTML(block.url)}" alt="${escapeHTML(block.caption??'')}">`:''}<p>${escapeHTML(block.caption??block.body)}</p></section>`;
+  if(block.type==='checklist'||block.type==='deliverables'||block.type==='timeline') return `<section class="block-${block.type}"><h2>${escapeHTML(block.heading)}</h2>${paragraphs(block.body)}<ul>${(block.items??[]).map((item,index)=>`<li>${block.type==='checklist'?`<span class="check ${block.checked?.[index]?'checked':''}">${block.checked?.[index]?'✓':''}</span>`:''}${escapeHTML(item)}</li>`).join('')}</ul></section>`;
+  if(block.type==='table'||block.type==='budget') return `<section class="block-${block.type}"><h2>${escapeHTML(block.heading)}</h2>${paragraphs(block.body)}<table>${(block.rows??[]).map((row,index)=>`<tr>${row.map((cell)=>`<${index?'td':'th'}>${escapeHTML(cell)}</${index?'td':'th'}>`).join('')}</tr>`).join('')}</table></section>`;
   return `<section class="block-${block.type}"><h2>${escapeHTML(block.heading)}</h2>${paragraphs(block.body)}</section>`;
 };
 
-const documentHtml=(document:StudioDocument)=>`<!doctype html><html lang="en"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>${escapeHTML(document.title)}</title><style>*{box-sizing:border-box}body{margin:0;color:#171713;background:#fff;font:15px/1.65 Arial,sans-serif}.doc{max-width:800px;margin:auto;padding:54px 42px 70px}.head,.foot{display:flex;justify-content:space-between;align-items:center;padding-bottom:20px;border-bottom:1px solid #171713}.brand{font-weight:700;letter-spacing:.08em}.meta{color:#68685f;font-size:11px}h1{margin:38px 0 14px;font-size:31px;line-height:1.16}h2{margin:38px 0 12px;font-size:18px}p{margin:0 0 12px}.intro{font-size:17px}.client{margin:22px 0 0;padding:13px 0;border-top:1px solid #ddd;border-bottom:1px solid #ddd;color:#555;font-size:12px}ul{padding-left:20px}li{margin:7px 0}table{width:100%;border-collapse:collapse}th,td{padding:8px;border:1px solid #ddd;text-align:left;font-size:12px}.block-callout,.block-approval{padding:16px;border-left:4px solid ${document.accent??'#ff5a2f'};background:#f4f4f0}.block-quote{padding-left:20px;border-left:1px solid #222;font-size:19px}.foot{margin-top:60px;padding-top:14px;padding-bottom:0;border-top:1px solid #ddd;border-bottom:0;color:#777;font-size:11px}img{max-width:100%}.page-break{break-before:page}@media(max-width:600px){.doc{padding:28px 20px}}@media print{.doc{max-width:none;padding:0}@page{margin:18mm}}</style></head><body><main class="doc"><header class="head"><div class="brand">AUTOCUBES</div><div class="meta">${escapeHTML(document.type)} · ${escapeHTML(document.date)}</div></header><h1>${escapeHTML(document.title)}</h1><p class="intro">${escapeHTML(document.intro)}</p><div class="client">${escapeHTML(document.client)} · ${escapeHTML(document.project)} · ${escapeHTML(document.status)}</div>${document.blocks.map(renderBlockHtml).join('')}<footer class="foot"><span>autocubes.site</span><span>${escapeHTML(document.status)}</span></footer></main></body></html>`;
+const documentHtml=(document:StudioDocument)=>{
+  const clientLine=[document.client,document.project,document.status].map((value)=>value.trim()).filter(Boolean).join(' · ');
+  return `<!doctype html><html lang="${document.language??'ru'}"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>${escapeHTML(document.title)}</title><style>
+*{box-sizing:border-box}
+html{background:#fff}
+body{margin:0;color:#171713;background:#fff;font:10.5pt/1.58 Arial,Helvetica,sans-serif;-webkit-print-color-adjust:exact;print-color-adjust:exact}
+.doc{max-width:174mm;margin:0 auto;padding:18mm 0 20mm}
+.head,.foot{display:flex;justify-content:space-between;align-items:center}
+.head{padding-bottom:5mm;border-bottom:.3mm solid #171713}
+.brand{display:flex;align-items:center;gap:2.5mm;font-size:9pt;font-weight:700;letter-spacing:.08em;text-transform:lowercase}
+.brand svg{width:5mm;height:5mm;color:${document.accent??'#ff5a2f'}}
+.meta{color:#68685f;font-size:7.8pt}
+h1{margin:10mm 0 3.5mm;font-size:23pt;line-height:1.16;letter-spacing:-.02em}
+.intro{margin:0;font-size:12pt;line-height:1.5}
+.client{margin:5mm 0 0;padding:3mm 0;border-top:.25mm solid #ddd;border-bottom:.25mm solid #ddd;color:#555;font-size:8.5pt}
+section{margin:8mm 0 0;break-inside:avoid-page}
+section h2{margin:0 0 3mm;font-size:13.5pt;line-height:1.25;break-after:avoid-page}
+section p{margin:0 0 3mm;orphans:3;widows:3}
+section p:last-child{margin-bottom:0}
+ul{margin:2.5mm 0 0;padding-left:5.5mm}
+li{margin:1.8mm 0;break-inside:avoid-page}
+.block-checklist ul{padding-left:0;list-style:none}
+.block-checklist li{display:grid;grid-template-columns:3.2mm 1fr;gap:2mm;align-items:start}
+.block-checklist li .check{width:3.2mm;height:3.2mm;display:grid;place-items:center;margin-top:1.2mm;border:.25mm solid #aaa;color:#fff;font-size:7pt;line-height:1}
+.block-checklist li .check.checked{border-color:${document.accent??'#ff5a2f'};background:${document.accent??'#ff5a2f'}}
+table{width:100%;border-collapse:collapse}
+tr{break-inside:avoid-page}
+th,td{padding:2.2mm;border:.25mm solid #ddd;text-align:left;font-size:8.5pt;line-height:1.4}
+.block-callout,.block-approval{padding:4mm 4.5mm;border-left:1.1mm solid ${document.accent??'#ff5a2f'};background:#f4f4f0}
+.block-callout h2,.block-approval h2{margin:0 0 2.4mm}
+.block-quote{padding:3mm 0 3mm 5mm;border-left:.3mm solid #222;font-size:13.5pt;line-height:1.45}
+.block-quote h2{margin:0 0 2.5mm;font-size:11pt}
+.block-image img{display:block;max-width:100%;max-height:170mm;object-fit:contain}
+.foot{margin-top:14mm;padding-top:3.5mm;border-top:.25mm solid #ddd;color:#777;font-size:7.8pt;break-inside:avoid-page}
+.page-break{height:0;break-before:page}
+@media(max-width:600px){.doc{padding:28px 20px}}
+@media print{.doc{max-width:none;padding:0}@page{size:A4;margin:18mm}}
+</style></head><body><main class="doc"><header class="head"><div class="brand">${autocubesMarkSvg}<span>autocubes</span></div><div class="meta">${escapeHTML(document.type)} · ${escapeHTML(document.date)}</div></header><h1>${escapeHTML(document.title)}</h1><p class="intro">${escapeHTML(document.intro)}</p><div class="client">${escapeHTML(clientLine)}</div>${document.blocks.map(renderBlockHtml).join('')}<footer class="foot"><span>autocubes.site</span><span>${escapeHTML(document.status)}</span></footer></main></body></html>`;
+};
 
 const documentMarkdown=(document:StudioDocument)=>`# ${document.title}\n\n${document.intro}\n\n**Client:** ${document.client}  \n**Project:** ${document.project}  \n**Status:** ${document.status}\n\n${document.blocks.map((block)=>block.type==='pageBreak'?'---':`## ${block.heading}\n\n${block.body}${block.items?.length?`\n\n${block.items.map((item,index)=>`${block.type==='checklist'?(block.checked?.[index]?'[x]':'[ ]'):'-'} ${item}`).join('\n')}`:''}${block.rows?.length?`\n\n${block.rows.map((row)=>`| ${row.join(' | ')} |`).join('\n')}`:''}`).join('\n\n')}\n`;
 
 const downloadText=(name:string,type:string,content:string)=>{const url=URL.createObjectURL(new Blob([content],{type}));const link=document.createElement('a');link.href=url;link.download=name;link.click();window.setTimeout(()=>URL.revokeObjectURL(url),1000);};
+
+const AutoGrowTextarea=({value,onValueChange,className,placeholder}:{value:string;onValueChange:(value:string)=>void;className?:string;placeholder?:string})=>{
+  const ref=useRef<HTMLTextAreaElement>(null);
+  useLayoutEffect(()=>{const element=ref.current;if(!element)return;element.style.height='0px';element.style.height=`${element.scrollHeight}px`;},[value]);
+  return <textarea ref={ref} rows={1} className={`auto-grow-textarea ${className??''}`} value={value} onChange={(event)=>onValueChange(event.target.value)} placeholder={placeholder}/>;
+};
+
+type PaginationMetrics={pageHeight:number;pageMargin:number;count:number};
+const A4_RATIO=297/210;
+const PAGE_MARGIN_RATIO=18/210;
+
+const useDocumentPagination=(paperRef:{current:HTMLElement|null},revision:string)=>{
+  const [metrics,setMetrics]=useState<PaginationMetrics>({pageHeight:0,pageMargin:0,count:1});
+  useLayoutEffect(()=>{
+    let frame=0;
+    const paginate=()=>{
+      const paper=paperRef.current;
+      if(!paper)return;
+      const width=paper.clientWidth;
+      if(!width)return;
+      const pageHeight=width*A4_RATIO;
+      const pageMargin=width*PAGE_MARGIN_RATIO;
+      const pageSafety=Math.max(10,width*.0175);
+      const printableEnd=pageHeight-pageMargin-pageSafety;
+      const printableHeight=printableEnd-pageMargin;
+      const blocks=[...paper.querySelectorAll<HTMLElement>('.paper-block')];
+      paper.style.removeProperty('min-height');
+      paper.style.setProperty('--document-page-height',`${pageHeight}px`);
+      paper.style.setProperty('--document-page-margin',`${pageMargin}px`);
+      blocks.forEach((block)=>block.style.removeProperty('--pagination-gap'));
+      void paper.offsetHeight;
+      blocks.forEach((block)=>{
+        const top=block.offsetTop;
+        if(block.classList.contains('page-break-block')){
+          const boundary=(Math.floor((top+1)/pageHeight)+1)*pageHeight;
+          block.style.setProperty('--pagination-gap',`${Math.max(0,boundary-top)}px`);
+          return;
+        }
+        const height=block.offsetHeight;
+        const position=((top%pageHeight)+pageHeight)%pageHeight;
+        const crossesPrintableEnd=position+height>printableEnd+1;
+        const startsInBottomMargin=position>printableEnd;
+        const startsInTopMargin=top>=pageHeight&&position<pageMargin;
+        if(startsInTopMargin){
+          block.style.setProperty('--pagination-gap',`${pageMargin-position}px`);
+        }else if((startsInBottomMargin||crossesPrintableEnd)&&height<=printableHeight){
+          block.style.setProperty('--pagination-gap',`${pageHeight+pageMargin-position}px`);
+        }
+      });
+      const footer=paper.querySelector<HTMLElement>('.paper-foot');
+      const contentBottom=footer?footer.offsetTop+footer.offsetHeight:paper.scrollHeight;
+      const count=Math.max(1,Math.ceil(contentBottom/pageHeight));
+      paper.style.minHeight=`${count*pageHeight}px`;
+      setMetrics((previous)=>previous.count===count&&Math.abs(previous.pageHeight-pageHeight)<.5&&Math.abs(previous.pageMargin-pageMargin)<.5?previous:{pageHeight,pageMargin,count});
+    };
+    const schedule=()=>{window.cancelAnimationFrame(frame);frame=window.requestAnimationFrame(paginate);};
+    schedule();
+    window.addEventListener('resize',schedule);
+    return()=>{window.cancelAnimationFrame(frame);window.removeEventListener('resize',schedule);};
+  },[paperRef,revision]);
+  return metrics;
+};
 
 const exportDocumentHtml=(document:StudioDocument)=>document.employeeProfile?renderEmployeeProfileHtml(document.employeeProfile,location.origin):documentHtml(document);
 
@@ -42,11 +143,13 @@ export const DocumentsApp=()=>{
   const [showBlockMenu,setShowBlockMenu]=useState(false);
   const [search,setSearch]=useState('');
   const [notice,setNotice]=useState('');
+  const paperRef=useRef<HTMLElement>(null);
   const history=useRef<StudioDocument[]>([]);
   const future=useRef<StudioDocument[]>([]);
   const syncStatus=useServerSync('documents',documents,(remote)=>{if(!Array.isArray(remote)||!remote.length)return;const migrated=remote.map(migrateDocument);setDocuments(migrated);setCurrentId((id)=>migrated.some((document)=>document.id===id)?id:migrated[0].id);});
   const current=documents.find((document)=>document.id===currentId)??documents[0];
   const selectedBlock=current.blocks.find((block)=>block.id===selectedBlockId);
+  const pagination=useDocumentPagination(paperRef,`${current.id}:${current.language??'ru'}:${current.updatedAt}`);
 
   useEffect(()=>{localStorage.setItem(STORAGE_KEY,JSON.stringify(documents));localStorage.setItem(INDEX_KEY,JSON.stringify(documents.map(({id,title,type,updatedAt,client,project,status})=>({id,title,type,updatedAt,client,project,status}))));},[documents]);
   useEffect(()=>{if(!notice)return;const timer=window.setTimeout(()=>setNotice(''),1800);return()=>window.clearTimeout(timer);},[notice]);
@@ -83,10 +186,11 @@ export const DocumentsApp=()=>{
 
     <main className="document-workspace">
       <header className="document-toolbar"><div><span>{current.type}</span><b>{current.status}</b></div>{current.employeeProfile?null:<div className="document-language"><button className={current.language==='ru'?'active':''} onClick={()=>changeLanguage('ru')}>RU</button><button className={current.language==='en'?'active':''} onClick={()=>changeLanguage('en')}>EN</button></div>}<div className="document-history"><button onClick={undo} disabled={!history.current.length} title="Отменить"><Undo2 size={15}/></button><button onClick={redo} disabled={!future.current.length} title="Повторить"><Redo2 size={15}/></button></div><div><button onClick={createVersion} title="Сохранить версию"><RotateCcw size={15}/></button><button onClick={()=>window.print()} title="Печать"><Printer size={16}/></button><button className="pdf-export" onClick={()=>void downloadPdf().catch((error)=>setNotice(error instanceof Error?error.message:'Не удалось собрать PDF'))} title="Скачать готовый PDF"><Download size={15}/>PDF</button><button onClick={()=>downloadText(`${current.templateId}-${current.language}.md`,'text/markdown',documentMarkdown(current))} title="Скачать текущий Markdown"><FileText size={15}/></button><button onClick={()=>downloadText(`${current.templateId}.json`,'application/json',JSON.stringify(syncDocumentLocale(current),null,2))} title="Скачать JSON"><FileJson size={15}/></button><button onClick={()=>void downloadPackage()} title="Скачать пакет RU + EN"><Download size={16}/></button><button className={`save-state sync-${syncStatus}`}><Save size={15}/>{syncStatusLabel[syncStatus]}</button></div></header>
-      <div className="paper-stage">{current.employeeProfile?<EmployeeProfilePaper profile={current.employeeProfile} onChange={(employeeProfile)=>update({employeeProfile})}/>:<article className="document-paper">
+      <div className="paper-stage">{current.employeeProfile?<EmployeeProfilePaper profile={current.employeeProfile} onChange={(employeeProfile)=>update({employeeProfile})}/>:<article className="document-paper" ref={paperRef}>
+        <div className="pagination-guides" aria-hidden="true">{Array.from({length:Math.max(0,pagination.count-1)},(_,index)=><div className="pagination-guide" key={index} style={{top:(index+1)*pagination.pageHeight}}><span>{current.language==='en'?'Page':'Страница'} {index+2}</span></div>)}</div>
         <header className="paper-head"><div className="paper-brand"><img src="/assets/brand/autocubes.svg" alt=""/><b>autocubes</b></div><div className="paper-meta">{current.type} · {current.date}</div></header>
-        <input className="paper-title" value={current.title} onChange={(event)=>update({title:event.target.value})}/>
-        <textarea className="paper-intro" value={current.intro} onChange={(event)=>update({intro:event.target.value})}/>
+        <AutoGrowTextarea className="paper-title" value={current.title} onValueChange={(title)=>update({title})}/>
+        <AutoGrowTextarea className="paper-intro" value={current.intro} onValueChange={(intro)=>update({intro})}/>
         <div className="paper-client"><input value={current.client} onChange={(event)=>update({client:event.target.value})}/><span>·</span><input value={current.project} onChange={(event)=>update({project:event.target.value})}/><span>·</span><input value={current.status} onChange={(event)=>update({status:event.target.value})}/></div>
         <div className="paper-sections">{current.blocks.map((block,index)=><BlockEditor key={block.id} block={block} selected={block.id===selectedBlockId} onSelect={()=>setSelectedBlockId(block.id)} onUpdate={(patch)=>updateBlock(block.id,patch)} onMove={(direction)=>moveBlock(block.id,direction)} onDuplicate={()=>duplicateBlock(block.id)} onRemove={()=>removeBlock(block.id)} first={index===0} last={index===current.blocks.length-1}/>)}</div>
         <div className="add-block-wrap"><button className="add-section" onClick={()=>setShowBlockMenu((value)=>!value)}><Plus size={14}/>Добавить блок <kbd>/</kbd></button>{showBlockMenu?<BlockMenu onAdd={addBlock}/>:null}</div>
@@ -127,11 +231,11 @@ const BlockEditor=({block,selected,onSelect,onUpdate,onMove,onDuplicate,onRemove
   const updateItem=(index:number,value:string)=>onUpdate({items:(block.items??[]).map((item,itemIndex)=>itemIndex===index?value:item)});
   return <section className={`paper-block block-${block.type} ${selected?'selected':''}`} onClick={onSelect}>
     <BlockControls first={first} last={last} onMove={onMove} onDuplicate={onDuplicate} onRemove={onRemove}/>
-    <input className="block-heading" value={block.heading} onChange={(event)=>onUpdate({heading:event.target.value})}/>
+    <AutoGrowTextarea className="block-heading" value={block.heading} onValueChange={(heading)=>onUpdate({heading})}/>
     {block.type==='image'?<><input className="block-url" value={block.url??''} onChange={(event)=>onUpdate({url:event.target.value})} placeholder="Адрес изображения"/>{block.url?<img className="block-image" src={block.url} alt=""/>:null}<input className="block-caption" value={block.caption??''} onChange={(event)=>onUpdate({caption:event.target.value})} placeholder="Подпись или альтернативный текст"/></>:null}
-    {!['checklist','deliverables','timeline','table','budget','image'].includes(block.type)?<textarea value={block.body} onChange={(event)=>onUpdate({body:event.target.value})} placeholder="Напишите содержание…"/>:null}
-    {['checklist','deliverables','timeline'].includes(block.type)?<div className="block-items">{(block.items??[]).map((item,index)=><div key={index}>{block.type==='checklist'?<input type="checkbox" checked={block.checked?.[index]??false} onChange={(event)=>{const checked=[...(block.checked??[])];checked[index]=event.target.checked;onUpdate({checked});}}/>:<span>{String(index+1).padStart(2,'0')}</span>}<input value={item} onChange={(event)=>updateItem(index,event.target.value)}/><button onClick={()=>onUpdate({items:(block.items??[]).filter((_,itemIndex)=>itemIndex!==index)})}>×</button></div>)}<button onClick={()=>onUpdate({items:[...(block.items??[]),'Новый пункт'],checked:block.type==='checklist'?[...(block.checked??[]),false]:block.checked})}><Plus size={12}/>Добавить пункт</button></div>:null}
-    {['table','budget'].includes(block.type)?<div className="block-table">{(block.rows??[]).map((row,rowIndex)=><div key={rowIndex} style={{gridTemplateColumns:`repeat(${row.length},minmax(90px,1fr)) auto`}}>{row.map((cell,columnIndex)=><input key={columnIndex} value={cell} onChange={(event)=>{const rows=structuredClone(block.rows??[]);rows[rowIndex][columnIndex]=event.target.value;onUpdate({rows});}}/>)}<button onClick={()=>onUpdate({rows:(block.rows??[]).filter((_,index)=>index!==rowIndex)})}>×</button></div>)}<button onClick={()=>onUpdate({rows:[...(block.rows??[]),Array.from({length:block.rows?.[0]?.length??3},()=> '')]})}><Plus size={12}/>Добавить строку</button></div>:null}
+    {block.type!=='image'?<AutoGrowTextarea className="block-body" value={block.body} onValueChange={(body)=>onUpdate({body})} placeholder="Напишите содержание…"/>:null}
+    {['checklist','deliverables','timeline'].includes(block.type)?<div className="block-items">{(block.items??[]).map((item,index)=><div key={index}>{block.type==='checklist'?<input type="checkbox" checked={block.checked?.[index]??false} onChange={(event)=>{const checked=[...(block.checked??[])];checked[index]=event.target.checked;onUpdate({checked});}}/>:<span>{String(index+1).padStart(2,'0')}</span>}<AutoGrowTextarea className="block-item-text" value={item} onValueChange={(value)=>updateItem(index,value)}/><button onClick={()=>onUpdate({items:(block.items??[]).filter((_,itemIndex)=>itemIndex!==index)})}>×</button></div>)}<button onClick={()=>onUpdate({items:[...(block.items??[]),'Новый пункт'],checked:block.type==='checklist'?[...(block.checked??[]),false]:block.checked})}><Plus size={12}/>Добавить пункт</button></div>:null}
+    {['table','budget'].includes(block.type)?<div className="block-table">{(block.rows??[]).map((row,rowIndex)=><div key={rowIndex} style={{gridTemplateColumns:`repeat(${row.length},minmax(90px,1fr)) auto`}}>{row.map((cell,columnIndex)=><AutoGrowTextarea className="block-table-cell" key={columnIndex} value={cell} onValueChange={(value)=>{const rows=structuredClone(block.rows??[]);rows[rowIndex][columnIndex]=value;onUpdate({rows});}}/>)}<button onClick={()=>onUpdate({rows:(block.rows??[]).filter((_,index)=>index!==rowIndex)})}>×</button></div>)}<button onClick={()=>onUpdate({rows:[...(block.rows??[]),Array.from({length:block.rows?.[0]?.length??3},()=> '')]})}><Plus size={12}/>Добавить строку</button></div>:null}
   </section>;
 };
 

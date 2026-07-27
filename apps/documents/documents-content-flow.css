@@ -1,0 +1,266 @@
+/* The document owns the vertical scroll; editable fields expand to reveal their content. */
+.document-workspace {
+  min-height: 0;
+}
+
+.paper-stage {
+  overscroll-behavior: contain;
+  scrollbar-gutter: stable;
+}
+
+.document-paper {
+  position: relative;
+  isolation: isolate;
+  padding: 8.571%;
+}
+
+.pagination-guides {
+  position: absolute;
+  inset: 0;
+  z-index: 10;
+  overflow: hidden;
+  pointer-events: none;
+}
+
+.pagination-guide {
+  position: absolute;
+  right: 0;
+  left: 0;
+  height: 14px;
+  border-top: 1px solid #0d0d0c;
+  border-bottom: 1px solid #0d0d0c;
+  background: #20211e;
+  box-shadow: 0 -1px 0 rgba(255, 255, 255, 0.08), 0 1px 0 rgba(255, 255, 255, 0.08);
+  transform: translateY(-7px);
+}
+
+.pagination-guide > span {
+  position: absolute;
+  right: 12px;
+  top: -20px;
+  padding: 2px 5px;
+  color: #8e8f88;
+  background: #fff;
+  font-size: 8px;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.paper-block {
+  margin-top: calc(28px + var(--pagination-gap, 0px));
+}
+
+.page-break-block {
+  height: var(--document-page-margin, 36px);
+}
+
+.document-paper textarea,
+.auto-grow-textarea {
+  overflow: hidden;
+  resize: none;
+}
+
+.auto-grow-textarea {
+  display: block;
+}
+
+.paper-title {
+  min-height: 35px;
+}
+
+.paper-block > .block-heading,
+.paper-block.block-quote > .block-heading {
+  min-height: 23px;
+  margin-top: 0;
+  font-size: 18px;
+  font-weight: 600;
+  line-height: 1.25;
+}
+
+.paper-block > .block-body {
+  min-height: 24px;
+  margin-top: 9px;
+  font-size: 14px;
+  line-height: 1.58;
+}
+
+.paper-block > .block-body:placeholder-shown {
+  height: 0 !important;
+  min-height: 0;
+  margin-top: 0;
+  opacity: 0;
+}
+
+.paper-block:hover > .block-body:placeholder-shown,
+.paper-block.selected > .block-body:placeholder-shown {
+  height: 24px !important;
+  min-height: 24px;
+  margin-top: 9px;
+  opacity: 1;
+}
+
+.paper-block.block-callout > .block-body,
+.paper-block.block-approval > .block-body {
+  margin-top: 7px;
+}
+
+.paper-block.block-quote > .block-body {
+  min-height: 28px;
+  margin-top: 7px;
+  font-size: 19px;
+  line-height: 1.45;
+}
+
+.block-items > div {
+  position: relative;
+  grid-template-columns: 22px minmax(0, 1fr);
+  align-items: start;
+  min-height: 24px;
+  padding: 2px 0;
+}
+
+.block-items > div > span {
+  margin-top: 4px;
+}
+
+.block-items input[type="checkbox"] {
+  margin-top: 2px;
+}
+
+.block-item-text {
+  min-height: 18px;
+  font-size: 13.2px;
+  line-height: 1.35;
+}
+
+.block-items > div > button,
+.block-table > div > button {
+  align-self: start;
+  min-height: 28px;
+}
+
+.block-items > div > button {
+  position: absolute;
+  z-index: 2;
+  top: 2px;
+  right: 2px;
+  width: 18px;
+  min-height: 19px;
+  padding: 0;
+  background: rgba(255, 255, 255, 0.92);
+  line-height: 19px;
+  opacity: 0;
+}
+
+.block-items > div:hover > button,
+.paper-block.selected .block-items > div > button {
+  opacity: 1;
+}
+
+.block-items {
+  position: relative;
+  gap: 0;
+}
+
+.block-items > button {
+  position: absolute;
+  z-index: 3;
+  left: 0;
+  bottom: -30px;
+  opacity: 0;
+  background: #fff;
+  transition: opacity 0.15s;
+}
+
+.paper-block:hover .block-items > button,
+.paper-block.selected .block-items > button {
+  opacity: 1;
+}
+
+.block-table > div {
+  position: relative;
+  align-items: stretch;
+}
+
+.block-table textarea {
+  min-height: 22px;
+  padding: 4px !important;
+  border-right: 1px solid #ddd !important;
+  border-bottom: 1px solid #ddd !important;
+  font-family: Arial, Helvetica, sans-serif;
+  font-size: 9.8px;
+  line-height: 1.3;
+}
+
+.block-table > div > button {
+  position: absolute;
+  z-index: 2;
+  top: 2px;
+  right: 2px;
+  width: 20px;
+  min-height: 20px;
+  padding: 0;
+  background: rgba(255, 255, 255, 0.92);
+  opacity: 0;
+}
+
+.block-table > div:hover > button,
+.paper-block.selected .block-table > div > button {
+  opacity: 1;
+}
+
+.block-table > div:first-child textarea {
+  font-weight: 600;
+  background: #f1f1ed;
+}
+
+@media (max-width: 760px) {
+  .document-toolbar {
+    overflow: hidden;
+  }
+
+  .document-toolbar > div:first-child {
+    display: none;
+  }
+
+  .document-toolbar > div:last-child {
+    min-width: 0;
+    flex: 1;
+    justify-content: flex-start;
+    overflow-x: auto;
+    overscroll-behavior-inline: contain;
+    scrollbar-width: none;
+  }
+
+  .document-toolbar > div:last-child::-webkit-scrollbar {
+    display: none;
+  }
+
+  .document-toolbar > div:last-child > button {
+    flex: 0 0 auto;
+  }
+
+  .pagination-guide > span {
+    right: 7px;
+  }
+}
+
+@media print {
+  .pagination-guides {
+    display: none !important;
+  }
+
+  .document-paper {
+    min-height: 0 !important;
+    padding: 0;
+  }
+
+  .paper-block {
+    margin-top: 28px;
+  }
+
+  .page-break-block {
+    height: 0;
+  }
+}

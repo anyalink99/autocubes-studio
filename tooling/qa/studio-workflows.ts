@@ -95,10 +95,27 @@ const main=async()=>{
     await page.goto(`${baseUrl}/documents.html`,{waitUntil:'networkidle'});
     await page.evaluate(()=>{localStorage.removeItem('autocubes-documents-v2');localStorage.removeItem('autocubes-documents-v1');});
     await page.reload({waitUntil:'networkidle'});
+    await page.locator('.paper-intro').fill(Array.from({length:12},(_,index)=>`Document flow line ${index+1}`).join('\n'));
+    await page.waitForTimeout(50);
+    const documentFlow=await page.evaluate(()=>{
+      const stage=document.querySelector<HTMLElement>('.paper-stage');
+      const intro=document.querySelector<HTMLTextAreaElement>('.paper-intro');
+      if(!stage||!intro)throw new Error('Documents flow controls are missing');
+      return {stageClientHeight:stage.clientHeight,stageScrollHeight:stage.scrollHeight,introClientHeight:intro.clientHeight,introScrollHeight:intro.scrollHeight};
+    });
+    if(documentFlow.stageScrollHeight<=documentFlow.stageClientHeight)throw new Error('Documents paper is not independently scrollable');
+    if(documentFlow.introScrollHeight>documentFlow.introClientHeight+1)throw new Error('Documents intro did not expand to reveal its content');
+    await page.locator('.paper-stage').evaluate((stage)=>{stage.scrollTop=400;});
+    if(await page.locator('.paper-stage').evaluate((stage)=>stage.scrollTop)<300)throw new Error('Documents paper did not accept vertical scrolling');
     const initialBlocks=await page.locator('.paper-block').count();
     await page.getByRole('button',{name:/Добавить блок/}).click();
     await page.locator('.block-menu').getByRole('button',{name:'Чек-лист'}).click();
     if(await page.locator('.paper-block').count()!==initialBlocks+1)throw new Error('Documents did not insert a block');
+    const checklistItem=page.locator('.paper-block').last().locator('.block-item-text').first();
+    await checklistItem.fill('A deliberately long checklist item that must wrap onto several lines without creating a nested text-field scrollbar inside the document.');
+    await page.waitForTimeout(50);
+    const checklistSize=await checklistItem.evaluate((field)=>({clientHeight:field.clientHeight,scrollHeight:field.scrollHeight}));
+    if(checklistSize.scrollHeight>checklistSize.clientHeight+1)throw new Error('Documents checklist item did not expand to reveal its content');
     await page.getByTitle('Отменить').click();
     if(await page.locator('.paper-block').count()!==initialBlocks)throw new Error('Documents undo failed');
     await page.getByTitle('Повторить').click();

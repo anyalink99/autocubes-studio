@@ -87,7 +87,7 @@ export const templates:DocumentTemplate[] = [
   ]),
   template('scope','Statement of work','SOW','Commercial','statement of work','Statement of work — project name','The binding description of work, responsibilities, acceptance, and change control.',[
     block('scope','deliverables','In scope','Work included in the engagement.',['Discovery','Design','Implementation','Quality assurance']),
-    block('out','checklist','Out of scope','Explicit exclusions prevent silent scope expansion.',['Content production unless listed','Third-party fees','Ongoing support']),
+    block('out','deliverables','Out of scope','Explicit exclusions prevent silent scope expansion.',['Content production unless listed','Third-party fees','Ongoing support']),
     block('responsibilities','table','Responsibilities','Owner, input, due date, and dependency.'),
     block('changes','callout','Change control','Additional work is estimated and approved before production.'),
   ]),
@@ -152,7 +152,26 @@ const itemRu:Record<string,string>={'Clarify the offer':'Прояснить пр
 const russianContent=(template:DocumentTemplate):DocumentContent=>({title:titleRu[template.templateId]??template.title,intro:introRu[template.templateId]??'Рабочий документ студии для подготовки, согласования и передачи проекта.',client:'Название клиента',project:'Название проекта',type:{'creative-brief':'креативный бриф','motion-brief':'motion-бриф','content-plan':'контент-план',proposal:'предложение',estimate:'смета',scope:'состав работ',kickoff:'старт проекта','production-checklist':'производственный чек-лист','brand-handoff':'передача айдентики','social-pack':'пакет для соцсетей','case-study':'кейс',approval:'согласование','asset-inventory':'реестр материалов',retrospective:'ретроспектива',handoff:'передача проекта'}[template.templateId]??template.type,status:'Черновик',blocks:template.blocks.map((block)=>({...structuredClone(block),heading:headingRu[block.heading]??block.heading,body:block.body?`Заполните раздел «${headingRu[block.heading]??block.heading}»: зафиксируйте конкретные решения, владельцев и критерии готовности.`:'',items:block.items?.map((item)=>itemRu[item]??item)}))});
 const contentOf=(source:StudioDocument):DocumentContent=>({title:source.title,intro:source.intro,client:source.client,project:source.project,type:source.type,status:source.status,blocks:structuredClone(source.blocks)});
 
-export const migrateDocument=(source:StudioDocument):StudioDocument=>{const blocks=source.blocks?.length?source.blocks:(source.sections??[]).map((section)=>({id:section.id,type:'text' as const,heading:section.heading,body:section.body}));const base={...source,blocks,versions:source.versions??[],comments:source.comments??[],accent:source.accent??'#ff5a2f'};const content=contentOf(base);return {...base,language:source.language??'ru',localized:source.localized??{ru:content,en:content}};};
+const normalizeBlocks=(blocks:DocumentBlock[])=>blocks.map((block)=>{
+  if(block.id!=='out'||block.type!=='checklist')return block;
+  const {checked: _checked,...rest}=block;
+  return {...rest,type:'deliverables' as const};
+});
+
+const normalizeContent=(content:DocumentContent):DocumentContent=>({
+  ...content,
+  blocks:normalizeBlocks(structuredClone(content.blocks)),
+});
+
+export const migrateDocument=(source:StudioDocument):StudioDocument=>{
+  const blocks=normalizeBlocks(source.blocks?.length?structuredClone(source.blocks):(source.sections??[]).map((section)=>({id:section.id,type:'text' as const,heading:section.heading,body:section.body})));
+  const base={...source,blocks,versions:source.versions??[],comments:source.comments??[],accent:source.accent??'#ff5a2f'};
+  const content=contentOf(base);
+  const localized=source.localized
+    ? {ru:normalizeContent(source.localized.ru),en:normalizeContent(source.localized.en)}
+    : {ru:content,en:content};
+  return {...base,language:source.language??'ru',localized};
+};
 
 export const syncDocumentLocale=(source:StudioDocument):StudioDocument=>{const language=source.language??'ru';const localized=structuredClone(source.localized??{ru:contentOf(source),en:contentOf(source)});localized[language]=contentOf(source);return {...source,language,localized};};
 
