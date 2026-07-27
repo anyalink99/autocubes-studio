@@ -86,17 +86,21 @@ const main=async()=>{
     await page.evaluate(()=>{
       const documents=JSON.parse(localStorage.getItem('autocubes-documents-v2')||'[]');
       const out={id:'out',type:'checklist',heading:'Out of scope',body:'Explicit exclusions.',items:['Third-party fees'],checked:[false]};
-      documents[0].blocks=[out];
-      documents[0].localized={ru:{...documents[0].localized.ru,blocks:[out]},en:{...documents[0].localized.en,blocks:[out]}};
+      const questions={id:'questions',type:'checklist',heading:'Discovery questions',body:'',items:['Launch market'],checked:[false]};
+      documents[0].blocks=[out,questions];
+      documents[0].localized={ru:{...documents[0].localized.ru,blocks:[out,questions]},en:{...documents[0].localized.en,blocks:[out,questions]}};
       localStorage.setItem('autocubes-documents-v2',JSON.stringify(documents));
     });
     await page.reload({waitUntil:'networkidle'});
     const outOfScope=page.locator('.paper-block.block-deliverables').filter({hasText:'Out of scope'});
     if(await outOfScope.count()!==1)throw new Error('Out-of-scope migration did not use the standard deliverables format');
     if(await outOfScope.locator('input[type="checkbox"]').count())throw new Error('Out-of-scope migration kept checklist controls');
+    const discoveryQuestions=page.locator('.paper-block.block-deliverables').filter({hasText:'Discovery questions'});
+    if(await discoveryQuestions.count()!==1)throw new Error('Discovery questions migration did not use the standard list format');
+    if(await discoveryQuestions.locator('input[type="checkbox"]').count())throw new Error('Discovery questions migration kept checklist controls');
 
     if(errors.length)throw new Error(`Browser errors:\n${errors.join('\n')}`);
-    console.log('Documents flow passed · scroll · expanding fields · A4 guides · out-of-scope format · mobile toolbar');
+    console.log('Documents flow passed · scroll · expanding fields · A4 guides · standard list migrations · mobile toolbar');
   }finally{
     await browser.close();
     await server.close();

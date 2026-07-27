@@ -153,7 +153,8 @@ const russianContent=(template:DocumentTemplate):DocumentContent=>({title:titleR
 const contentOf=(source:StudioDocument):DocumentContent=>({title:source.title,intro:source.intro,client:source.client,project:source.project,type:source.type,status:source.status,blocks:structuredClone(source.blocks)});
 
 const normalizeBlocks=(blocks:DocumentBlock[])=>blocks.map((block)=>{
-  if(block.id!=='out'||block.type!=='checklist')return block;
+  const usesStandardList=block.id==='out'||block.id==='questions'&&/discovery/i.test(block.heading);
+  if(!usesStandardList||block.type!=='checklist')return block;
   const {checked: _checked,...rest}=block;
   return {...rest,type:'deliverables' as const};
 });
