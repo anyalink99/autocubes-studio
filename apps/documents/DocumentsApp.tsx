@@ -54,6 +54,7 @@ li{margin:1.8mm 0;break-inside:avoid-page}
 table{width:100%;border-collapse:collapse}
 tr{break-inside:avoid-page}
 th,td{padding:2.2mm;border:.25mm solid #ddd;text-align:left;font-size:8.5pt;line-height:1.4}
+.block-budget th:last-child,.block-budget td:last-child{width:25mm;white-space:nowrap}
 .block-callout,.block-approval{padding:4mm 4.5mm;border-left:1.1mm solid ${document.accent??'#ff5a2f'};background:#f4f4f0}
 .block-callout h2,.block-approval h2{margin:0 0 2.4mm}
 .block-quote{padding:3mm 0 3mm 5mm;border-left:.3mm solid #222;font-size:13.5pt;line-height:1.45}
